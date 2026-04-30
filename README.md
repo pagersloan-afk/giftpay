@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # utilityhub
 
 A new Flutter project.
@@ -14,3 +15,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# giftpay
+GiftPay — A modern digital banking experience with 3D branding, glass UI, secure wallet, and premium fintech design.
+>>>>>>> af41696a94bb19eec3013ff0f1935be25b9fd3cb
