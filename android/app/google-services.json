@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "137797292697",
+    "project_id": "utilityhub-97d26",
+    "storage_bucket": "utilityhub-97d26.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:137797292697:android:d319cf99dbbcd1c1b05e08",
+        "android_client_info": {
+          "package_name": "com.example.utilityhub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEaWHlLjuvUngFhiRYY1YlhptMCOsd3KY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
