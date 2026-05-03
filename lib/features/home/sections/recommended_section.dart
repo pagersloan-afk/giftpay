@@ -20,14 +20,20 @@ class RecommendedSection extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 16),
+        // ⭐ Reduced spacing
+        const SizedBox(height: 10),
 
         SizedBox(
-          height: isMobile ? 180 : 220,
+          // ⭐ Reduced height for tighter layout
+          height: isMobile ? 150 : 180,
+
           child: GridView.count(
             crossAxisCount: isMobile ? 3 : 4,
             childAspectRatio: 1,
-            physics: const BouncingScrollPhysics(),
+            physics:
+                const NeverScrollableScrollPhysics(), // ⭐ Prevents extra padding
+            padding: EdgeInsets.zero, // ⭐ Removes default GridView padding
+            shrinkWrap: true, // ⭐ Prevents extra height
             children: const [
               HomeServiceCard(
                 title: "Electricity",

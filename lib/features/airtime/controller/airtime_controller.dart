@@ -125,7 +125,9 @@ class AirtimeController {
 
     loading = true;
 
-    final uri = Uri.parse("http://localhost:4000/wallet/pay-airtime");
+    final uri = Uri.parse(
+      "http://localhost:4000/api/airtime/wallet/pay-airtime",
+    );
 
     final response = await http.post(
       uri,

@@ -26,7 +26,7 @@ class HomeBody extends StatelessWidget {
           SizedBox(height: 30),
 
           RecommendedSection(),
-          SizedBox(height: 30),
+          SizedBox(height: 20),
 
           RecentTransactionsSection(),
           SizedBox(height: 30),

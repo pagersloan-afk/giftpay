@@ -293,7 +293,12 @@ app.post("/api/airtime/requery", async (req, res) => {
   });
 
   if (!walletRef) {
-    return res.json(data);
+    return res.json({
+      data: {
+        status: status || "PENDING",
+        remark,
+      },
+    });
   }
 
   const walletDoc = await walletRef.get();
@@ -301,19 +306,30 @@ app.post("/api/airtime/requery", async (req, res) => {
   const transactions = walletData.transactions || [];
 
   const txn = transactions.find((t) => t.id === requestId);
-  if (!txn) return res.json(data);
+  if (!txn) {
+    return res.json({
+      data: {
+        status: status || "PENDING",
+        remark,
+      },
+    });
+  }
 
+  // ⭐ SUCCESS
   if (status === "ORDER_COMPLETED" || status === "200") {
     txn.status = "success";
 
     await walletRef.update({ transactions });
 
     return res.json({
-      status: "ORDER_COMPLETED",
-      remark,
+      data: {
+        status: "ORDER_COMPLETED",
+        remark,
+      },
     });
   }
 
+  // ⭐ FAILED
   if (status === "ORDER_FAILED" || status === "FAILED") {
     txn.status = "failed";
 
@@ -330,13 +346,23 @@ app.post("/api/airtime/requery", async (req, res) => {
     });
 
     return res.json({
-      status: "ORDER_FAILED",
-      remark,
+      data: {
+        status: "ORDER_FAILED",
+        remark,
+      },
     });
   }
 
-  return res.json(data);
+  // ⭐ STILL PENDING
+  return res.json({
+    data: {
+      status: status || "PENDING",
+      remark,
+    },
+  });
 });
+
+
 
 // =========================
 // Airtime Networks (ClubKonnect)
