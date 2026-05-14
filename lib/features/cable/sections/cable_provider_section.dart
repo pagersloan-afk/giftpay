@@ -39,10 +39,30 @@ class CableProviderSection extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _chip("DStv", "dstv"),
-              _chip("GOtv", "gotv"),
-              _chip("StarTimes", "startimes"),
-              _chip("Showmax", "showmax"),
+              _brandChip(
+                label: "DStv",
+                value: "dstv",
+                assetLogo: "assets/providers/dstv.png",
+                brandColor: Color(0xFF0054A6),
+              ),
+              _brandChip(
+                label: "GOtv",
+                value: "gotv",
+                assetLogo: "assets/providers/gotv.png",
+                brandColor: Color(0xFFC8102E),
+              ),
+              _brandChip(
+                label: "StarTimes",
+                value: "startimes",
+                assetLogo: "assets/providers/startimes.png",
+                brandColor: Color(0xFFF58220),
+              ),
+              _brandChip(
+                label: "Showmax",
+                value: "showmax",
+                assetLogo: "assets/providers/showmax.png",
+                brandColor: Colors.black,
+              ),
             ],
           ),
         ],
@@ -50,28 +70,43 @@ class CableProviderSection extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, String value) {
+  Widget _brandChip({
+    required String label,
+    required String value,
+    required String assetLogo,
+    required Color brandColor,
+  }) {
     final isSelected = selected == value;
 
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return GestureDetector(
+      onTap: () => onSelect(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? brandColor.withOpacity(0.20)
+              : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isSelected ? brandColor : Colors.white24,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(assetLogo, height: 20, width: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
-      selected: isSelected,
-      selectedColor: Colors.blue.withOpacity(0.20),
-      backgroundColor: Colors.white.withOpacity(0.06),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(30),
-        side: BorderSide(
-          color: isSelected ? Colors.blue : Colors.white24,
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      onSelected: (_) => onSelect(value),
     );
   }
 }

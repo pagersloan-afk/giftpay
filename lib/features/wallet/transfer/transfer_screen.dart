@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:utilityhub/config/api.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
@@ -68,7 +69,7 @@ class _TransferScreenState extends State<TransferScreen> {
   Future<void> _loadBanks() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:4000/api/transfer/banks"),
+        Uri.parse(ApiConfig.api("/api/transfer/banks")),
       );
 
       final data = jsonDecode(response.body);
@@ -94,7 +95,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:4000/api/transfer/resolve-account"),
+        Uri.parse(ApiConfig.api("/api/transfer/resolve-account")),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"bankCode": selectedBankCode, "accountNumber": acct}),
       );
@@ -123,7 +124,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:4000/api/transfer/transfer-to-bank"),
+        Uri.parse(ApiConfig.api("/api/transfer/transfer-to-bank")),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "userId": userId,

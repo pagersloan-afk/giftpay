@@ -32,11 +32,30 @@ exports.requeryElectricityController = async (req, res) => {
 
     console.log("📨 RAW REQUERY RESPONSE:", raw);
 
-    const status =
+    let status =
       raw?.status ||
       raw?.statuscode ||
       raw?.orderstatus ||
       raw?.OrderStatus;
+
+    status = (status || "").toString().toUpperCase();
+
+    // ⭐ SPECIAL: TXN_HISTORY WRAPPER
+    const txHistoryStatus = (raw?.transactionstatus || "")
+      .toString()
+      .toUpperCase();
+
+    const token =
+      raw?.metertoken || raw?.Token || raw?.token || "";
+
+    const isCompleted =
+      status === "ORDER_COMPLETED" || status === "200";
+
+    const isHistorySuccess =
+      raw?.status === "TXN_HISTORY" &&
+      (txHistoryStatus === "ORDER_COMPLETED" ||
+        txHistoryStatus === "200") &&
+      token;
 
     const walletRef = admin.firestore().collection("wallets").doc(userId);
     const walletDoc = await walletRef.get();
@@ -62,8 +81,8 @@ exports.requeryElectricityController = async (req, res) => {
 
     const txn = transactions[txnIndex];
 
-    // ⭐ SUCCESS
-    if (status === "ORDER_COMPLETED" || status === "200") {
+    // ⭐ SUCCESS (NORMAL OR TXN_HISTORY + TOKEN)
+    if (isCompleted || isHistorySuccess) {
       txn.status = "success";
       transactions[txnIndex] = txn;
 

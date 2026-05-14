@@ -3,7 +3,10 @@ const {
   vendElectricity,
 } = require("../services/clubkonnectElectricity.service");
 
-const { db } = require("../config/firebase"); // adjust if needed
+const { db } = require("../config/firebase");
+
+// Load BASE_URL from environment
+const BASE_URL = process.env.BASE_URL || "http://localhost:4000";
 
 exports.payElectricityController = async (req, res) => {
   try {
@@ -69,7 +72,7 @@ exports.payElectricityController = async (req, res) => {
     console.log("💰 Wallet debited successfully");
 
     // ⭐ 2) Call CK vending endpoint (ONE TIME ONLY)
-    const callbackUrl = "http://localhost:4000/api/electricity/callback";
+    const callbackUrl = `${BASE_URL}/api/electricity/callback`;
 
     const { requestId, response } = await vendElectricity({
       disco,

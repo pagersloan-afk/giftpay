@@ -125,16 +125,15 @@ class AppHeaderr extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return SafeArea(
       bottom: false,
       child: Column(
         children: [
-          // MAIN HEADER
           Container(
             height: 76,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-
-            // ⭐ SOLID DARK HEADER (premium)
             decoration: const BoxDecoration(color: Color(0xFF0F1115)),
 
             child: Row(
@@ -155,7 +154,7 @@ class AppHeaderr extends StatelessWidget implements PreferredSizeWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -163,111 +162,123 @@ class AppHeaderr extends StatelessWidget implements PreferredSizeWidget {
                   ],
                 ),
 
-                // CENTER: Combined brand asset (GiftPay + Shield)
-                Expanded(
-                  child: Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // ⭐ 3D GLASS GIFT PAY TEXT
-                        ShaderMask(
-                          shaderCallback: (bounds) {
-                            return LinearGradient(
-                              colors: [
-                                Colors.white.withOpacity(0.95),
-                                Colors.white.withOpacity(0.55),
-                                Colors.white.withOpacity(0.95),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds);
-                          },
-                          blendMode: BlendMode.srcATop,
-                          child: Text(
-                            "GiftPay",
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                              color: Colors.white.withOpacity(0.9),
-                              shadows: [
-                                Shadow(
-                                  blurRadius: 14,
-                                  color: Colors.black.withOpacity(0.45),
-                                  offset: const Offset(0, 2),
-                                ),
-                                Shadow(
-                                  blurRadius: 22,
-                                  color: Colors.blue.withOpacity(0.28),
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                // CENTER SPACER (keeps title centered)
+                Expanded(child: Container()),
 
-                        const SizedBox(width: 10),
-
-                        // ⭐ 3D LOGO (Glow + Depth)
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Soft glow behind logo
-                            Container(
-                              width: 70,
-                              height: 70,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    Colors.blue.withOpacity(0.35),
-                                    Colors.transparent,
-                                  ],
-                                  radius: 0.85,
-                                ),
-                              ),
-                            ),
-
-                            // ⭐ LOGO WITH 3D DEPTH
-                            Transform.translate(
-                              offset: const Offset(
-                                0,
-                                4.0, // ← ADJUST THIS VALUE TO MOVE LOGO UP/DOWN
-                              ),
-                              child: Image.asset(
-                                "assets/logo/giftpay_1.png",
-                                height: 120,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // RIGHT SIDE: Invisible spacer to balance the left side
-                Opacity(
-                  opacity: 0,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.arrow_back_ios_new, size: 18),
-                      SizedBox(width: 8),
-                      Text("XXXX", style: TextStyle(fontSize: 20)),
-                    ],
-                  ),
-                ),
+                // RIGHT SIDE: LOGO ONLY ON MOBILE, FULL BRAND ON DESKTOP
+                isMobile ? _MobileLogo() : _DesktopBrandBlock(),
               ],
             ),
           ),
 
-          // ⭐ CYAN ACCENT LINE (matches GP‑1 card line tone)
           Container(height: 2, color: Colors.white.withOpacity(0.12)),
         ],
       ),
+    );
+  }
+}
+
+// ⭐ MOBILE: LOGO ONLY (scaled down, shifted right)
+class _MobileLogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [Colors.blue.withOpacity(0.35), Colors.transparent],
+              radius: 0.85,
+            ),
+          ),
+        ),
+        Transform.translate(
+          offset: const Offset(0, 2),
+          child: Image.asset(
+            "assets/logo/giftpay_1.png",
+            height: 48,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ⭐ DESKTOP: FULL BRAND (GiftPay + Logo)
+class _DesktopBrandBlock extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ShaderMask(
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              colors: [
+                Colors.white.withOpacity(0.95),
+                Colors.white.withOpacity(0.55),
+                Colors.white.withOpacity(0.95),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.srcATop,
+          child: Text(
+            "GiftPay",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: Colors.white.withOpacity(0.9),
+              shadows: [
+                Shadow(
+                  blurRadius: 14,
+                  color: Colors.black.withOpacity(0.45),
+                  offset: const Offset(0, 2),
+                ),
+                Shadow(
+                  blurRadius: 22,
+                  color: Colors.blue.withOpacity(0.28),
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 10),
+
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Colors.blue.withOpacity(0.35), Colors.transparent],
+                  radius: 0.85,
+                ),
+              ),
+            ),
+            Transform.translate(
+              offset: const Offset(0, 4),
+              child: Image.asset(
+                "assets/logo/giftpay_1.png",
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

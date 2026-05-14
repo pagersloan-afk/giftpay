@@ -1,14 +1,17 @@
 import 'dart:convert';
-import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_paystack_plus/flutter_paystack_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
+// ⭐ Web-only import (SAFE)
+import 'package:universal_html/html.dart' as html;
+import 'package:utilityhub/config/api.dart';
+
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'data_processing_screen.dart';
-import 'data_success_screen.dart';
+import 'success_dialog.dart';
 
 // SECTIONS
 import 'sections/data_network_section.dart';
@@ -69,7 +72,7 @@ class _DataScreenState extends State<DataScreen> {
     "04": Color(0xFFE60000),
   };
 
-  String get baseUrl => "http://localhost:4000";
+  String get baseUrl => ApiConfig.baseUrl;
 
   List<String> _getCategoriesForNetwork() {
     if (selectedNetworkCode == "02") {
@@ -179,16 +182,12 @@ class _DataScreenState extends State<DataScreen> {
             ),
           );
         } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => DataSuccessScreen(
-                phone: phoneCtrl.text.trim(),
-                planName: selectedPlan["name"],
-                amount: selectedPlan["price"],
-                message: "Data purchase successful",
-              ),
-            ),
+          showDataSuccessDialog(
+            context: context,
+            phone: phoneCtrl.text.trim(),
+            planName: selectedPlan["name"],
+            amount: selectedPlan["price"],
+            message: "Data purchase successful",
           );
         }
       } else {
@@ -223,6 +222,7 @@ class _DataScreenState extends State<DataScreen> {
     final amount = double.tryParse(selectedPlan["price"]) ?? 0;
     final amountKobo = (amount * 100).toInt();
 
+    // ⭐ WEB-ONLY PAYSTACK FLOW
     if (kIsWeb) {
       html.window.localStorage["dataPhone"] = phoneCtrl.text.trim();
       html.window.localStorage["dataNetwork"] =
@@ -260,6 +260,7 @@ class _DataScreenState extends State<DataScreen> {
       return;
     }
 
+    // ⭐ MOBILE PAYSTACK FLOW
     bool paymentSuccess = false;
 
     await FlutterPaystackPlus.openPaystackPopup(
@@ -301,7 +302,6 @@ class _DataScreenState extends State<DataScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // NETWORK DROPDOWN
               DataNetworkSection(
                 selectedNetworkCode: selectedNetworkCode,
                 networkNames: networkNames,
@@ -317,7 +317,6 @@ class _DataScreenState extends State<DataScreen> {
 
               const SizedBox(height: 20),
 
-              // NETWORK LOGO
               Center(
                 child: Image.asset(
                   networkLogos[selectedNetworkCode]!,
@@ -332,7 +331,6 @@ class _DataScreenState extends State<DataScreen> {
                 const Center(child: CircularProgressIndicator()),
                 const SizedBox(height: 20),
               ] else ...[
-                // CATEGORY PILLS
                 DataCategorySection(
                   activeCategory: activeCategory,
                   categories: _getCategoriesForNetwork(),
@@ -348,7 +346,6 @@ class _DataScreenState extends State<DataScreen> {
 
                 const SizedBox(height: 20),
 
-                // PLAN GRID
                 DataPlanGridSection(
                   plans: filteredPlans,
                   selectedPlanId: selectedPlanId,
@@ -362,7 +359,6 @@ class _DataScreenState extends State<DataScreen> {
 
               const SizedBox(height: 20),
 
-              // PAYMENT SECTION
               DataPaymentSection(
                 phoneCtrl: phoneCtrl,
                 payWithWallet: payWithWallet,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/config/api.dart';
 
 class DvaSection extends StatefulWidget {
   const DvaSection({super.key});
@@ -34,7 +35,7 @@ class _DvaSectionState extends State<DvaSection> {
 
       // ⚠️ IMPORTANT: localhost only works on web running on same machine.
       // If you're on emulator/device, change this to your machine IP or 10.0.2.2.
-      final url = Uri.parse("http://localhost:4000/paystack/virtual-account");
+      final url = Uri.parse(ApiConfig.api("/paystack/virtual-account"));
 
       final res = await http.post(
         url,

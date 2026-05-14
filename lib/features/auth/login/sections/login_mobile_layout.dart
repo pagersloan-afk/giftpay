@@ -7,8 +7,17 @@ class LoginMobileLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(24),
-      children: const [SizedBox(height: 40), LoginCard(), SizedBox(height: 40)],
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 420, // ⭐ Wider login card
+            ),
+            child: const LoginCard(),
+          ),
+        ),
+      ],
     );
   }
 }

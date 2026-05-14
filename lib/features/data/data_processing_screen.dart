@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
-import 'data_success_screen.dart';
+import 'package:utilityhub/config/api.dart';
+import 'success_dialog.dart';
 
 class DataProcessingScreen extends StatefulWidget {
   final String requestId;
@@ -47,41 +47,41 @@ class _DataProcessingScreenState extends State<DataProcessingScreen> {
 
     try {
       final uri = Uri.parse(
-        "http://localhost:4000/api/data/requery/${widget.requestId}",
+        ApiConfig.api("/api/data/requery/${widget.requestId}"),
       );
 
       final response = await http.get(uri);
       final body = jsonDecode(response.body);
 
-      // ClubKonnect response is inside body["data"]
       final data = body["data"] ?? {};
-
       final status =
           data["orderstatus"] ?? data["status"] ?? data["statuscode"] ?? "";
-
       final remark =
           data["remark"] ?? data["orderremark"] ?? "Data purchase successful";
 
-      // SUCCESS
+      // ⭐ SUCCESS
       if (status == "ORDER_COMPLETED" || status == "200") {
         timer?.cancel();
         if (!mounted) return;
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DataSuccessScreen(
-              phone: widget.phone,
-              planName: widget.planName,
-              amount: widget.amount,
-              message: remark,
-            ),
-          ),
-        );
+        // ⭐ FIRST close the processing screen
+        Navigator.pop(context);
+
+        // ⭐ THEN show the success dialog on DataScreen
+        Future.microtask(() {
+          showDataSuccessDialog(
+            context: context,
+            phone: widget.phone,
+            planName: widget.planName,
+            amount: widget.amount,
+            message: remark,
+          );
+        });
+
         return;
       }
 
-      // FAILED
+      // ⭐ FAILED
       if (status == "ORDER_FAILED" || status == "FAILED") {
         timer?.cancel();
         if (!mounted) return;
@@ -94,7 +94,7 @@ class _DataProcessingScreenState extends State<DataProcessingScreen> {
         return;
       }
 
-      // TIMEOUT
+      // ⭐ TIMEOUT
       if (attempts >= 12) {
         timer?.cancel();
         if (!mounted) return;
@@ -109,8 +109,8 @@ class _DataProcessingScreenState extends State<DataProcessingScreen> {
 
         Navigator.pop(context);
       }
-    } catch (e) {
-      // ignore errors
+    } catch (_) {
+      // ignore
     } finally {
       checking = false;
     }
@@ -126,28 +126,13 @@ class _DataProcessingScreenState extends State<DataProcessingScreen> {
           children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 20),
-            const Text(
-              "Processing your data purchase…",
-              textAlign: TextAlign.center,
-            ),
+            const Text("Processing your data purchase…"),
             const SizedBox(height: 8),
-            Text(
-              "Phone: ${widget.phone}",
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
-            Text(
-              "Plan: ${widget.planName}",
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
-            Text(
-              "Amount: ₦${widget.amount}",
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
+            Text("Phone: ${widget.phone}"),
+            Text("Plan: ${widget.planName}"),
+            Text("Amount: ₦${widget.amount}"),
             const SizedBox(height: 20),
-            Text(
-              "Attempt $attempts of 12",
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-            ),
+            Text("Attempt $attempts of 12"),
           ],
         ),
       ),

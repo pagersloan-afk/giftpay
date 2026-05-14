@@ -20,7 +20,7 @@ class _WalletCardState extends State<WalletCard>
   double _oldBalance = 0;
   double _newBalance = 0;
 
-  bool _isHidden = false; // ⭐ NEW: hide/show balance toggle
+  bool _isHidden = false;
 
   StreamSubscription<double>? _balanceSub;
 
@@ -63,7 +63,6 @@ class _WalletCardState extends State<WalletCard>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // ⭐ Cyan glow behind card
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
@@ -76,7 +75,6 @@ class _WalletCardState extends State<WalletCard>
           ),
         ),
 
-        // ⭐ Main premium transparent card
         AnimatedContainer(
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeOut,
@@ -100,7 +98,6 @@ class _WalletCardState extends State<WalletCard>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ⭐ Wallet label + hide button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -123,7 +120,6 @@ class _WalletCardState extends State<WalletCard>
                     ],
                   ),
 
-                  // ⭐ Hide/Show toggle (premium glass icon)
                   GestureDetector(
                     onTap: () {
                       setState(() => _isHidden = !_isHidden);
@@ -149,7 +145,6 @@ class _WalletCardState extends State<WalletCard>
 
               const SizedBox(height: 12),
 
-              // ⭐ Animated balance OR hidden dots
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 350),
                 switchInCurve: Curves.easeOut,
@@ -188,7 +183,6 @@ class _WalletCardState extends State<WalletCard>
 
               const SizedBox(height: 26),
 
-              // ⭐ Action buttons
               Row(
                 children: [
                   _walletButton(
@@ -220,33 +214,40 @@ class _WalletCardState extends State<WalletCard>
     );
   }
 
-  // ⭐ GP‑1 premium button
   Widget _walletButton({
     required String label,
     required IconData icon,
     required String route,
     required Color color,
   }) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Expanded(
       child: GestureDetector(
         onTap: () => Navigator.pushNamed(context, route),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 8), // compact height
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(14),
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white.withOpacity(0.12)),
           ),
+
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
+              // ⭐ ICON ONLY ON DESKTOP
+              if (!isMobile) ...[
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 6),
+              ],
+
+              // ⭐ TEXT ALWAYS CENTERED
               Text(
                 label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),

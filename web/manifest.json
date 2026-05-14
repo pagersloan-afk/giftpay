@@ -1,11 +1,11 @@
 {
-    "name": "utilityhub",
-    "short_name": "utilityhub",
+    "name": "GiftPay",
+    "short_name": "GiftPay",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "GiftPay is a fast, secure, and globally scalable digital payments platform for essential services — including electricity, airtime, data, wallet transfers, gift cards, betting top‑ups, and digital utilities. Built for Nigeria’s 200+ million population and engineered for international expansion, GiftPay delivers instant transactions, transparent pricing, and a premium user experience for everyday financial and digital needs.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

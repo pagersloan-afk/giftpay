@@ -16,6 +16,9 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final user = FirebaseAuth.instance.currentUser;
     final wallet = WalletService();
 
+    // ⭐ NEW: detect mobile
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return SafeArea(
       bottom: false,
       child: Container(
@@ -34,14 +37,15 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // BRAND BLOCK
+                    // BRAND BLOCK (unchanged)
                     Padding(
-                      padding: const EdgeInsets.only(left: 46),
+                      padding: EdgeInsets.only(
+                        left: isMobile ? 0 : 46,
+                      ), // ⭐ mobile = 0, desktop = 46
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // ⭐ 3D GLASS GIFT PAY TEXT
                           ShaderMask(
                             shaderCallback: (bounds) {
                               return LinearGradient(
@@ -80,11 +84,9 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
                           const SizedBox(width: 10),
 
-                          // ⭐ 3D LOGO (with glow + depth)
                           Stack(
                             alignment: Alignment.center,
                             children: [
-                              // Soft glow behind logo
                               Container(
                                 width: 52,
                                 height: 52,
@@ -99,16 +101,11 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                                   ),
                                 ),
                               ),
-
-                              // ⭐ LOGO WITH 3D DEPTH
                               Transform.translate(
-                                offset: const Offset(
-                                  0,
-                                  4, // ← ADJUST THIS VALUE TO MOVE LOGO UP/DOWN
-                                ),
+                                offset: const Offset(0, 4),
                                 child: Image.asset(
                                   "assets/logo/giftpay_1.png",
-                                  height: 94, // increased for presence
+                                  height: 94,
                                   fit: BoxFit.contain,
                                 ),
                               ),
@@ -117,10 +114,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                         ],
                       ),
                     ),
-                    // RIGHT SIDE ITEMS (unchanged)
+
+                    // RIGHT SIDE ITEMS
                     Row(
                       children: [
-                        if (user != null)
+                        // ⭐ FIX: hide balance on mobile
+                        if (!isMobile && user != null)
                           StreamBuilder<double>(
                             stream: wallet.balanceStream(),
                             builder: (context, snapshot) {
@@ -184,7 +183,6 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
 
-            // ACCENT LINE
             Container(height: 2, color: Colors.white.withOpacity(0.12)),
           ],
         ),
@@ -247,7 +245,7 @@ class _NotificationBell extends StatelessWidget {
 }
 
 // ------------------------------------------------------------
-// ⭐ PROFILE DROPDOWN — GiftPay Dark Theme
+// ⭐ PROFILE DROPDOWN
 // ------------------------------------------------------------
 class _ProfileDropdown extends StatefulWidget {
   final String? photoUrl;
@@ -287,7 +285,7 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
               width: 190,
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1C20), // GiftPay dark card
+                color: const Color(0xFF1A1C20),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.08),

@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 class HistoryService {
   static Future<List<dynamic>> fetchHistory(String userId) async {
-    final url = Uri.parse(
-      "http://localhost:4000/transaction-history?userId=$userId",
-    );
+    final url = Uri.parse(ApiConfig.api("/transaction-history?userId=$userId"));
 
     try {
       final response = await http.get(url);

@@ -1,8 +1,13 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+
+// ⭐ Web-safe HTML API
+import 'package:universal_html/html.dart' as html;
+import 'package:utilityhub/config/api.dart';
+
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 
 class FundWalletScreen extends StatefulWidget {
@@ -41,7 +46,7 @@ class _FundWalletScreenState extends State<FundWalletScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:4000/paystack/initialize"),
+        Uri.parse(ApiConfig.api("/paystack/initialize")),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": "gift@example.com",
@@ -54,10 +59,21 @@ class _FundWalletScreenState extends State<FundWalletScreen> {
 
       if (data["status"] == true) {
         final url = data["authorization_url"];
-        html.window.open(url, "_blank");
 
-        // ⭐ DO NOT show success dialog here.
-        // Wait for webhook + Firestore update.
+        // ⭐ WEB ONLY — open Paystack checkout
+        if (kIsWeb) {
+          html.window.open(url, "_blank");
+        }
+
+        // ⭐ MOBILE — use url_launcher or native Paystack SDK (future)
+        // For now, just show message
+        if (!kIsWeb) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Paystack web checkout only works on Web for now."),
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(
           context,

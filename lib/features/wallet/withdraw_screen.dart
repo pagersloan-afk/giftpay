@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; // ⭐ Added for formatting
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/config/api.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/core/widgets/success_dialog.dart'; // ⭐ Added
 
@@ -37,7 +38,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:4000/wallet/debit"),
+        Uri.parse(ApiConfig.api("/wallet/debit")),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "userId": userId,

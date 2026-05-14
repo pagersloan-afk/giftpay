@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/config/api.dart';
 
 class DVAService {
   Future<Map<String, dynamic>?> getDVA() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
 
-    final url = Uri.parse("http://localhost:4000/paystack/virtual-account");
+    final url = Uri.parse(ApiConfig.api("/paystack/virtual-account"));
 
     final response = await http.post(
       url,

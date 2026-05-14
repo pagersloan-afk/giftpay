@@ -6,7 +6,8 @@ class RecommendedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -20,38 +21,30 @@ class RecommendedSection extends StatelessWidget {
           ),
         ),
 
-        // ⭐ Reduced spacing
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
 
-        SizedBox(
-          // ⭐ Reduced height for tighter layout
-          height: isMobile ? 150 : 180,
+        // ⭐ FIXED: Responsive Grid (no overflow, no fixed height)
+        GridView.count(
+          crossAxisCount: isMobile ? 3 : 4,
+          childAspectRatio: 0.95,
+          shrinkWrap: true, // ⭐ FIXED
+          physics: const NeverScrollableScrollPhysics(), // ⭐ FIXED
+          mainAxisSpacing: 18, // ⭐ Better spacing
+          crossAxisSpacing: 18, // ⭐ Better spacing
 
-          child: GridView.count(
-            crossAxisCount: isMobile ? 3 : 4,
-            childAspectRatio: 1,
-            physics:
-                const NeverScrollableScrollPhysics(), // ⭐ Prevents extra padding
-            padding: EdgeInsets.zero, // ⭐ Removes default GridView padding
-            shrinkWrap: true, // ⭐ Prevents extra height
-            children: const [
-              HomeServiceCard(
-                title: "Electricity",
-                icon: Icons.flash_on,
-                route: "/electricity",
-              ),
-              HomeServiceCard(
-                title: "Airtime",
-                icon: Icons.phone_android,
-                route: "/airtime",
-              ),
-              HomeServiceCard(
-                title: "Cable TV",
-                icon: Icons.tv,
-                route: "/cable",
-              ),
-            ],
-          ),
+          children: const [
+            HomeServiceCard(
+              title: "Electricity",
+              icon: Icons.flash_on,
+              route: "/electricity",
+            ),
+            HomeServiceCard(
+              title: "Airtime",
+              icon: Icons.phone_android,
+              route: "/airtime",
+            ),
+            HomeServiceCard(title: "Cable TV", icon: Icons.tv, route: "/cable"),
+          ],
         ),
       ],
     );

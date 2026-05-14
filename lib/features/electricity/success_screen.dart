@@ -1,14 +1,14 @@
+import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:confetti/confetti.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
+import 'dart:typed_data';
 
-import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
+import 'package:utilityhub/core/widgets/giftpay_background.dart';
 import 'package:utilityhub/features/electricity/receipt_screen.dart';
 
 class ElectricitySuccessScreen extends StatefulWidget {
@@ -17,6 +17,7 @@ class ElectricitySuccessScreen extends StatefulWidget {
   final String customerName;
   final String meterNumber;
   final String units;
+  final int timestamp;
 
   const ElectricitySuccessScreen({
     super.key,
@@ -25,6 +26,7 @@ class ElectricitySuccessScreen extends StatefulWidget {
     required this.customerName,
     required this.meterNumber,
     required this.units,
+    required this.timestamp,
   });
 
   @override
@@ -40,16 +42,14 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
   void initState() {
     super.initState();
     _confetti = ConfettiController(duration: const Duration(seconds: 2));
-    _playBeep();
     _confetti.play();
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _showSuccessModal();
-    });
+    _playBeep();
   }
 
   Future<void> _playBeep() async {
-    await _player.play(AssetSource("sounds/success_beep.mp3"));
+    try {
+      await _player.play(AssetSource("sounds/success_beep.mp3"));
+    } catch (_) {}
   }
 
   @override
@@ -59,71 +59,7 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
     super.dispose();
   }
 
-  void _showSuccessModal() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) {
-        return Center(
-          child: Container(
-            width: 320,
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  size: 55, // ⭐ smaller for rectangle shape
-                  color: Colors.green.shade600,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  "Payment Successful!",
-                  style: TextStyle(
-                    fontSize: 20, // ⭐ slightly smaller
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "Your electricity token is ready.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text("Close"),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ---------- PDF RECEIPT (BRANDED) ----------
+  // ---------------- PDF BUILDER ----------------
 
   Future<Uint8List> _buildReceiptPdf() async {
     final pdf = pw.Document();
@@ -134,9 +70,6 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
     final meter = widget.meterNumber;
     final amount = widget.amount;
     final customerName = widget.customerName;
-    final status = "SUCCESS";
-    final id = "N/A"; // If you have a real transaction ID, pass it in later.
-
     final date = DateTime.now();
 
     final qrData =
@@ -212,12 +145,10 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
               ),
               pw.SizedBox(height: 8),
 
-              _pdfDetailRow("Customer", customerName),
-              _pdfDetailRow("Meter Number", meter),
-              _pdfDetailRow("Amount", "₦$amount"),
-              _pdfDetailRow("Status", status),
-              _pdfDetailRow("Transaction ID", id),
-              _pdfDetailRow("Date", date.toString().substring(0, 19)),
+              _pdfDetail("Customer", customerName),
+              _pdfDetail("Meter Number", meter),
+              _pdfDetail("Amount", "₦$amount"),
+              _pdfDetail("Date", date.toString().substring(0, 19)),
 
               pw.SizedBox(height: 16),
 
@@ -254,7 +185,6 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
 
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -306,7 +236,7 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
     return pdf.save();
   }
 
-  pw.Widget _pdfDetailRow(String label, String value) {
+  pw.Widget _pdfDetail(String label, String value) {
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 4),
       child: pw.Row(
@@ -325,92 +255,80 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
     );
   }
 
-  Future<void> _downloadOrSharePdf() async {
-    final bytes = await _buildReceiptPdf();
-
-    if (kIsWeb) {
-      // Web: open print/download dialog
-      await Printing.layoutPdf(onLayout: (_) async => bytes);
-    } else {
-      // Mobile: share PDF
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: 'electricity_receipt.pdf',
-      );
-    }
-  }
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: Colors.white,
-          body: AppResponsiveLayout(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Align(
-                      alignment: Alignment.topCenter,
-                      child: ConfettiWidget(
-                        confettiController: _confetti,
-                        blastDirectionality: BlastDirectionality.explosive,
-                        shouldLoop: false,
-                        colors: const [
-                          Colors.green,
-                          Colors.blue,
-                          Colors.orange,
-                          Colors.purple,
-                        ],
-                      ),
-                    ),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: GiftPayBackground(
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confetti,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.orange,
+                  Colors.purple,
+                ],
+              ),
+            ),
 
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // SUCCESS ICON
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: Colors.green.withOpacity(0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: Image.asset(
-                        "assets/images/success.png",
-                        width: 120,
-                        height: 120,
+                      child: Icon(
+                        Icons.check_circle,
+                        size: 90,
+                        color: Colors.green.shade400,
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     const Text(
                       "Payment Successful!",
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
 
-                    Text(
+                    const Text(
                       "Your electricity token has been generated.",
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey.shade700,
-                      ),
                       textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 15, color: Colors.white70),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 30),
 
+                    // TOKEN CARD
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
+                        color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.15),
+                        ),
                       ),
                       child: Column(
                         children: [
@@ -418,7 +336,7 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                             "Token",
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.black54,
+                              color: Colors.white70,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -428,12 +346,11 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.5,
+                              color: Colors.white,
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 8),
 
-                          // ⭐ UNITS DISPLAY
                           if (widget.units.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             Text(
@@ -441,10 +358,11 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: Colors.white,
                               ),
                             ),
                           ],
+
                           const SizedBox(height: 12),
 
                           ElevatedButton.icon(
@@ -458,6 +376,9 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                             },
                             icon: const Icon(Icons.copy),
                             label: const Text("Copy Token"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blueAccent,
+                            ),
                           ),
                         ],
                       ),
@@ -465,51 +386,67 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
 
                     const SizedBox(height: 24),
 
-                    // On-screen QR (nice touch)
+                    // QR CODE
                     BarcodeWidget(
                       barcode: Barcode.qrCode(),
                       data:
-                          "Token:${widget.token}|Meter:${widget.meterNumber}|Amount:${widget.amount}|Date:${DateTime.now().toIso8601String()}",
+                          "Token:${widget.token}|Meter:${widget.meterNumber}|Amount:${widget.amount}",
                       width: 120,
                       height: 120,
+                      color: Colors.white,
                     ),
 
                     const SizedBox(height: 24),
 
+                    // CUSTOMER DETAILS CARD
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.15),
+                        ),
                       ),
                       child: Column(
                         children: [
-                          _detailRow("Customer", widget.customerName),
+                          _detail("Customer", widget.customerName),
                           const SizedBox(height: 12),
-                          _detailRow("Meter Number", widget.meterNumber),
+                          _detail("Meter Number", widget.meterNumber),
                           const SizedBox(height: 12),
-                          _detailRow("Amount", "₦${widget.amount}"),
+                          _detail("Amount", "₦${widget.amount}"),
                         ],
                       ),
                     ),
 
                     const SizedBox(height: 32),
 
+                    // PDF BUTTON
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _downloadOrSharePdf,
-                        icon: Icon(
-                          kIsWeb ? Icons.download : Icons.picture_as_pdf,
-                        ),
-                        label: Text(
-                          kIsWeb ? "Download PDF Receipt" : "Share PDF Receipt",
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final pdfBytes = await _buildReceiptPdf();
+                          await Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: "electricity_receipt.pdf",
+                          );
+                        },
+                        icon: const Icon(Icons.picture_as_pdf),
+                        label: const Text("Download / Share PDF"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 12),
 
+                    // VIEW RECEIPT
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
@@ -522,18 +459,31 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                                 amount: widget.amount,
                                 customerName: widget.customerName,
                                 meterNumber: widget.meterNumber,
-                                buildPdf:
-                                    _buildReceiptPdf, // ⭐ reuse your existing PDF builder
+                                timestamp: widget.timestamp,
+                                buildPdf: _buildReceiptPdf,
                               ),
                             ),
                           );
                         },
-                        child: const Text("View Receipt"),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.white.withOpacity(0.4),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "View Receipt",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
 
                     const SizedBox(height: 12),
 
+                    // DONE BUTTON
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -542,31 +492,50 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                             context,
                           ).pushNamedAndRemoveUntil('/home', (route) => false);
                         },
-
-                        child: const Text("Done"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.greenAccent.shade400,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "Done",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
+
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _detailRow(String title, String value) {
+  Widget _detail(String title, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 15, color: Colors.black54),
+          style: const TextStyle(fontSize: 15, color: Colors.white70),
         ),
         Text(
           value,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
       ],
     );

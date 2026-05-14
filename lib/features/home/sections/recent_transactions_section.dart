@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:utilityhub/config/api.dart';
 
 class RecentTransactionsSection extends StatefulWidget {
   const RecentTransactionsSection({super.key});
@@ -32,7 +33,7 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
     try {
       final userId = FirebaseAuth.instance.currentUser!.uid;
       final url = Uri.parse(
-        "http://localhost:4000/transaction-history?userId=$userId",
+        ApiConfig.api("/transaction-history?userId=$userId"),
       );
 
       final res = await http.get(url);

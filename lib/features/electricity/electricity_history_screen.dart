@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:utilityhub/config/api.dart';
 
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/features/electricity/purchase_screen.dart';
@@ -55,7 +56,9 @@ class _ElectricityHistoryScreenState extends State<ElectricityHistoryScreen> {
     }
 
     final url = Uri.parse(
-      "http://localhost:4000/transaction-history?userId=$userId${lastDocId != null ? "&cursor=$lastDocId" : ""}",
+      ApiConfig.api(
+        "/transaction-history?userId=$userId${lastDocId != null ? "&cursor=$lastDocId" : ""}",
+      ),
     );
 
     try {

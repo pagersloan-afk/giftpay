@@ -1,5 +1,8 @@
-import 'dart:html' as html;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+// ⭐ Web-safe HTML API
+import 'package:universal_html/html.dart' as html;
 
 class PaystackWebCallbackScreen extends StatefulWidget {
   const PaystackWebCallbackScreen({super.key});
@@ -19,6 +22,12 @@ class _PaystackWebCallbackScreenState extends State<PaystackWebCallbackScreen> {
   }
 
   void _redirectToBackend() {
+    // ⭐ Prevent Android/iOS crash
+    if (!kIsWeb) {
+      setState(() => message = "This page is only for web payments.");
+      return;
+    }
+
     final uri = Uri.base;
     final reference = uri.queryParameters["reference"];
 
@@ -27,7 +36,7 @@ class _PaystackWebCallbackScreenState extends State<PaystackWebCallbackScreen> {
       return;
     }
 
-    // ⭐ Redirect to backend callback
+    // ⭐ Safe web redirect
     html.window.location.href =
         "https://yourdomain.com/paystack/callback?reference=$reference";
   }

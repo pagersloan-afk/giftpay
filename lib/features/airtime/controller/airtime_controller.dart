@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_paystack_plus/flutter_paystack_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 import '../airtime_processing_screen.dart';
 import '../airtime_success_screen.dart';
@@ -26,7 +27,7 @@ class AirtimeController {
 
   Future<void> fetchNetworks() async {
     try {
-      final uri = Uri.parse("http://localhost:4000/api/airtime/networks");
+      final uri = Uri.parse(ApiConfig.api("/api/airtime/networks"));
       final response = await http.get(uri);
 
       final data = jsonDecode(response.body);
@@ -125,9 +126,7 @@ class AirtimeController {
 
     loading = true;
 
-    final uri = Uri.parse(
-      "http://localhost:4000/api/airtime/wallet/pay-airtime",
-    );
+    final uri = Uri.parse(ApiConfig.api("/api/airtime/wallet/pay-airtime"));
 
     final response = await http.post(
       uri,

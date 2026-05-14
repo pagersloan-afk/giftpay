@@ -55,6 +55,7 @@ dependencies:
   shimmer: ^3.0.0
   supabase_flutter: ^2.3.4
   country_picker: ^2.0.15
+  universal_html: ^2.2.4
 
 
 
@@ -132,6 +133,10 @@ flutter:
     - assets/logo/giftpaycolored.png
     - assets/logo/giftpay_logo.png
     - assets/logo/giftpay_1.png
+    - assets/providers/dstv.png
+    - assets/providers/gotv.png
+    - assets/providers/startimes.png
+    - assets/providers/showmax.png
 
 
 

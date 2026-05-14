@@ -16,6 +16,7 @@ exports.vendElectricityController = async (req, res) => {
       meterType,
       userId,
       requestId, // ⭐ MUST COME FROM WALLET DEBIT
+      customerName, // ⭐ NEW — passed from Flutter
     } = req.body;
 
     // ⭐ SANITIZE ALL INPUTS
@@ -26,8 +27,17 @@ exports.vendElectricityController = async (req, res) => {
     meterType = String(meterType).trim();
     requestId = String(requestId).trim();
     userId = String(userId).trim();
+    customerName = customerName ? String(customerName).trim() : "";
 
-    if (!meterNumber || !discoCode || !amount || !phone || !meterType || !userId || !requestId) {
+    if (
+      !meterNumber ||
+      !discoCode ||
+      !amount ||
+      !phone ||
+      !meterType ||
+      !userId ||
+      !requestId
+    ) {
       return res.status(400).json({
         status: false,
         message: "Missing required fields",
@@ -69,6 +79,8 @@ exports.vendElectricityController = async (req, res) => {
       status = raw.transactionstatus;
     }
 
+    status = (status || "").toString().toUpperCase();
+
     // ⭐ SUCCESSFUL VENDING (ORDER_RECEIVED or ORDER_COMPLETED)
     if (
       status === "ORDER_RECEIVED" ||
@@ -78,11 +90,17 @@ exports.vendElectricityController = async (req, res) => {
     ) {
       // ⭐ Extract CK fields
       const token = raw.metertoken || "";
-      const customerName = raw.customer_name || "";
-      const customerAddress = raw.customer_address || "";
+      const ckCustomerName = raw.customer_name || "";
+      const ckCustomerAddress = raw.customer_address || "";
       const productName = raw.productname || "";
       const meterNo = raw.meterno || meterNumber;
       const paymentOption = raw.paymentoption || "Wallet";
+
+      // ⭐ FINAL CUSTOMER NAME PRIORITY:
+      // 1. Flutter-passed customerName (from verify meter)
+      // 2. CK vend response customer_name
+      // 3. Empty string fallback
+      const finalCustomerName = customerName || ckCustomerName || "";
 
       // ⭐ SAVE TO FIRESTORE — MERGE MODE
       const txnRef = admin
@@ -106,8 +124,8 @@ exports.vendElectricityController = async (req, res) => {
 
           // ⭐ NEW FIELDS FOR RECEIPT
           token,
-          customerName,
-          customerAddress,
+          customerName: finalCustomerName,
+          customerAddress: ckCustomerAddress || "",
           productName,
           paymentOption,
 
@@ -146,7 +164,6 @@ exports.vendElectricityController = async (req, res) => {
       message: "Unknown response from CK",
       raw,
     });
-
   } catch (err) {
     console.error("❌ VEND ELECTRICITY ERROR:", err.message);
     return res.status(500).json({

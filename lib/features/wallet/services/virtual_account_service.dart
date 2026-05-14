@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/config/api.dart';
 
 class VirtualAccountService {
   Future<Map<String, dynamic>?> fetchOrCreateVA() async {
@@ -8,7 +9,7 @@ class VirtualAccountService {
     if (user == null) return null;
 
     final res = await http.post(
-      Uri.parse("http://localhost:4000/paystack/virtual-account"),
+      Uri.parse(ApiConfig.api("/paystack/virtual-account")),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "userId": user.uid,

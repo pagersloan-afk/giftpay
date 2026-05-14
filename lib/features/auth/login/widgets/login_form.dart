@@ -64,7 +64,6 @@ class _LoginFormState extends State<LoginForm> {
       children: [
         const SizedBox(height: 10),
 
-        // ⭐ Title
         const Text(
           "Welcome Back",
           style: TextStyle(
@@ -76,7 +75,6 @@ class _LoginFormState extends State<LoginForm> {
 
         const SizedBox(height: 32),
 
-        // ⭐ Email
         TextField(
           controller: emailCtrl,
           style: const TextStyle(color: Colors.white),
@@ -95,7 +93,6 @@ class _LoginFormState extends State<LoginForm> {
 
         const SizedBox(height: 16),
 
-        // ⭐ Password
         TextField(
           controller: passwordCtrl,
           obscureText: !showPassword,
@@ -124,7 +121,6 @@ class _LoginFormState extends State<LoginForm> {
 
         const SizedBox(height: 12),
 
-        // ⭐ Forgot password
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
@@ -143,7 +139,6 @@ class _LoginFormState extends State<LoginForm> {
 
         const SizedBox(height: 16),
 
-        // ⭐ Login button
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -166,12 +161,13 @@ class _LoginFormState extends State<LoginForm> {
 
         const SizedBox(height: 24),
 
-        // ⭐ Sign up link
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        // ⭐ FIXED: No more overflow
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Text(
-              "Don't have an account?",
+              "Don't have an account? ",
               style: TextStyle(color: Colors.white70),
             ),
             TextButton(

@@ -7,7 +7,7 @@ class LoanBannerSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(18),
@@ -20,12 +20,13 @@ class LoanBannerSection extends StatelessWidget {
           ),
         ],
       ),
+
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ⭐ Naira symbol instead of dollar
+          // ⭐ Naira icon
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.white.withOpacity(0.08),
@@ -34,7 +35,7 @@ class LoanBannerSection extends StatelessWidget {
             child: const Text(
               "₦",
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF4FC3F7),
               ),
@@ -43,24 +44,26 @@ class LoanBannerSection extends StatelessWidget {
 
           const SizedBox(width: 16),
 
-          Expanded(
+          // ⭐ FIXED: Flexible text block (prevents pushing button down)
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   "Need Quick Cash?",
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.2,
                     color: Colors.white.withOpacity(0.95),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   "Apply for instant loans with flexible repayment.",
                   style: TextStyle(
-                    fontSize: 14.5,
+                    fontSize: 13.5,
+                    height: 1.25,
                     color: Colors.white.withOpacity(0.65),
                   ),
                 ),
@@ -70,11 +73,12 @@ class LoanBannerSection extends StatelessWidget {
 
           const SizedBox(width: 16),
 
+          // ⭐ FIXED: Button stays vertically centered
           ElevatedButton(
             onPressed: () => Navigator.pushNamed(context, "/loan"),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4FC3F7),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),

@@ -6,7 +6,8 @@ class ServicesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -22,12 +23,16 @@ class ServicesSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
+        // ⭐ SCROLLABLE SERVICES GRID
         SizedBox(
-          height: isMobile ? 300 : 360,
+          height: isMobile ? 350 : 420, // adjust height as needed
           child: GridView.count(
             crossAxisCount: isMobile ? 3 : 4,
-            childAspectRatio: 1,
-            physics: const BouncingScrollPhysics(),
+            childAspectRatio: 0.95,
+            physics: const BouncingScrollPhysics(), // ⭐ scroll enabled
+            mainAxisSpacing: 18,
+            crossAxisSpacing: 18,
+
             children: const [
               HomeServiceCard(
                 title: "Transfer",

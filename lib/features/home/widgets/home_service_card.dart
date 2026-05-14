@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class HomeServiceCard extends StatefulWidget {
   final String title;
-  final IconData icon; // back to IconData
+  final IconData icon;
   final String route;
 
   const HomeServiceCard({
@@ -62,11 +62,11 @@ class _HomeServiceCardState extends State<HomeServiceCard>
             });
           },
           borderRadius: BorderRadius.circular(16),
+
           child: Container(
-            width: 120,
-            height: 120,
-            margin: const EdgeInsets.only(bottom: 16, right: 16),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
+
+            // ⭐ REMOVED FIXED HEIGHT — AUTO SIZE
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(16),
@@ -79,22 +79,30 @@ class _HomeServiceCardState extends State<HomeServiceCard>
                 ),
               ],
             ),
+
             child: Column(
+              mainAxisSize: MainAxisSize.min, // ⭐ prevents clipping
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   widget.icon,
-                  size: 32,
+                  size: 26, // ⭐ slightly smaller for better fit
                   color: Colors.white.withOpacity(0.90),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  widget.title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFE5E7EB),
+
+                const SizedBox(height: 6),
+
+                Flexible(
+                  child: Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis, // ⭐ safe on small screens
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFE5E7EB),
+                    ),
                   ),
                 ),
               ],

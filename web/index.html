@@ -1,35 +1,63 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-  -->
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+  <!-- Responsive -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Base path for Flutter Web -->
   <base href="$FLUTTER_BASE_HREF">
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <!-- App Title -->
+  <title>UtilityHub – Smart Payments</title>
 
-  <!-- ⭐ FORCE HTML RENDERER (fixes CanvasKit WASM crash) -->
-  <meta name="flutter-web-renderer" content="html">
+  <!-- Description (SEO) -->
+  <meta name="description" content="UtilityHub – Fast, secure payments for electricity, airtime, data, and wallet services." />
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="utilityhub">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <!-- Keywords (SEO) -->
+  <meta name="keywords" content="UtilityHub, payments, electricity, airtime, data, wallet, fintech" />
+
+  <!-- Social Preview -->
+  <meta property="og:title" content="UtilityHub – Smart Payments" />
+  <meta property="og:description" content="Fast, secure payments for electricity, airtime, data, and wallet services." />
+  <meta property="og:image" content="icons/Icon-512.png" />
+  <meta property="og:type" content="website" />
+
+  <!-- Force HTML Renderer (production safe) -->
+  <meta name="flutter-web-renderer" content="html" />
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="UtilityHub" />
+  <link rel="apple-touch-icon" href="icons/Icon-192.png" />
+
+  <!-- Android PWA -->
+  <link rel="manifest" href="manifest.json" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
-  <title>utilityhub</title>
-  <link rel="manifest" href="manifest.json">
-
-  <!-- ⭐ REQUIRED FOR PAYSTACK POPUP TO WORK ON WEB -->
+  <!-- Paystack Web Popup -->
   <script src="https://js.paystack.co/v1/inline.js"></script>
 
+  <!-- Disable caching (optional for production) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' data: blob: https: http:;
+                 script-src 'self' 'unsafe-inline' https://js.paystack.co;
+                 style-src 'self' 'unsafe-inline';
+                 img-src 'self' data: https:;
+                 connect-src *;
+                 frame-src https://js.paystack.co;">
 </head>
+
 <body>
   <script src="flutter_bootstrap.js" async></script>
 </body>

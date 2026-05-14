@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'verify_meter_screen.dart';
@@ -26,7 +27,7 @@ class _ElectricityScreenState extends State<ElectricityScreen> {
   Future<void> fetchDiscos() async {
     try {
       final response = await http.get(
-        Uri.parse("http://localhost:4000/api/electricity/discos"),
+        Uri.parse(ApiConfig.api("/api/electricity/discos")),
       );
 
       print("Backend RESPONSE: ${response.body}");

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/giftpay_api.dart';
@@ -177,7 +178,7 @@ class _CableScreenState extends State<CableScreen> {
     setState(() => loadingPackages = true);
 
     try {
-      final uri = Uri.parse("http://localhost:4000/api/cable/packages");
+      final uri = Uri.parse(ApiConfig.api("/api/cable/packages"));
       final response = await http.get(uri);
 
       final data = jsonDecode(response.body);

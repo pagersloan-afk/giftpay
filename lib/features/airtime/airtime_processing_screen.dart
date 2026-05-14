@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 import 'airtime_success_screen.dart';
 
@@ -45,7 +46,7 @@ class _AirtimeProcessingScreenState extends State<AirtimeProcessingScreen> {
     attempts++;
 
     try {
-      final uri = Uri.parse("http://localhost:4000/api/airtime/requery");
+      final uri = Uri.parse(ApiConfig.api("/api/airtime/requery"));
 
       final response = await http.post(
         uri,

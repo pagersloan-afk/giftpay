@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 import 'success_screen.dart';
 
@@ -14,6 +15,10 @@ class ElectricityProcessingScreen extends StatefulWidget {
   final String amount;
   final String customerName;
 
+  // ⭐ NEW OPTIONAL FIELDS FOR SMART COOLDOWN
+  final String? reusedToken;
+  final String? reusedUnits;
+
   const ElectricityProcessingScreen({
     super.key,
     required this.requestId,
@@ -21,6 +26,8 @@ class ElectricityProcessingScreen extends StatefulWidget {
     required this.meterNumber,
     required this.amount,
     required this.customerName,
+    this.reusedToken,
+    this.reusedUnits,
   });
 
   @override
@@ -37,6 +44,28 @@ class _ElectricityProcessingScreenState
   @override
   void initState() {
     super.initState();
+
+    // ⭐ If backend reused token, skip polling entirely
+    if (widget.reusedToken != null) {
+      Future.microtask(() {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ElectricitySuccessScreen(
+              token: widget.reusedToken!,
+              units: widget.reusedUnits ?? "",
+              amount: widget.amount,
+              customerName: widget.customerName,
+              meterNumber: widget.meterNumber,
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+            ),
+          ),
+        );
+      });
+      return;
+    }
+
+    // ⭐ Otherwise start polling CK
     _startPolling();
   }
 
@@ -65,7 +94,7 @@ class _ElectricityProcessingScreenState
     _attempts++;
 
     try {
-      final url = Uri.parse("http://localhost:4000/api/electricity/requery");
+      final url = Uri.parse(ApiConfig.api("/api/electricity/requery"));
 
       final response = await http.post(
         url,
@@ -79,7 +108,7 @@ class _ElectricityProcessingScreenState
       final data = jsonDecode(response.body);
       final raw = data["raw"] ?? {};
 
-      // ⭐ CK returns many possible fields
+      // ⭐ Extract status from multiple possible CK fields
       String status =
           raw["orderstatus"] ??
           raw["transactionstatus"] ??
@@ -92,16 +121,31 @@ class _ElectricityProcessingScreenState
         status = raw["transactionstatus"];
       }
 
+      status = status.toString().toUpperCase();
+
       print("🔍 PROCESSING STATUS: $status");
 
-      // ⭐ SUCCESS (ORDER_COMPLETED or token already present)
-      if (status == "ORDER_COMPLETED" ||
-          status == "200" ||
-          raw["metertoken"] != null) {
+      // ⭐ Extract token if present
+      final token = raw["metertoken"] ?? raw["token"] ?? "";
+      final hasToken = token.toString().trim().isNotEmpty;
+
+      // ⭐ SUCCESS CONDITIONS
+      final isCompleted = status == "ORDER_COMPLETED" || status == "200";
+
+      final isHistorySuccess =
+          raw["status"] == "TXN_HISTORY" &&
+          (raw["transactionstatus"] == "ORDER_COMPLETED" ||
+              raw["transactionstatus"] == "200") &&
+          hasToken;
+
+      if (isCompleted || isHistorySuccess || hasToken) {
         _timer?.cancel();
 
-        final token = raw["metertoken"] ?? raw["token"] ?? "";
-        final units = raw["units"]?.toString() ?? "";
+        final units =
+            raw["units"]?.toString() ??
+            raw["unit"]?.toString() ??
+            raw["unitvalue"]?.toString() ??
+            "";
 
         final formattedToken = _formatToken(token);
 
@@ -116,6 +160,7 @@ class _ElectricityProcessingScreenState
               amount: widget.amount,
               customerName: widget.customerName,
               meterNumber: widget.meterNumber,
+              timestamp: DateTime.now().millisecondsSinceEpoch,
             ),
           ),
         );
@@ -124,7 +169,6 @@ class _ElectricityProcessingScreenState
 
       // ⭐ ORDER RECEIVED → still processing
       if (status == "ORDER_RECEIVED" || status == "100") {
-        // keep polling
         print("⏳ Still processing...");
       }
 
@@ -144,7 +188,7 @@ class _ElectricityProcessingScreenState
         return;
       }
 
-      // ⭐ TIMEOUT
+      // ⭐ TIMEOUT AFTER 20 ATTEMPTS (~100 seconds)
       if (_attempts >= 20) {
         _timer?.cancel();
 

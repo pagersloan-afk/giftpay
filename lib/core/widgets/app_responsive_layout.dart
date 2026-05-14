@@ -3,55 +3,73 @@ import 'package:utilityhub/core/widgets/sidebar/app_sidebar.dart';
 
 class AppResponsiveLayout extends StatelessWidget {
   final Widget child;
-  final double maxWidth;
+  final double desktopMaxWidth;
 
   const AppResponsiveLayout({
     super.key,
     required this.child,
-    this.maxWidth = 640,
+    this.desktopMaxWidth = 640,
   });
 
-  bool _isLoginScreen() {
-    return child.runtimeType.toString() == "LoginScreen";
+  bool _isAuthScreen() {
+    final name = child.runtimeType.toString();
+    return name.contains("Login") ||
+        name.contains("SignUp") ||
+        name.contains("Reset") ||
+        name.contains("Verify");
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth > maxWidth + 200;
+    final width = MediaQuery.of(context).size.width;
 
-        if (_isLoginScreen()) {
-          return child;
-        }
+    // ⭐ AUTH SCREENS → Centered card with max width
+    if (_isAuthScreen()) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: child,
+        ),
+      );
+    }
 
-        if (isDesktop) {
-          return Row(
-            children: [
-              AppSidebar(
-                activeRoute: ModalRoute.of(context)!.settings.name ?? "",
-              ),
-
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 140),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: maxWidth),
-                        child: child,
-                      ),
-                    ),
+    // ⭐ DESKTOP MODE
+    if (width >= desktopMaxWidth + 200) {
+      return Row(
+        children: [
+          AppSidebar(activeRoute: ModalRoute.of(context)!.settings.name ?? ""),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 140),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: desktopMaxWidth),
+                    child: child,
                   ),
                 ),
               ),
-            ],
-          );
-        }
+            ),
+          ),
+        ],
+      );
+    }
 
-        return child;
-      },
+    // ⭐ MOBILE MODE → WIDER LAYOUT (less padding + wider maxWidth)
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 14,
+        ), // ⭐ wider
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600), // ⭐ wider
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }

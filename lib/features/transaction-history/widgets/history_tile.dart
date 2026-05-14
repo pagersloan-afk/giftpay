@@ -3,13 +3,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:utilityhub/features/airtime/airtime_receipt_screen.dart';
+import 'package:utilityhub/features/data/data_receipt_screen.dart';
 
 import '../utils/history_icon_mapper.dart';
 
 // Screens
 import 'package:utilityhub/features/electricity/receipt_screen.dart';
-import 'package:utilityhub/features/airtime/airtime_screen.dart';
-import 'package:utilityhub/features/data/data_screen.dart';
 import 'package:utilityhub/features/cable/cable_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/wallet_receipt_screen.dart';
 import 'package:utilityhub/features/betting/betting_receipt_screen.dart';
@@ -54,26 +54,43 @@ class HistoryTile extends StatelessWidget {
     final id = transaction["id"];
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
-    final doc = await FirebaseFirestore.instance
-        .collection("users")
+    // ⭐ Load wallet document instead of users/{id}/transactions
+    final walletDoc = await FirebaseFirestore.instance
+        .collection("wallets")
         .doc(userId)
-        .collection("transactions")
-        .doc(id)
         .get();
 
-    final realTx = doc.data() ?? {};
-    final titleLower = (transaction["title"] ?? "").toLowerCase();
+    final walletData = walletDoc.data() ?? {};
+    final txList = walletData["transactions"] as List<dynamic>? ?? [];
+
+    // ⭐ Find the real transaction inside the wallet array
+    final realTx = txList.firstWhere((t) => t["id"] == id, orElse: () => {});
+
+    final titleLower = (realTx["title"] ?? "").toLowerCase();
 
     // ⭐ ELECTRICITY
     if (titleLower.startsWith("electricity")) {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+
+      // Fetch the REAL electricity transaction
+      final snap = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(userId)
+          .collection("transactions")
+          .doc(realTx["id"]) // requestId
+          .get();
+
+      final fullTx = snap.data() ?? {};
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => ReceiptScreen(
-            token: realTx["token"] ?? "",
-            amount: realTx["amount"]?.toString() ?? "0",
-            customerName: realTx["customerName"] ?? "Customer",
-            meterNumber: realTx["meterNumber"] ?? "Unknown",
+            token: fullTx["token"] ?? "",
+            amount: fullTx["amount"]?.toString() ?? "0",
+            customerName: fullTx["customerName"] ?? "Customer",
+            meterNumber: fullTx["meterNumber"] ?? "Unknown",
+            timestamp: fullTx["timestamp"] ?? 0, // ⭐ ADD THIS
             buildPdf: () async => Uint8List(0),
           ),
         ),
@@ -81,11 +98,11 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ⭐ AIRTIME
+    // ⭐ AIRTIME RECEIPT
     if (titleLower.startsWith("airtime")) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const AirtimeScreen()),
+        MaterialPageRoute(builder: (_) => AirtimeReceiptScreen(txn: realTx)),
       );
       return;
     }
@@ -94,8 +111,9 @@ class HistoryTile extends StatelessWidget {
     if (titleLower.startsWith("data")) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const DataScreen()),
+        MaterialPageRoute(builder: (_) => DataReceiptScreen(txn: realTx)),
       );
+
       return;
     }
 
@@ -108,7 +126,7 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ⭐ BETTING (NEW)
+    // ⭐ BETTING
     if (titleLower.startsWith("betting")) {
       Navigator.push(
         context,
@@ -122,10 +140,10 @@ class HistoryTile extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => WalletReceiptScreen(
-          title: transaction["title"],
-          amount: transaction["amount"].toString(),
+          title: realTx["title"] ?? "Wallet Transaction",
+          amount: realTx["amount"].toString(),
           date: formattedDate,
-          type: transaction["type"],
+          type: realTx["type"],
         ),
       ),
     );

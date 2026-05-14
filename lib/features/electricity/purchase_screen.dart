@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/config/api.dart';
 
 import 'electricity_processing_screen.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
@@ -43,7 +44,7 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
       final userId = FirebaseAuth.instance.currentUser!.uid;
 
       final url = Uri.parse(
-        "http://localhost:4000/api/electricity/wallet/pay-electricity",
+        ApiConfig.api("/api/electricity/wallet/pay-electricity"),
       );
 
       final response = await http.post(
@@ -80,13 +81,11 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
   // -------------------------------------------------------------
   // STEP 2 — VEND ELECTRICITY (TRUST CK RAW STATUS)
   // -------------------------------------------------------------
-  Future<bool> vendElectricity(String requestId) async {
+  Future<Map<String, dynamic>> vendElectricity(String requestId) async {
     try {
       final userId = FirebaseAuth.instance.currentUser!.uid;
 
-      final url = Uri.parse(
-        "http://localhost:4000/api/electricity/vend-electricity",
-      );
+      final url = Uri.parse(ApiConfig.api("/api/electricity/vend-electricity"));
 
       final response = await http.post(
         url,
@@ -99,29 +98,13 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
           "phone": phone,
           "meterType": widget.meterType,
           "requestId": requestId,
+          "customerName": widget.customerName,
         }),
       );
 
-      final data = jsonDecode(response.body);
-      final raw = data["raw"] ?? {};
-
-      final status =
-          raw["orderstatus"] ??
-          raw["transactionstatus"] ??
-          raw["status"] ??
-          raw["statuscode"] ??
-          "";
-
-      if (status == "ORDER_RECEIVED" ||
-          status == "ORDER_COMPLETED" ||
-          status == "200" ||
-          status == "100") {
-        return true;
-      }
-
-      return false;
+      return jsonDecode(response.body);
     } catch (e) {
-      return false;
+      return {"status": false, "message": "Network error"};
     }
   }
 
@@ -133,24 +116,60 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
 
     setState(() => loading = true);
 
+    // STEP 1 — WALLET PAY
     final requestId = await walletPay();
     if (requestId == null) {
-      if (mounted) setState(() => loading = false);
+      setState(() => loading = false);
       return;
     }
 
-    final vendOk = await vendElectricity(requestId);
+    // STEP 2 — VEND
+    final vend = await vendElectricity(requestId);
 
-    if (!vendOk) {
-      if (mounted) setState(() => loading = false);
-      ScaffoldMessenger.of(
+    // ⭐ CASE 1 — BACKEND REUSED TOKEN (NO NEED FOR PROCESSING SCREEN)
+    if (vend["reused"] == true) {
+      setState(() => loading = false);
+
+      Navigator.push(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Vending failed")));
+        MaterialPageRoute(
+          builder: (_) => ElectricityProcessingScreen(
+            requestId: requestId,
+            userId: FirebaseAuth.instance.currentUser!.uid,
+            meterNumber: widget.meterNumber,
+            amount: amount,
+            customerName: widget.customerName,
+            reusedToken: vend["token"],
+            reusedUnits: vend["units"],
+          ),
+        ),
+      );
       return;
     }
 
-    if (!mounted) return;
+    // ⭐ CASE 2 — COOLDOWN / PENDING
+    if (vend["code"] == "COOLDOWN_PENDING" ||
+        vend["code"] == "PENDING_PROVIDER" ||
+        vend["code"] == "COOLDOWN_ACTIVE") {
+      setState(() => loading = false);
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(vend["message"] ?? "Please wait a few minutes")),
+      );
+      return;
+    }
+
+    // ⭐ CASE 3 — NORMAL FAILURE
+    if (vend["status"] == false) {
+      setState(() => loading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(vend["message"] ?? "Vending failed")),
+      );
+      return;
+    }
+
+    // ⭐ CASE 4 — SUCCESS → GO TO PROCESSING SCREEN
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -182,46 +201,68 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // CUSTOMER DETAILS CARD
+                // CUSTOMER DETAILS CARD — GIFT PAY DARK THEME
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.15),
+                      width: 1.2,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 30,
+                        offset: const Offset(0, 12),
                       ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.flash_on, size: 50, color: Colors.blue),
-                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.flash_on,
+                          size: 40,
+                          color: Colors.blue.shade300,
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
                       Text(
                         widget.customerName,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 4),
+
+                      const SizedBox(height: 6),
+
                       Text(
                         "Meter: ${widget.meterNumber} (${widget.meterType == "01" ? "Prepaid" : "Postpaid"})",
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade700,
+                          color: Colors.white70,
                         ),
                       ),
+
                       const SizedBox(height: 4),
+
                       Text(
                         "Disco: ${widget.discoCode}",
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade700,
+                          color: Colors.white70,
                         ),
                       ),
                     ],

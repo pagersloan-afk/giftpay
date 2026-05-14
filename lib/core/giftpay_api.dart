@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 class GiftPayAPI {
-  static const String baseUrl = "http://localhost:4000";
+  static final String baseUrl = ApiConfig.baseUrl;
 
   static Future<dynamic> get(String path) async {
     final uri = Uri.parse("$baseUrl$path");

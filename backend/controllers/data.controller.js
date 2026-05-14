@@ -69,7 +69,7 @@ exports.walletPayData = async (req, res) => {
     }
 
     // ⭐ Base CK price
-    const amountInt = Number(selectedPlan.PRODUCT_AMOUNT);
+    const amountInt = Math.round(Number(selectedPlan.PRODUCT_AMOUNT)); // Round to nearest whole naira
     if (!amountInt || amountInt < 50) {
       return res.status(400).json({
         status: false,

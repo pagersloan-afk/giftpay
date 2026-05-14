@@ -11,10 +11,11 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 class ElectricityService {
   // ⭐ Backend base URL
-  final String baseUrl = "http://localhost:4000";
+  final String baseUrl = ApiConfig.baseUrl;
 
   // -------------------------------------------------------------
   // 1. FETCH DISCO LIST (Dynamic from ClubKonnect)
