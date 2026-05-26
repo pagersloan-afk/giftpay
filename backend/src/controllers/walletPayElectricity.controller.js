@@ -1,15 +1,18 @@
 // backend/src/controllers/walletPayElectricity.controller.js
 const admin = require("firebase-admin");
 
-/**
- * ⭐ STEP 1 — WALLET DEBIT + CREATE PENDING TRANSACTION
- * This is the ONLY place where wallet is debited.
- * Vending controller MUST NOT debit wallet again.
- */
 exports.walletPayElectricityController = async (req, res) => {
   try {
-    const { userId, meterNumber, discoCode, amount, phone, meterType } = req.body;
+    const { 
+      userId, 
+      meterNumber, 
+      discoCode, 
+      amount, 
+      phone, 
+      meterType 
+    } = req.body;
 
+    // ⭐ VALIDATION — MATCHES YOUR FLUTTER EXACTLY
     if (!userId || !meterNumber || !discoCode || !amount || !phone || !meterType) {
       return res.status(400).json({
         status: false,
@@ -30,10 +33,10 @@ exports.walletPayElectricityController = async (req, res) => {
     const wallet = walletDoc.data();
     const numericAmount = Number(amount);
 
-    if (numericAmount <= 0 || Number.isNaN(numericAmount)) {
+    if (numericAmount < 1000) {
       return res.status(400).json({
         status: false,
-        message: "Invalid amount",
+        message: "Minimum electricity purchase is ₦1000.",
       });
     }
 
@@ -46,9 +49,9 @@ exports.walletPayElectricityController = async (req, res) => {
       });
     }
 
-    // ⭐ SINGLE SOURCE OF TRUTH — requestId used for CK vending + requery
     const requestId = `WL-${Date.now()}`;
 
+    // ⭐ CREATE PENDING TRANSACTION (OLD BEHAVIOR)
     const txn = {
       id: requestId,
       type: "debit",
@@ -56,12 +59,25 @@ exports.walletPayElectricityController = async (req, res) => {
       amount: numericAmount,
       timestamp: Date.now(),
       status: "pending",
+
+      meterNumber,
+      meterType,
+      discoCode,
+      customerName: "",
+      phone,
     };
 
-    await walletRef.update({
-      balance: newBalance,
-      transactions: admin.firestore.FieldValue.arrayUnion(txn),
-    });
+    // ⭐ DEBIT WALLET
+    await walletRef.update({ balance: newBalance });
+
+    // ⭐ SAVE PENDING TRANSACTION
+    await admin
+      .firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("transactions")
+      .doc(requestId)
+      .set(txn);
 
     return res.json({
       status: true,
@@ -69,6 +85,7 @@ exports.walletPayElectricityController = async (req, res) => {
       requestId,
       message: "Wallet debited. Proceed to vending.",
     });
+
   } catch (err) {
     console.error("❌ WALLET PAY ERROR:", err.message);
     return res.status(500).json({

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
-import 'package:utilityhub/features/transaction-history/services/history_service.dart';
 import 'package:utilityhub/features/transaction-history/utils/history_date_formatter.dart';
 import 'package:utilityhub/features/transaction-history/widgets/history_tile.dart';
 
@@ -16,7 +16,7 @@ class TransactionHistoryScreen extends StatefulWidget {
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   bool loading = true;
-  List<dynamic> transactions = [];
+  List<Map<String, dynamic>> transactions = [];
 
   @override
   void initState() {
@@ -24,14 +24,64 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     _loadHistory();
   }
 
+  int _safeTimestamp(dynamic value) {
+    if (value == null) return 0;
+
+    // Already int
+    if (value is int) return value;
+
+    // String number → convert to int
+    if (value is String && int.tryParse(value) != null) {
+      return int.parse(value);
+    }
+
+    // Date string → convert to timestamp
+    try {
+      final dt = DateTime.tryParse(value.toString());
+      if (dt != null) return dt.millisecondsSinceEpoch;
+    } catch (_) {}
+
+    return 0;
+  }
+
   Future<void> _loadHistory() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
-    final result = await HistoryService.fetchHistory(userId);
+    // ⭐ 1. Load WALLET transactions
+    final walletDoc = await FirebaseFirestore.instance
+        .collection("wallets")
+        .doc(userId)
+        .get();
+
+    final walletTx = (walletDoc.data()?["transactions"] ?? [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+
+    // ⭐ 2. Load ELECTRICITY transactions
+    final elecSnap = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(userId)
+        .collection("transactions")
+        .get();
+
+    final elecTx = elecSnap.docs.map((d) => d.data()).toList();
+
+    // ⭐ 3. Merge both safely
+    final merged = <Map<String, dynamic>>[
+      ...walletTx.map((e) => Map<String, dynamic>.from(e)),
+      ...elecTx.map((e) => Map<String, dynamic>.from(e)),
+    ];
+
+    // ⭐ 4. Sort newest → oldest using SAFE timestamp
+    merged.sort((a, b) {
+      final t1 = _safeTimestamp(a["timestamp"] ?? a["date"]);
+      final t2 = _safeTimestamp(b["timestamp"] ?? b["date"]);
+      return t2.compareTo(t1);
+    });
 
     setState(() {
-      transactions = result;
+      transactions = merged;
       loading = false;
     });
   }
@@ -56,7 +106,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: transactions.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, i) {
                     final t = transactions[i];
                     return HistoryTile(

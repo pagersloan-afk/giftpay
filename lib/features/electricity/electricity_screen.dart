@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:utilityhub/config/api.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
@@ -54,7 +55,7 @@ class _ElectricityScreenState extends State<ElectricityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppHeaderr(title: "Buy Electricity"), // ⭐ APPLY HEADER HERE
+      appBar: const AppHeaderr(title: "Buy Electricity"),
 
       body: AppResponsiveLayout(
         child: Padding(
@@ -75,10 +76,8 @@ class _ElectricityScreenState extends State<ElectricityScreen> {
                       hint: const Text("Select Disco"),
                       initialValue: selectedDiscoCode,
 
-                      // ⭐ FIX: dark dropdown menu
                       dropdownColor: const Color(0xFF1F2937),
 
-                      // ⭐ FIX: remove transparent override
                       decoration: const InputDecoration(labelText: "Disco"),
 
                       items: discos.map<DropdownMenuItem<String>>((d) {
@@ -106,6 +105,10 @@ class _ElectricityScreenState extends State<ElectricityScreen> {
                                   MaterialPageRoute(
                                     builder: (_) => VerifyMeterScreen(
                                       discoCode: selectedDiscoCode!,
+                                      userId: FirebaseAuth
+                                          .instance
+                                          .currentUser!
+                                          .uid,
                                     ),
                                   ),
                                 );

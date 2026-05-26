@@ -279,8 +279,14 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
                   ),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => amount = v,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? "Enter amount" : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return "Enter amount";
+
+                    final amt = double.tryParse(v) ?? 0;
+                    if (amt < 1000) return "Minimum purchase is ₦1000";
+
+                    return null;
+                  },
                 ),
 
                 const SizedBox(height: 16),

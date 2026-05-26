@@ -130,15 +130,7 @@ class _ElectricityProcessingScreenState
       final hasToken = token.toString().trim().isNotEmpty;
 
       // ⭐ SUCCESS CONDITIONS
-      final isCompleted = status == "ORDER_COMPLETED" || status == "200";
-
-      final isHistorySuccess =
-          raw["status"] == "TXN_HISTORY" &&
-          (raw["transactionstatus"] == "ORDER_COMPLETED" ||
-              raw["transactionstatus"] == "200") &&
-          hasToken;
-
-      if (isCompleted || isHistorySuccess || hasToken) {
+      if (hasToken) {
         _timer?.cancel();
 
         final units =

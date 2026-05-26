@@ -237,18 +237,31 @@ class ReceiptScreen extends StatelessWidget {
 
   Widget _detailRow(String title, String value) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 15, color: Colors.white70),
+        // LEFT LABEL
+        SizedBox(
+          width: 120, // fixed width for labels
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 15, color: Colors.white70),
+          ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+
+        const SizedBox(width: 10),
+
+        // RIGHT VALUE (flexible, wraps, no overflow)
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            softWrap: true,
+            overflow: TextOverflow.visible,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ),
       ],

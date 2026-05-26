@@ -1,15 +1,14 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:utilityhub/features/airtime/airtime_receipt_screen.dart';
-import 'package:utilityhub/features/data/data_receipt_screen.dart';
 
 import '../utils/history_icon_mapper.dart';
 
 // Screens
 import 'package:utilityhub/features/electricity/receipt_screen.dart';
+import 'package:utilityhub/features/airtime/airtime_receipt_screen.dart';
+import 'package:utilityhub/features/data/data_receipt_screen.dart';
 import 'package:utilityhub/features/cable/cable_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/wallet_receipt_screen.dart';
 import 'package:utilityhub/features/betting/betting_receipt_screen.dart';
@@ -54,30 +53,15 @@ class HistoryTile extends StatelessWidget {
     final id = transaction["id"];
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
-    // ⭐ Load wallet document instead of users/{id}/transactions
-    final walletDoc = await FirebaseFirestore.instance
-        .collection("wallets")
-        .doc(userId)
-        .get();
+    final titleLower = (transaction["title"] ?? "").toLowerCase();
 
-    final walletData = walletDoc.data() ?? {};
-    final txList = walletData["transactions"] as List<dynamic>? ?? [];
-
-    // ⭐ Find the real transaction inside the wallet array
-    final realTx = txList.firstWhere((t) => t["id"] == id, orElse: () => {});
-
-    final titleLower = (realTx["title"] ?? "").toLowerCase();
-
-    // ⭐ ELECTRICITY
+    // ⭐ ELECTRICITY — load directly from users/{uid}/transactions
     if (titleLower.startsWith("electricity")) {
-      final userId = FirebaseAuth.instance.currentUser!.uid;
-
-      // Fetch the REAL electricity transaction
       final snap = await FirebaseFirestore.instance
           .collection("users")
           .doc(userId)
           .collection("transactions")
-          .doc(realTx["id"]) // requestId
+          .doc(id)
           .get();
 
       final fullTx = snap.data() ?? {};
@@ -90,7 +74,7 @@ class HistoryTile extends StatelessWidget {
             amount: fullTx["amount"]?.toString() ?? "0",
             customerName: fullTx["customerName"] ?? "Customer",
             meterNumber: fullTx["meterNumber"] ?? "Unknown",
-            timestamp: fullTx["timestamp"] ?? 0, // ⭐ ADD THIS
+            timestamp: fullTx["timestamp"] ?? 0,
             buildPdf: () async => Uint8List(0),
           ),
         ),
@@ -98,8 +82,21 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ⭐ AIRTIME RECEIPT
-    if (titleLower.startsWith("airtime")) {
+    // ⭐ For all other transactions → load from wallet
+    final walletDoc = await FirebaseFirestore.instance
+        .collection("wallets")
+        .doc(userId)
+        .get();
+
+    final walletData = walletDoc.data() ?? {};
+    final txList = walletData["transactions"] as List<dynamic>? ?? [];
+
+    final realTx = txList.firstWhere((t) => t["id"] == id, orElse: () => {});
+
+    final lower = (realTx["title"] ?? "").toLowerCase();
+
+    // ⭐ AIRTIME
+    if (lower.startsWith("airtime")) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => AirtimeReceiptScreen(txn: realTx)),
@@ -108,17 +105,16 @@ class HistoryTile extends StatelessWidget {
     }
 
     // ⭐ DATA
-    if (titleLower.startsWith("data")) {
+    if (lower.startsWith("data")) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DataReceiptScreen(txn: realTx)),
       );
-
       return;
     }
 
-    // ⭐ CABLE TV
-    if (titleLower.startsWith("cable")) {
+    // ⭐ CABLE
+    if (lower.startsWith("cable")) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => CableReceiptScreen(txn: realTx)),
@@ -127,7 +123,7 @@ class HistoryTile extends StatelessWidget {
     }
 
     // ⭐ BETTING
-    if (titleLower.startsWith("betting")) {
+    if (lower.startsWith("betting")) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => BettingReceiptScreen(txn: realTx)),
@@ -141,9 +137,9 @@ class HistoryTile extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => WalletReceiptScreen(
           title: realTx["title"] ?? "Wallet Transaction",
-          amount: realTx["amount"].toString(),
+          amount: realTx["amount"]?.toString() ?? "0",
           date: formattedDate,
-          type: realTx["type"],
+          type: realTx["type"] ?? "wallet",
         ),
       ),
     );

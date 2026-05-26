@@ -1,11 +1,6 @@
-// backend/src/controllers/vendElectricity.controller.js
 const axios = require("axios");
 const admin = require("firebase-admin");
 
-/**
- * ⭐ STEP 2 — VEND ELECTRICITY USING SAME requestId
- * Wallet is NOT touched here.
- */
 exports.vendElectricityController = async (req, res) => {
   try {
     let {
@@ -15,11 +10,10 @@ exports.vendElectricityController = async (req, res) => {
       phone,
       meterType,
       userId,
-      requestId, // ⭐ MUST COME FROM WALLET DEBIT
-      customerName, // ⭐ NEW — passed from Flutter
+      requestId,
+      customerName,
     } = req.body;
 
-    // ⭐ SANITIZE ALL INPUTS
     meterNumber = String(meterNumber).trim();
     discoCode = String(discoCode).trim();
     amount = String(amount).trim();
@@ -29,18 +23,19 @@ exports.vendElectricityController = async (req, res) => {
     userId = String(userId).trim();
     customerName = customerName ? String(customerName).trim() : "";
 
-    if (
-      !meterNumber ||
-      !discoCode ||
-      !amount ||
-      !phone ||
-      !meterType ||
-      !userId ||
-      !requestId
-    ) {
+    if (!meterNumber || !discoCode || !amount || !phone || !meterType || !userId || !requestId) {
       return res.status(400).json({
         status: false,
         message: "Missing required fields",
+      });
+    }
+
+    const numericAmount = Number(amount) || 0;
+
+    if (numericAmount < 1000) {
+      return res.json({
+        status: false,
+        message: "Minimum electricity vend amount is ₦1000.",
       });
     }
 
@@ -58,112 +53,61 @@ exports.vendElectricityController = async (req, res) => {
       `&PhoneNo=${encodeURIComponent(phone)}` +
       `&RequestID=${encodeURIComponent(requestId)}`;
 
-    console.log("⚡ CLEAN VEND URL:", url);
-
     const axiosResponse = await axios.get(url);
     const raw = axiosResponse.data;
 
-    console.log("📨 RAW VEND RESPONSE:", raw);
+    const token = raw.metertoken || raw.Token || raw.token || "";
+    const ckCustomerName = raw.customer_name || "";
+    const ckCustomerAddress = raw.customer_address || "";
+    const productName = raw.productname || "";
+    const meterNo = raw.meterno || meterNumber;
+    const paymentOption = raw.paymentoption || "Wallet";
 
-    // ⭐ PRIMARY + FALLBACK STATUS FIELDS
-    let status =
-      raw?.orderstatus ||
-      raw?.OrderStatus ||
-      raw?.transactionstatus ||
-      raw?.TransactionStatus ||
-      raw?.statuscode ||
-      raw?.status;
+    const finalCustomerName = customerName || ckCustomerName || "";
 
-    // ⭐ SPECIAL CASE: TXN_HISTORY WRAPPER
-    if (raw?.status === "TXN_HISTORY" && raw?.transactionstatus) {
-      status = raw.transactionstatus;
-    }
+    const txnRef = admin
+      .firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("transactions")
+      .doc(requestId);
 
-    status = (status || "").toString().toUpperCase();
+    // ⭐ ALWAYS MERGE FULL ELECTRICITY FIELDS
+    await txnRef.set(
+      {
+        type: "electricity",
+        meterNumber: meterNo,
+        meterType,
+        discoCode,
+        phone,
+        customerName: finalCustomerName,
+        customerAddress: ckCustomerAddress,
+        productName,
+        paymentOption,
+        raw,
+        token,
+        status: token ? "success" : "pending",
+      },
+      { merge: true }
+    );
 
-    // ⭐ SUCCESSFUL VENDING (ORDER_RECEIVED or ORDER_COMPLETED)
-    if (
-      status === "ORDER_RECEIVED" ||
-      status === "ORDER_COMPLETED" ||
-      status === "100" ||
-      status === "200"
-    ) {
-      // ⭐ Extract CK fields
-      const token = raw.metertoken || "";
-      const ckCustomerName = raw.customer_name || "";
-      const ckCustomerAddress = raw.customer_address || "";
-      const productName = raw.productname || "";
-      const meterNo = raw.meterno || meterNumber;
-      const paymentOption = raw.paymentoption || "Wallet";
-
-      // ⭐ FINAL CUSTOMER NAME PRIORITY:
-      // 1. Flutter-passed customerName (from verify meter)
-      // 2. CK vend response customer_name
-      // 3. Empty string fallback
-      const finalCustomerName = customerName || ckCustomerName || "";
-
-      // ⭐ SAVE TO FIRESTORE — MERGE MODE
-      const txnRef = admin
-        .firestore()
-        .collection("users")
-        .doc(userId)
-        .collection("transactions")
-        .doc(requestId);
-
-      await txnRef.set(
-        {
-          // ⭐ REQUIRED BY YOUR FLUTTER RECEIPT SCREEN
-          id: requestId,
-          type: "electricity",
-          title: `Electricity Purchase (${meterNo})`,
-          amount: Number(amount),
-          meterNumber: meterNo,
-          discoCode,
-          meterType,
-          phone,
-
-          // ⭐ NEW FIELDS FOR RECEIPT
-          token,
-          customerName: finalCustomerName,
-          customerAddress: ckCustomerAddress || "",
-          productName,
-          paymentOption,
-
-          // ⭐ STATUS + TIMESTAMP
-          status: "success",
-          timestamp: Date.now(),
-
-          // ⭐ RAW RESPONSE (useful for debugging)
-          raw,
-        },
-        { merge: true } // ⭐ DO NOT OVERWRITE EXISTING FIELDS
-      );
-
+    if (token) {
       return res.json({
         status: true,
         requestId,
-        message: "Order received at CK.",
+        message: "Electricity vend successful.",
         raw,
       });
     }
 
-    // ⭐ FAILED
-    if (status === "FAILED" || status === "ORDER_FAILED") {
-      return res.json({
-        status: false,
-        requestId,
-        message: "Electricity vending failed at provider.",
-        raw,
-      });
-    }
-
-    // ⭐ UNKNOWN RESPONSE
     return res.json({
-      status: false,
+      status: true,
+      pending: true,
       requestId,
-      message: "Unknown response from CK",
+      message: "Order received. Awaiting token.",
       raw,
     });
+
   } catch (err) {
     console.error("❌ VEND ELECTRICITY ERROR:", err.message);
     return res.status(500).json({

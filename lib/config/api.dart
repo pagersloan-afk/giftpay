@@ -17,7 +17,7 @@ class ApiConfig {
 
     // ⭐ ANDROID (physical device)
     if (Platform.isAndroid) {
-      return "http://192.168.0.200:4000"; // <-- your LAN IP
+      return "http://192.168.0.198:4000"; // <-- your LAN IP
     }
 
     // ⭐ iOS simulator / Windows / macOS / Linux

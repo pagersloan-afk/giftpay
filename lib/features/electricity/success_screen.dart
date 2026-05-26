@@ -46,6 +46,15 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
     _playBeep();
   }
 
+  String formatToken(String raw) {
+    if (raw.isEmpty) return "";
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return "";
+    return digits
+        .replaceAllMapped(RegExp(r".{4}"), (m) => "${m.group(0)}-")
+        .replaceAll(RegExp(r'-$'), '');
+  }
+
   Future<void> _playBeep() async {
     try {
       await _player.play(AssetSource("sounds/success_beep.mp3"));
@@ -341,7 +350,7 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                           ),
                           const SizedBox(height: 8),
                           SelectableText(
-                            widget.token,
+                            formatToken(widget.token),
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -523,18 +532,31 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
 
   Widget _detail(String title, String value) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 15, color: Colors.white70),
+        // LEFT LABEL (fixed width)
+        SizedBox(
+          width: 120,
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 15, color: Colors.white70),
+          ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+
+        const SizedBox(width: 10),
+
+        // RIGHT VALUE (flexible, wraps)
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            softWrap: true,
+            overflow: TextOverflow.visible,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ),
       ],

@@ -2,13 +2,12 @@
 const axios = require("axios");
 const admin = require("firebase-admin");
 
-/**
- * ⭐ STEP 3 — REQUERY CK UNTIL COMPLETED
- * Updates wallet transaction + refunds if needed.
- */
 exports.requeryElectricityController = async (req, res) => {
   try {
-    const { requestId, userId } = req.body;
+    let { requestId, userId } = req.body;
+
+    requestId = String(requestId || "").trim();
+    userId = String(userId || "").trim();
 
     if (!requestId || !userId) {
       return res.status(400).json({
@@ -21,9 +20,10 @@ exports.requeryElectricityController = async (req, res) => {
     const API_KEY = process.env.CLUBKONNECT_APIKEY;
 
     const url =
-      `https://www.nellobytesystems.com/APIQueryV1.asp?UserID=${USER_ID}` +
-      `&APIKey=${API_KEY}` +
-      `&RequestID=${requestId}`;
+      `https://www.nellobytesystems.com/APIQueryV1.asp` +
+      `?UserID=${encodeURIComponent(USER_ID)}` +
+      `&APIKey=${encodeURIComponent(API_KEY)}` +
+      `&RequestID=${encodeURIComponent(requestId)}`;
 
     console.log("🔄 REQUERY URL:", url);
 
@@ -32,102 +32,38 @@ exports.requeryElectricityController = async (req, res) => {
 
     console.log("📨 RAW REQUERY RESPONSE:", raw);
 
-    let status =
-      raw?.status ||
-      raw?.statuscode ||
-      raw?.orderstatus ||
-      raw?.OrderStatus;
+    const token = raw.metertoken || raw.Token || raw.token || "";
+    const status = (raw.status || raw.statuscode || "").toString().toUpperCase();
 
-    status = (status || "").toString().toUpperCase();
+    const txnRef = admin
+      .firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("transactions")
+      .doc(requestId);
 
-    // ⭐ SPECIAL: TXN_HISTORY WRAPPER
-    const txHistoryStatus = (raw?.transactionstatus || "")
-      .toString()
-      .toUpperCase();
-
-    const token =
-      raw?.metertoken || raw?.Token || raw?.token || "";
-
-    const isCompleted =
-      status === "ORDER_COMPLETED" || status === "200";
-
-    const isHistorySuccess =
-      raw?.status === "TXN_HISTORY" &&
-      (txHistoryStatus === "ORDER_COMPLETED" ||
-        txHistoryStatus === "200") &&
-      token;
-
-    const walletRef = admin.firestore().collection("wallets").doc(userId);
-    const walletDoc = await walletRef.get();
-
-    if (!walletDoc.exists) {
-      return res.status(400).json({
-        status: false,
-        message: "Wallet not found",
+    if (token && token.trim() !== "") {
+      await txnRef.update({
+        status: "success",
+        token,
+        raw,
       });
-    }
-
-    const wallet = walletDoc.data();
-    const transactions = wallet.transactions || [];
-
-    const txnIndex = transactions.findIndex((t) => t.id === requestId);
-
-    if (txnIndex === -1) {
-      return res.status(400).json({
-        status: false,
-        message: "Transaction not found",
-      });
-    }
-
-    const txn = transactions[txnIndex];
-
-    // ⭐ SUCCESS (NORMAL OR TXN_HISTORY + TOKEN)
-    if (isCompleted || isHistorySuccess) {
-      txn.status = "success";
-      transactions[txnIndex] = txn;
-
-      await walletRef.update({ transactions });
 
       return res.json({
         status: true,
         requestId,
-        message: "Transaction completed",
+        message: "Token available.",
         raw,
       });
     }
 
-    // ⭐ FAILED → REFUND FULL AMOUNT USER PAID (Fee Engine compatible)
-    if (status === "ORDER_FAILED" || status === "FAILED") {
-      txn.status = "failed";
-
-      // ⭐ UPDATED: Refund totalDebited if available, else fallback to amount
-      const refundAmount = Number(txn.totalDebited || txn.amount);
-
-      const newBalance = wallet.balance + refundAmount;
-
-      transactions[txnIndex] = txn;
-
-      await walletRef.update({
-        balance: newBalance,
-        transactions,
-      });
-
-      return res.json({
-        status: false,
-        requestId,
-        message: "Transaction failed. Refunded.",
-        refunded: refundAmount,
-        raw,
-      });
-    }
-
-    // ⭐ STILL PENDING
     return res.json({
       status: false,
       requestId,
       message: "Pending",
       raw,
     });
+
   } catch (err) {
     console.error("❌ REQUERY ERROR:", err.message);
     return res.status(500).json({
