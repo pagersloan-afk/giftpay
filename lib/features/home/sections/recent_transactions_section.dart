@@ -68,7 +68,6 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ⭐ NEW TITLE (matches Services section)
         const Text(
           "Recent Transactions",
           style: TextStyle(
@@ -112,6 +111,9 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
               if (type == "credit") {
                 icon = Icons.arrow_downward;
                 color = Colors.greenAccent;
+              } else if (type == "electricity") {
+                icon = Icons.flash_on;
+                color = Colors.orangeAccent;
               } else {
                 icon = Icons.arrow_upward;
                 color = Colors.redAccent;
@@ -121,7 +123,6 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
                   children: [
-                    // ⭐ Premium circular icon
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -133,7 +134,6 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
 
                     const SizedBox(width: 14),
 
-                    // ⭐ Title + date
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +158,6 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
                       ),
                     ),
 
-                    // ⭐ Amount
                     Text(
                       naira.format(amount),
                       style: TextStyle(

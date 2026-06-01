@@ -52,18 +52,23 @@ exports.getTransactionHistory = async (req, res) => {
       ...doc.data(),
     }));
 
-    // ⭐ FILTER SERVICE TRANSACTIONS
-    serviceTx = serviceTx.filter((tx) => {
-      if (!tx) return false;
+    // ⭐ FILTER + NORMALIZE SERVICE TRANSACTIONS
+    serviceTx = serviceTx.map((tx) => {
+      return {
+        ...tx,
+        // normalize amount: prefer numeric amount, fallback to amountcharged string
+        amount: tx.amount ?? parseInt(tx.amountcharged || "0", 10),
 
-      return (
-        tx.amount !== null &&
-        tx.amount !== undefined &&
-        tx.type !== null &&
-        tx.type !== undefined &&
-        (tx.timestamp || tx.date)
-      );
-    });
+        // preserve electricity type so frontend can show ⚡ icon
+        type: tx.type === "electricity" ? "electricity" : tx.type,
+
+        // ensure timestamp is numeric: prefer timestamp, fallback to parsed date string
+        timestamp:
+          typeof tx.timestamp === "number"
+            ? tx.timestamp
+            : Date.parse(tx.timestamp || tx.date),
+      };
+    }).filter((tx) => tx.amount && tx.type && tx.timestamp);
 
     // ---------------------------------------------------------
     // 3. MERGE CLEAN TRANSACTIONS
@@ -74,9 +79,15 @@ exports.getTransactionHistory = async (req, res) => {
     // 4. SORT DESCENDING BY DATE
     // ---------------------------------------------------------
     all.sort((a, b) => {
-      const da = new Date(a.timestamp || a.date);
-      const db = new Date(b.timestamp || b.date);
-      return db - da;
+      const ta =
+        typeof a.timestamp === "number"
+          ? a.timestamp
+          : Date.parse(a.timestamp || a.date);
+      const tb =
+        typeof b.timestamp === "number"
+          ? b.timestamp
+          : Date.parse(b.timestamp || b.date);
+      return tb - ta;
     });
 
     return res.json({

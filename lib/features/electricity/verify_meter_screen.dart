@@ -1,5 +1,3 @@
-// lib/features/electricity/verify_meter_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/core/widgets/giftpay_card.dart';
@@ -10,9 +8,9 @@ import 'package:utilityhub/features/electricity/purchase_screen.dart';
 import 'package:utilityhub/features/electricity/services/clubkonnect_service.dart';
 
 // ⭐ NEW IMPORTS
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:utilityhub/features/electricity/services/saved_meter_service.dart';
 import 'package:utilityhub/features/electricity/widgets/saved_meters_list.dart';
+import 'package:utilityhub/features/electricity/saved_meters_screen.dart'; // ⭐ added
 
 class VerifyMeterScreen extends StatefulWidget {
   final String discoCode;
@@ -71,9 +69,23 @@ class _VerifyMeterScreenState extends State<VerifyMeterScreen> {
 
     setState(() => loading = false);
 
-    if (response["status"] == true) {
-      final customerName = response["customerName"] ?? "Customer";
+    // ⭐ Accept both boolean true and "00" string as success
+    if (response["status"] == true || response["status"] == "00") {
+      final customerName =
+          response["customer_name"] ?? response["customerName"] ?? "Customer";
 
+      // Save meter into Firestore
+      await savedMeterService.saveMeter(
+        SavedMeter(
+          meterNumber: meterCtrl.text.trim(),
+          meterType: meterType,
+          discoCode: widget.discoCode,
+          customerName: customerName,
+          lastUsed: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+
+      // Navigate to purchase screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -113,9 +125,17 @@ class _VerifyMeterScreenState extends State<VerifyMeterScreen> {
                   onSelect: (meter) {
                     meterCtrl.text = meter.meterNumber;
                     meterType = meter.meterType;
-
-                    // discoCode is fixed for this screen, so no change needed
                     setState(() {});
+                  },
+                  userId: widget.userId,
+                  onViewAll: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            SavedMetersScreen(userId: widget.userId),
+                      ),
+                    );
                   },
                 ),
 

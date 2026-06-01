@@ -99,6 +99,11 @@ app.use("/api/transfer", transferRoutes);
 app.use("/paystack", dvaRoutes);
 
 // =========================
+// Import and start cron job
+// =========================
+require("./src/jobs/requeryPendingTransactions");
+
+// =========================
 // Paystack: Initialize Transaction
 // =========================
 app.post("/paystack/initialize", async (req, res) => {

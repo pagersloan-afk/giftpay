@@ -17,4 +17,19 @@ class SavedMeterService {
           (snap) => snap.docs.map((d) => SavedMeter.fromMap(d.data())).toList(),
         );
   }
+
+  Future<void> saveMeter(SavedMeter meter) async {
+    await FirebaseFirestore.instance
+        .collection("users")
+        .doc(userId)
+        .collection("saved_meters")
+        .doc(meter.meterNumber) // use meter number as doc ID
+        .set({
+          "meterNumber": meter.meterNumber,
+          "meterType": meter.meterType,
+          "discoCode": meter.discoCode,
+          "customerName": meter.customerName,
+          "lastUsed": meter.lastUsed,
+        }, SetOptions(merge: true));
+  }
 }
