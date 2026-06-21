@@ -16,13 +16,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final user = FirebaseAuth.instance.currentUser;
     final wallet = WalletService();
 
-    // ⭐ NEW: detect mobile
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return SafeArea(
       bottom: false,
       child: Container(
-        height: 80, // total height INCLUDING accent line
+        height: 80,
         decoration: const BoxDecoration(color: Color(0xFF0F1115)),
         child: Column(
           children: [
@@ -37,88 +36,87 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // BRAND BLOCK (unchanged)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: isMobile ? 0 : 46,
-                      ), // ⭐ mobile = 0, desktop = 46
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ShaderMask(
-                            shaderCallback: (bounds) {
-                              return LinearGradient(
-                                colors: [
-                                  Colors.white.withOpacity(0.95),
-                                  Colors.white.withOpacity(0.55),
-                                  Colors.white.withOpacity(0.95),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ).createShader(bounds);
-                            },
-                            blendMode: BlendMode.srcATop,
-                            child: Text(
-                              "GiftPay",
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                                color: Colors.white.withOpacity(0.9),
-                                shadows: [
-                                  Shadow(
-                                    blurRadius: 14,
-                                    color: Colors.black.withOpacity(0.45),
-                                    offset: const Offset(0, 2),
-                                  ),
-                                  Shadow(
-                                    blurRadius: 22,
-                                    color: Colors.blue.withOpacity(0.28),
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                    // ⭐ LEFT SIDE
+                    if (isMobile)
+                      // MOBILE → PROFILE AVATAR ONLY
+                      _ProfileDropdown(photoUrl: user?.photoURL)
+                    else
+                      // DESKTOP → BRAND BLOCK
+                      Padding(
+                        padding: const EdgeInsets.only(left: 46),
+                        child: Row(
+                          children: [
+                            ShaderMask(
+                              shaderCallback: (bounds) {
+                                return LinearGradient(
+                                  colors: [
+                                    Colors.white.withOpacity(0.95),
+                                    Colors.white.withOpacity(0.55),
+                                    Colors.white.withOpacity(0.95),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ).createShader(bounds);
+                              },
+                              blendMode: BlendMode.srcATop,
+                              child: Text(
+                                "GiftPay",
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: Colors.white.withOpacity(0.9),
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 14,
+                                      color: Colors.black.withOpacity(0.45),
+                                      offset: const Offset(0, 2),
+                                    ),
+                                    Shadow(
+                                      blurRadius: 22,
+                                      color: Colors.blue.withOpacity(0.28),
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-
-                          const SizedBox(width: 10),
-
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: RadialGradient(
-                                    colors: [
-                                      Colors.blue.withOpacity(0.35),
-                                      Colors.transparent,
-                                    ],
-                                    radius: 0.85,
+                            const SizedBox(width: 10),
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        Colors.blue.withOpacity(0.35),
+                                        Colors.transparent,
+                                      ],
+                                      radius: 0.85,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Transform.translate(
-                                offset: const Offset(0, 4),
-                                child: Image.asset(
-                                  "assets/logo/giftpay_1.png",
-                                  height: 94,
-                                  fit: BoxFit.contain,
+                                Transform.translate(
+                                  offset: const Offset(0, 4),
+                                  child: Image.asset(
+                                    "assets/logo/giftpay_1.png",
+                                    height: 94,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
 
-                    // RIGHT SIDE ITEMS
+                    // ⭐ RIGHT SIDE
                     Row(
                       children: [
-                        // ⭐ FIX: hide balance on mobile
+                        // DESKTOP ONLY → WALLET BALANCE
                         if (!isMobile && user != null)
                           StreamBuilder<double>(
                             stream: wallet.balanceStream(),
@@ -159,6 +157,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
                         const SizedBox(width: 14),
 
+                        // ⭐ NOTIFICATION BELL (MOBILE + DESKTOP)
                         GestureDetector(
                           onTap: () async {
                             await showNotificationDropdown(context);
@@ -174,7 +173,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
                         const SizedBox(width: 14),
 
-                        if (user != null)
+                        // DESKTOP ONLY → PROFILE DROPDOWN
+                        if (!isMobile && user != null)
                           _ProfileDropdown(photoUrl: user.photoURL),
                       ],
                     ),
@@ -272,13 +272,14 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
 
   OverlayEntry _createOverlay() {
     final renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
     final offset = renderBox.localToGlobal(Offset.zero);
 
     return OverlayEntry(
       builder: (context) {
         return Positioned(
-          right: 16,
-          top: offset.dy + 50,
+          left: offset.dx, // ⭐ anchor horizontally to avatar
+          top: offset.dy + size.height, // ⭐ place directly under avatar
           child: Material(
             color: Colors.transparent,
             child: Container(

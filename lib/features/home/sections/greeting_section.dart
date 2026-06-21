@@ -39,8 +39,8 @@ class GreetingSection extends StatelessWidget {
         return Text(
           "${getGreeting()}, $firstName",
           style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
             color: Color(0xFFE5E7EB),
           ),

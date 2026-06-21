@@ -29,16 +29,28 @@ class ServicesScreen extends StatelessWidget {
         title: const Text("All Services"),
         backgroundColor: Colors.black87,
       ),
+
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12, // ⭐ SHIFT CARDS AWAY FROM SCREEN EDGE
+          vertical: 16,
+        ),
+
         child: GridView.builder(
           itemCount: services.length,
+
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4, // ⭐ 4 per row
+            crossAxisCount: 4, // ⭐ 4 per row (Moniepoint standard)
             mainAxisSpacing: 14,
             crossAxisSpacing: 14,
-            childAspectRatio: 1,
+
+            // ⭐ MAKE CARDS SMALLER (Moniepoint uses ~0.60)
+            childAspectRatio: 0.92,
+            // ↑ LOWER = TALLER CELLS
+            // ↑ HIGHER = SHORTER CELLS
+            // 0.62 is the sweet spot for compact cards
           ),
+
           itemBuilder: (context, i) {
             final s = services[i];
             return HomeServiceCard(

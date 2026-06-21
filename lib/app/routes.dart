@@ -21,6 +21,7 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 // Gift Cards
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
+import 'package:utilityhub/features/services/services_screen.dart';
 
 // Wallet
 import 'package:utilityhub/features/wallet/wallet_screen.dart';
@@ -111,4 +112,7 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // Settings
   '/settings': (_) => wrap(const SettingsScreen()),
+
+  // Services
+  '/services': (_) => wrap(const ServicesScreen()),
 };

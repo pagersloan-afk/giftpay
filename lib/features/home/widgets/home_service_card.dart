@@ -1,15 +1,18 @@
+// lib/features/home/widgets/home_service_card.dart
 import 'package:flutter/material.dart';
 
 class HomeServiceCard extends StatefulWidget {
   final String title;
   final IconData icon;
   final String route;
+  final Color? iconColor; // ⭐ NEW
 
   const HomeServiceCard({
     super.key,
     required this.title,
     required this.icon,
     required this.route,
+    this.iconColor, // ⭐ NEW
   });
 
   @override
@@ -33,7 +36,7 @@ class _HomeServiceCardState extends State<HomeServiceCard>
     );
 
     _slide = Tween<Offset>(
-      begin: const Offset(0.2, 0),
+      begin: const Offset(0.15, 0),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
@@ -64,9 +67,8 @@ class _HomeServiceCardState extends State<HomeServiceCard>
           borderRadius: BorderRadius.circular(16),
 
           child: Container(
-            padding: const EdgeInsets.all(14),
-
-            // ⭐ REMOVED FIXED HEIGHT — AUTO SIZE
+            height: 68,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(16),
@@ -81,26 +83,29 @@ class _HomeServiceCardState extends State<HomeServiceCard>
             ),
 
             child: Column(
-              mainAxisSize: MainAxisSize.min, // ⭐ prevents clipping
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   widget.icon,
-                  size: 26, // ⭐ slightly smaller for better fit
-                  color: Colors.white.withOpacity(0.90),
+                  size: 19,
+                  color:
+                      widget.iconColor ??
+                      Colors.white.withOpacity(0.90), // ⭐ COLOR APPLIED HERE
                 ),
 
                 const SizedBox(height: 6),
 
-                Flexible(
+                SizedBox(
+                  height: 18,
                   child: Text(
                     widget.title,
                     textAlign: TextAlign.center,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis, // ⭐ safe on small screens
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 11.0,
                       fontWeight: FontWeight.w600,
+                      height: 1.2,
                       color: Color(0xFFE5E7EB),
                     ),
                   ),

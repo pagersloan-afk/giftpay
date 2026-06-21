@@ -6,81 +6,68 @@ class ServicesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 600;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           "Services",
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+            fontSize: 11.50, // ⭐ slightly smaller like Moniepoint
+            fontWeight: FontWeight.w500,
             color: Color(0xFFE5E7EB),
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // ⭐ SCROLLABLE SERVICES GRID
-        SizedBox(
-          height: isMobile ? 350 : 420, // adjust height as needed
-          child: GridView.count(
-            crossAxisCount: isMobile ? 3 : 4,
-            childAspectRatio: 0.95,
-            physics: const BouncingScrollPhysics(), // ⭐ scroll enabled
-            mainAxisSpacing: 18,
-            crossAxisSpacing: 18,
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 4,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
 
-            children: const [
-              HomeServiceCard(
-                title: "Transfer",
-                icon: Icons.account_balance,
-                route: "/transfer",
-              ),
-              HomeServiceCard(
-                title: "Betting",
-                icon: Icons.sports_soccer,
-                route: "/betting",
-              ),
-              HomeServiceCard(
-                title: "Electricity",
-                icon: Icons.flash_on,
-                route: "/electricity",
-              ),
-              HomeServiceCard(
-                title: "Airtime",
-                icon: Icons.phone_android,
-                route: "/airtime",
-              ),
-              HomeServiceCard(
-                title: "Data",
-                icon: Icons.data_usage,
-                route: "/data",
-              ),
-              HomeServiceCard(
-                title: "Gift Cards",
-                icon: Icons.card_giftcard,
-                route: "/giftcards",
-              ),
-              HomeServiceCard(
-                title: "PS5 Games",
-                icon: Icons.sports_esports,
-                route: "/psgames",
-              ),
-              HomeServiceCard(
-                title: "Cable TV",
-                icon: Icons.tv,
-                route: "/cable",
-              ),
-              HomeServiceCard(
-                title: "Trade Gift Cards",
-                icon: Icons.swap_horiz,
-                route: "/trade",
-              ),
-            ],
-          ),
+          // ⭐ Moniepoint uses a compact, tall-enough cell
+          childAspectRatio: 0.95,
+
+          children: const [
+            HomeServiceCard(
+              title: "Transfer",
+              icon: Icons.send,
+              route: "/transfer",
+            ),
+            HomeServiceCard(
+              title: "Airtime",
+              icon: Icons.phone_android,
+              route: "/airtime",
+            ),
+            HomeServiceCard(title: "Data", icon: Icons.wifi, route: "/data"),
+            HomeServiceCard(
+              title: "Electricity",
+              icon: Icons.flash_on,
+              route: "/electricity",
+            ),
+            HomeServiceCard(
+              title: "Betting",
+              icon: Icons.sports_soccer,
+              route: "/betting",
+            ),
+            HomeServiceCard(
+              title: "Savings",
+              icon: Icons.savings,
+              route: "/savings",
+            ),
+            HomeServiceCard(
+              title: "Education",
+              icon: Icons.school,
+              route: "/education",
+            ),
+            HomeServiceCard(
+              title: "More",
+              icon: Icons.apps,
+              route: "/services",
+            ),
+          ],
         ),
       ],
     );

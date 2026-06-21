@@ -1,50 +1,153 @@
+// lib/features/home/sections/recommended_section.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/home_service_card.dart';
 
-class RecommendedSection extends StatelessWidget {
+class RecommendedSection extends StatefulWidget {
   const RecommendedSection({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 600;
+  State<RecommendedSection> createState() => _RecommendedSectionState();
+}
 
+class _RecommendedSectionState extends State<RecommendedSection>
+    with SingleTickerProviderStateMixin {
+  late ScrollController _scrollController;
+  Timer? _autoScrollTimer;
+
+  late AnimationController _controller;
+  late Animation<Offset> _slide;
+
+  // ⭐ Fallback recommended services WITH COLORS
+  final List<Map<String, dynamic>> fallback = const [
+    {
+      "title": "Electricity",
+      "icon": Icons.flash_on,
+      "route": "/electricity",
+      "color": Color(0xFFFFD54F), // amber
+    },
+    {
+      "title": "Airtime",
+      "icon": Icons.phone_android,
+      "route": "/airtime",
+      "color": Color(0xFF4FC3F7), // cyan
+    },
+    {
+      "title": "Cable TV",
+      "icon": Icons.tv,
+      "route": "/cable",
+      "color": Color(0xFFBA68C8), // purple
+    },
+    {
+      "title": "Data",
+      "icon": Icons.wifi,
+      "route": "/data",
+      "color": Color(0xFF81C784), // green
+    },
+  ];
+
+  List<Map<String, dynamic>> items = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController = ScrollController();
+
+    // ⭐ Slide‑in animation
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _slide = Tween<Offset>(
+      begin: const Offset(0.15, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _controller.forward();
+
+    // TODO: Replace with Firestore user‑recommended logic
+    items = fallback;
+
+    // ⭐ Start auto‑scroll
+    _startAutoScroll();
+  }
+
+  void _startAutoScroll() {
+    _autoScrollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_scrollController.hasClients) return;
+
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final current = _scrollController.offset;
+
+      if (current >= maxScroll) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scrollController.animateTo(
+          current + 110,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _scrollController.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           "Recommended for You",
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+            fontSize: 11.50,
+            fontWeight: FontWeight.w500,
             color: Color(0xFFE5E7EB),
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // ⭐ FIXED: Responsive Grid (no overflow, no fixed height)
-        GridView.count(
-          crossAxisCount: isMobile ? 3 : 4,
-          childAspectRatio: 0.95,
-          shrinkWrap: true, // ⭐ FIXED
-          physics: const NeverScrollableScrollPhysics(), // ⭐ FIXED
-          mainAxisSpacing: 18, // ⭐ Better spacing
-          crossAxisSpacing: 18, // ⭐ Better spacing
+        SizedBox(
+          height: 90,
+          child: ListView.separated(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            padding: const EdgeInsets.only(left: 4, right: 4),
 
-          children: const [
-            HomeServiceCard(
-              title: "Electricity",
-              icon: Icons.flash_on,
-              route: "/electricity",
-            ),
-            HomeServiceCard(
-              title: "Airtime",
-              icon: Icons.phone_android,
-              route: "/airtime",
-            ),
-            HomeServiceCard(title: "Cable TV", icon: Icons.tv, route: "/cable"),
-          ],
+            itemBuilder: (context, i) {
+              final s = items[i];
+
+              return SlideTransition(
+                position: _slide,
+                child: SizedBox(
+                  width: 90,
+                  child: HomeServiceCard(
+                    title: s["title"],
+                    icon: s["icon"],
+                    route: s["route"],
+                    iconColor: s["color"], // ⭐ COLOR APPLIED HERE
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );

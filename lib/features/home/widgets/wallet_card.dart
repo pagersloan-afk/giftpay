@@ -78,7 +78,13 @@ class _WalletCardState extends State<WalletCard>
         AnimatedContainer(
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+          padding: const EdgeInsets.fromLTRB(
+            18,
+            16,
+            18,
+            18,
+          ), // ⭐ tighter, more compact
+
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(22),
@@ -155,7 +161,7 @@ class _WalletCardState extends State<WalletCard>
                         key: ValueKey("hidden"),
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 36,
+                          fontSize: 28,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.4,
                         ),
@@ -172,7 +178,7 @@ class _WalletCardState extends State<WalletCard>
                             "₦$formatted",
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 36,
+                              fontSize: 28,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.4,
                             ),
@@ -181,7 +187,7 @@ class _WalletCardState extends State<WalletCard>
                       ),
               ),
 
-              const SizedBox(height: 26),
+              const SizedBox(height: 16),
 
               Row(
                 children: [
@@ -226,7 +232,7 @@ class _WalletCardState extends State<WalletCard>
       child: GestureDetector(
         onTap: () => Navigator.pushNamed(context, route),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8), // compact height
+          padding: const EdgeInsets.symmetric(vertical: 6), // compact height
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(12),
@@ -247,7 +253,7 @@ class _WalletCardState extends State<WalletCard>
                 label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),

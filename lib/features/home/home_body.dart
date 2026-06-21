@@ -65,7 +65,6 @@ class _HomeBodyState extends State<HomeBody> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Total Money In
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -85,7 +84,6 @@ class _HomeBodyState extends State<HomeBody> {
             ],
           ),
 
-          // Total Money Out
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -130,35 +128,33 @@ class _HomeBodyState extends State<HomeBody> {
 
         return SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const GreetingSection(),
-                    const SizedBox(height: 20),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 5, // ⭐ FULL WIDTH — NO GAP
+              vertical: 3,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const GreetingSection(),
+                const SizedBox(height: 5),
 
-                    const WalletSection(),
-                    const SizedBox(height: 20),
+                const WalletSection(),
+                const SizedBox(height: 20),
 
-                    const ServicesSection(),
-                    const SizedBox(height: 30),
+                const ServicesSection(),
+                const SizedBox(height: 30),
 
-                    const RecommendedSection(),
-                    const SizedBox(height: 20),
+                const RecommendedSection(),
+                const SizedBox(height: 20),
 
-                    const RecentTransactionsSection(),
-                    const SizedBox(height: 30),
+                const RecentTransactionsSection(),
+                const SizedBox(height: 30),
 
-                    moneySummaryCard(),
-                    const SizedBox(height: 30),
+                moneySummaryCard(),
+                const SizedBox(height: 30),
 
-                    const LoanBannerSection(),
-                  ],
-                ),
-              ),
+                const LoanBannerSection(),
+              ],
             ),
           ),
         );

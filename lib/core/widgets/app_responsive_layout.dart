@@ -56,19 +56,14 @@ class AppResponsiveLayout extends StatelessWidget {
       );
     }
 
-    // ⭐ MOBILE MODE → WIDER LAYOUT (less padding + wider maxWidth)
+    // ⭐ MOBILE MODE → FULL WIDTH, MINIMAL PADDING
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 14,
-        ), // ⭐ wider
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600), // ⭐ wider
-            child: child,
-          ),
+          horizontal: 4, // ⭐ tighter
+          vertical: 10, // ⭐ tighter
         ),
+        child: child, // ⭐ no width constraint
       ),
     );
   }

@@ -23,20 +23,19 @@ exports.getTransactionHistory = async (req, res) => {
       walletTx = walletDoc.data().transactions || [];
     }
 
-    // ⭐ FILTER WALLET TRANSACTIONS (remove corrupted ones)
-    walletTx = walletTx.filter((tx) => {
-      if (!tx) return false;
-
-      return (
-        tx.amount !== null &&
-        tx.amount !== undefined &&
-        tx.title !== null &&
-        tx.title !== undefined &&
-        tx.type !== null &&
-        tx.type !== undefined &&
-        (tx.timestamp || tx.date)
-      );
-    });
+    // ⭐ CLEAN WALLET TRANSACTIONS
+    walletTx = walletTx
+      .filter((tx) => tx)
+      .map((tx) => ({
+        ...tx,
+        amount: Number(tx.amount) || 0,
+        timestamp:
+          typeof tx.timestamp === "number"
+            ? tx.timestamp
+            : Date.parse(tx.timestamp || tx.date) || 0,
+        type: tx.type || "wallet",
+      }))
+      .filter((tx) => tx.amount && tx.timestamp);
 
     // ---------------------------------------------------------
     // 2. FETCH SERVICE TRANSACTIONS (electricity, airtime, data)
@@ -52,43 +51,36 @@ exports.getTransactionHistory = async (req, res) => {
       ...doc.data(),
     }));
 
-    // ⭐ FILTER + NORMALIZE SERVICE TRANSACTIONS
-    serviceTx = serviceTx.map((tx) => {
-      return {
-        ...tx,
-        // normalize amount: prefer numeric amount, fallback to amountcharged string
-        amount: tx.amount ?? parseInt(tx.amountcharged || "0", 10),
+    // ⭐ NORMALIZE SERVICE TRANSACTIONS
+    serviceTx = serviceTx
+      .map((tx) => {
+        return {
+          ...tx,
 
-        // preserve electricity type so frontend can show ⚡ icon
-        type: tx.type === "electricity" ? "electricity" : tx.type,
+          // Normalize amount
+          amount: Number(tx.amount) || Number(tx.amountcharged) || 0,
 
-        // ensure timestamp is numeric: prefer timestamp, fallback to parsed date string
-        timestamp:
-          typeof tx.timestamp === "number"
-            ? tx.timestamp
-            : Date.parse(tx.timestamp || tx.date),
-      };
-    }).filter((tx) => tx.amount && tx.type && tx.timestamp);
+          // Normalize type (fallback for older electricity transactions)
+          type: tx.type || "electricity",
+
+          // Normalize timestamp
+          timestamp:
+            typeof tx.timestamp === "number"
+              ? tx.timestamp
+              : Date.parse(tx.timestamp || tx.date) || 0,
+        };
+      })
+      .filter((tx) => tx.amount && tx.timestamp);
 
     // ---------------------------------------------------------
-    // 3. MERGE CLEAN TRANSACTIONS
+    // 3. MERGE BOTH SOURCES
     // ---------------------------------------------------------
     const all = [...walletTx, ...serviceTx];
 
     // ---------------------------------------------------------
-    // 4. SORT DESCENDING BY DATE
+    // 4. SORT NEWEST → OLDEST
     // ---------------------------------------------------------
-    all.sort((a, b) => {
-      const ta =
-        typeof a.timestamp === "number"
-          ? a.timestamp
-          : Date.parse(a.timestamp || a.date);
-      const tb =
-        typeof b.timestamp === "number"
-          ? b.timestamp
-          : Date.parse(b.timestamp || b.date);
-      return tb - ta;
-    });
+    all.sort((a, b) => b.timestamp - a.timestamp);
 
     return res.json({
       status: true,

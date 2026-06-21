@@ -41,6 +41,8 @@ const mask = (str) =>
 console.log("VTPASS_API_KEY:", mask(VTPASS_API_KEY));
 console.log("VTPASS_SECRET_KEY:", mask(VTPASS_SECRET_KEY));
 console.log("VTPASS_ENV:", process.env.VTPASS_ENV);
+console.log("CLUBKONNECT_APIKEY:", process.env.CLUBKONNECT_APIKEY);
+
 
 // Firebase init
 if (!admin.apps.length) {

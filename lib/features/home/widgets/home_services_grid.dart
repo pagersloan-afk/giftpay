@@ -26,7 +26,7 @@ class HomeServicesGrid extends StatelessWidget {
         crossAxisCount: 4, // ⭐ 4 per row
         mainAxisSpacing: 14,
         crossAxisSpacing: 14,
-        childAspectRatio: 1,
+        childAspectRatio: 0.48, // ⭐ perfect height for icon + text + padding
       ),
       itemBuilder: (context, i) {
         final s = services[i];
