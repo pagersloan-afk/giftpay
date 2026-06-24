@@ -7,7 +7,7 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        "Welcome to UtilityHub Admin Dashboard",
+        "Welcome to GiftPay Admin Dashboard",
         style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
       ),
     );

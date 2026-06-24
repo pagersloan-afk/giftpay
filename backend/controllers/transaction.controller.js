@@ -53,24 +53,27 @@ exports.getTransactionHistory = async (req, res) => {
 
     // ⭐ NORMALIZE SERVICE TRANSACTIONS
     serviceTx = serviceTx
-      .map((tx) => {
-        return {
-          ...tx,
+  .map((tx) => {
+    return {
+      ...tx,
 
-          // Normalize amount
-          amount: Number(tx.amount) || Number(tx.amountcharged) || 0,
+      // ⭐ FIXED: Electricity amounts must be rounded to whole Naira
+      amount: tx.amount
+        ? Number(tx.amount)
+        : Math.round(Number(tx.amountcharged || "0")),
 
-          // Normalize type (fallback for older electricity transactions)
-          type: tx.type || "electricity",
+      // Preserve electricity type
+      type: tx.type || "electricity",
 
-          // Normalize timestamp
-          timestamp:
-            typeof tx.timestamp === "number"
-              ? tx.timestamp
-              : Date.parse(tx.timestamp || tx.date) || 0,
-        };
-      })
-      .filter((tx) => tx.amount && tx.timestamp);
+      // Normalize timestamp
+      timestamp:
+        typeof tx.timestamp === "number"
+          ? tx.timestamp
+          : Date.parse(tx.timestamp || tx.date) || 0,
+    };
+  })
+  .filter((tx) => tx.amount && tx.timestamp);
+
 
     // ---------------------------------------------------------
     // 3. MERGE BOTH SOURCES

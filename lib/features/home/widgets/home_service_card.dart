@@ -5,14 +5,14 @@ class HomeServiceCard extends StatefulWidget {
   final String title;
   final IconData icon;
   final String route;
-  final Color? iconColor; // ⭐ NEW
+  final Color? iconColor; // ⭐ supports red logout
 
   const HomeServiceCard({
     super.key,
     required this.title,
     required this.icon,
     required this.route,
-    this.iconColor, // ⭐ NEW
+    this.iconColor,
   });
 
   @override
@@ -88,9 +88,7 @@ class _HomeServiceCardState extends State<HomeServiceCard>
                 Icon(
                   widget.icon,
                   size: 19,
-                  color:
-                      widget.iconColor ??
-                      Colors.white.withOpacity(0.90), // ⭐ COLOR APPLIED HERE
+                  color: widget.iconColor ?? Colors.white.withOpacity(0.90),
                 ),
 
                 const SizedBox(height: 6),
@@ -102,11 +100,11 @@ class _HomeServiceCardState extends State<HomeServiceCard>
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11.0,
                       fontWeight: FontWeight.w600,
                       height: 1.2,
-                      color: Color(0xFFE5E7EB),
+                      color: widget.iconColor ?? const Color(0xFFE5E7EB),
                     ),
                   ),
                 ),

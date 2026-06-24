@@ -7,18 +7,18 @@ class SupportLegalSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _item("Help Center"),
+        _item(context, "Help Center", "/help-center"),
         _divider(),
-        _item("Contact Support"),
+        _item(context, "Contact Support", "/contact-support"),
         _divider(),
-        _item("Terms of Service"),
+        _item(context, "Terms of Service", "/terms"),
         _divider(),
-        _item("Privacy Policy"),
+        _item(context, "Privacy Policy", "/privacy"),
       ],
     );
   }
 
-  Widget _item(String label) {
+  Widget _item(BuildContext context, String label, String route) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
@@ -31,7 +31,7 @@ class SupportLegalSection extends StatelessWidget {
         color: Colors.white54,
         size: 20,
       ),
-      onTap: () {},
+      onTap: () => Navigator.pushNamed(context, route),
     );
   }
 

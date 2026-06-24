@@ -7,10 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 // ROUTES
 import 'app/routes.dart';
 
-// SCREENS
-import 'package:utilityhub/features/auth/login/login_screen.dart';
-import 'package:utilityhub/features/home/home_screen.dart';
-
 // GLOBAL THEME
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 
@@ -22,6 +18,10 @@ import 'package:utilityhub/core/widgets/giftpay_background.dart';
 
 // ⭐ SPLASH SCREEN
 import 'package:utilityhub/features/splash/giftpay_splash.dart';
+
+// ⭐ AUTH GATE
+import 'package:utilityhub/features/auth/login/login_screen.dart';
+import 'package:utilityhub/features/home/home_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,13 +69,13 @@ class UtilityHubApp extends StatelessWidget {
       // ⭐ SHOW SPLASH FIRST
       home: const GiftPaySplash(),
 
-      // ⭐ ROUTES STILL WORK AS BEFORE
+      // ⭐ ROUTES ("/" REMOVED)
       routes: appRoutes,
     );
   }
 }
 
-/// ⭐ AUTH GATE — Controls whether user sees Login or Home
+/// ⭐ AUTH GATE — Controls whether user sees Login or HomeShell
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -91,7 +91,7 @@ class AuthGate extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          return const HomeScreen();
+          return const HomeShell(); // ⭐ bottom navigation root
         }
 
         return const LoginScreen();

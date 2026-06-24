@@ -71,8 +71,8 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
         const Text(
           "Recent Transactions",
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+            fontSize: 11.50,
+            fontWeight: FontWeight.w500,
             color: Color(0xFFE5E7EB),
           ),
         ),

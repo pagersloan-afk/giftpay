@@ -21,6 +21,7 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 // Gift Cards
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
+import 'package:utilityhub/features/home/home_shell.dart';
 import 'package:utilityhub/features/services/services_screen.dart';
 
 // Wallet
@@ -51,7 +52,17 @@ import 'package:utilityhub/features/betting/betting_screen.dart';
 
 // Paystack callback
 import 'package:utilityhub/features/payments/paystack_web_callback_screen.dart';
+import 'package:utilityhub/settings/change_password_screen.dart';
+import 'package:utilityhub/settings/currency_display_screen.dart';
+import 'package:utilityhub/settings/language_screen.dart';
+import 'package:utilityhub/settings/linked_devices_screen.dart';
+import 'package:utilityhub/settings/quick_actions_customization_screen.dart';
+import 'package:utilityhub/settings/sections/contact_support_screen.dart';
+import 'package:utilityhub/settings/sections/help_center_section.dart';
+import 'package:utilityhub/settings/sections/privacy_policy_section.dart';
+import 'package:utilityhub/settings/sections/terms_of_service.dart';
 import 'package:utilityhub/settings/settings_screen.dart';
+import 'package:utilityhub/settings/two_factor_screen.dart';
 
 // ⭐ WRAPPER — applies GiftPayBackground to every screen
 Widget wrap(Widget screen) {
@@ -115,4 +126,25 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // Services
   '/services': (_) => wrap(const ServicesScreen()),
+
+  // Change Password
+  '/change-password': (_) => wrap(const ChangePasswordScreen()),
+
+  // Two-Factor Authentication
+  '/2fa': (_) => wrap(const TwoFactorScreen()),
+
+  // Linked Devices
+  '/linked-devices': (_) => wrap(const LinkedDevicesScreen()),
+
+  // ⭐ PREFERENCES
+  '/currency-display': (_) => wrap(const CurrencyDisplayScreen()),
+  '/language': (_) => wrap(const LanguageScreen()),
+  '/quick-actions-customization': (_) =>
+      wrap(const QuickActionsCustomizationScreen()),
+
+  // ⭐ SUPPORT & LEGAL
+  '/help-center': (_) => wrap(const HelpCenterScreen()),
+  '/contact-support': (_) => wrap(const ContactSupportScreen()),
+  '/terms': (_) => wrap(const TermsScreen()),
+  '/privacy': (_) => wrap(const PrivacyScreen()),
 };
