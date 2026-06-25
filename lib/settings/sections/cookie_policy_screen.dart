@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class TermsScreen extends StatelessWidget {
-  const TermsScreen({super.key});
+class CookiePolicyScreen extends StatelessWidget {
+  const CookiePolicyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-        title: const Text("Terms of Service"),
+        title: const Text("Cookie Policy"),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -16,7 +16,7 @@ class TermsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: const [
           Text(
-            "GiftPay Terms of Service",
+            "GiftPay Cookie Policy",
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -44,18 +44,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "Welcome to GiftPay. By accessing or using the GiftPay mobile application, "
-            "you agree to be bound by these Terms of Service. These terms govern your "
-            "use of our services including wallet payments, airtime and data purchases, "
-            "electricity bills, gift card trading, and all other features provided within the app.",
+            "This Cookie Policy explains how GiftPay uses cookies and similar technologies "
+            "to enhance your experience when using our mobile application. By using GiftPay, "
+            "you consent to the use of cookies as described in this policy.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ELIGIBILITY
+          // WHAT COOKIES ARE
           Text(
-            "2. Eligibility",
+            "2. What Are Cookies?",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -64,17 +63,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "To use GiftPay, you must be at least 18 years old and legally capable of "
-            "entering into binding agreements. By using the app, you confirm that the "
-            "information you provide is accurate and complete.",
+            "Cookies are small text files stored on your device to help apps and websites "
+            "remember information about your visit. Cookies improve functionality, security, "
+            "and personalization.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ACCOUNT RESPONSIBILITY
+          // TYPES OF COOKIES
           Text(
-            "3. Account Responsibility",
+            "3. Types of Cookies We Use",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -83,17 +82,20 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You are responsible for maintaining the confidentiality of your login details. "
-            "Any activity performed through your account will be considered authorized by you. "
-            "GiftPay is not liable for losses resulting from unauthorized access caused by your negligence.",
+            "GiftPay uses the following types of cookies:\n\n"
+            "• **Essential Cookies** – Required for the app to function properly.\n"
+            "• **Security Cookies** – Used to detect fraud, protect your account, and ensure safe usage.\n"
+            "• **Performance Cookies** – Help us understand app performance and fix issues.\n"
+            "• **Analytics Cookies** – Provide insights into how users interact with GiftPay.\n"
+            "• **Preference Cookies** – Remember your settings such as theme, language, and preferences.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // WALLET & PAYMENTS
+          // WHY WE USE COOKIES
           Text(
-            "4. Wallet & Payments",
+            "4. Why We Use Cookies",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -102,17 +104,21 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay provides a digital wallet for transactions such as airtime, data, electricity, "
-            "gift cards, and other supported services. All payments are final once processed. "
-            "Refunds for failed transactions will be issued automatically or after verification.",
+            "We use cookies to:\n\n"
+            "• Keep your account secure.\n"
+            "• Improve app performance and reliability.\n"
+            "• Personalize your experience.\n"
+            "• Analyze usage patterns to enhance features.\n"
+            "• Remember your preferences and settings.\n"
+            "• Provide faster and smoother navigation.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // GIFT CARD TRADING
+          // THIRD PARTY COOKIES
           Text(
-            "5. Gift Card Trading",
+            "5. Third‑Party Cookies",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -121,17 +127,18 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "By trading gift cards on GiftPay, you confirm that the cards belong to you and are "
-            "legally obtained. Fraudulent or invalid cards will be rejected, and your account may "
-            "be suspended pending investigation.",
+            "GiftPay may use trusted third‑party services such as analytics providers, "
+            "payment processors, and fraud‑prevention tools. These partners may place "
+            "their own cookies to support their services. All partners are required to "
+            "protect your data and comply with privacy regulations.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // PROHIBITED USES
+          // MANAGING COOKIES
           Text(
-            "6. Prohibited Uses",
+            "6. Managing Cookies",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -140,17 +147,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You agree not to use GiftPay for any unlawful activities including money laundering, "
-            "fraud, unauthorized transactions, or any activity that violates Nigerian laws or "
-            "international regulations.",
+            "You can manage or disable cookies through your device settings. However, "
+            "disabling essential cookies may affect the functionality of GiftPay and "
+            "prevent certain features from working correctly.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // LIMITATION OF LIABILITY
+          // CHANGES TO POLICY
           Text(
-            "7. Limitation of Liability",
+            "7. Changes to This Cookie Policy",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -159,27 +166,8 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay is provided on an \"as-is\" basis. While we strive to ensure smooth and secure "
-            "operations, we are not liable for service interruptions, delays, or losses caused by "
-            "third-party providers, network issues, or user error.",
-            style: TextStyle(color: Colors.white70, height: 1.5),
-          ),
-
-          SizedBox(height: 30),
-
-          // CHANGES TO TERMS
-          Text(
-            "8. Changes to Terms",
-            style: TextStyle(
-              color: Color(0xFF0AC8FF),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            "GiftPay may update these Terms of Service at any time. Continued use of the app after "
-            "changes are published constitutes acceptance of the updated terms.",
+            "We may update this Cookie Policy from time to time. Continued use of GiftPay "
+            "after updates indicates acceptance of the revised policy.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
@@ -187,7 +175,7 @@ class TermsScreen extends StatelessWidget {
 
           // CONTACT
           Text(
-            "9. Contact Information",
+            "8. Contact Us",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -196,7 +184,7 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "For questions or concerns regarding these Terms of Service, please contact us at:\n"
+            "If you have questions about this Cookie Policy, please contact us at:\n"
             "support@giftpayhq.com",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),

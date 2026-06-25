@@ -1,7 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContactSupportScreen extends StatelessWidget {
   const ContactSupportScreen({super.key});
+
+  // ⭐ WHATSAPP DEEP LINK
+  Future<void> openWhatsApp(String phone, String message) async {
+    final encodedMessage = Uri.encodeComponent(message);
+    final whatsappUrl = Uri.parse("https://wa.me/$phone?text=$encodedMessage");
+
+    if (await canLaunchUrl(whatsappUrl)) {
+      await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+    } else {
+      throw "Could not open WhatsApp";
+    }
+  }
+
+  // ⭐ CALL DEEP LINK
+  Future<void> callNumber(String phone) async {
+    final uri = Uri(scheme: "tel", path: phone);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      throw "Could not launch phone dialer";
+    }
+  }
+
+  // ⭐ EMAIL DEEP LINK
+  Future<void> sendEmail(String email) async {
+    final uri = Uri(
+      scheme: "mailto",
+      path: email,
+      query: "subject=GiftPay Support&body=Hello GiftPay Support,",
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      throw "Could not open email app";
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,26 +65,41 @@ class ContactSupportScreen extends StatelessWidget {
           _chatItem(
             title: "WhatsApp",
             subtitle: "Start a conversation on WhatsApp",
-            onTap: () {},
+            onTap: () {
+              openWhatsApp(
+                "2349010853849",
+                "Hello GiftPay Support, I need help with...",
+              );
+            },
           ),
 
           const SizedBox(height: 30),
 
           // ⭐ CALL
           _sectionHeader("Call", "Avg. response time: 2 min"),
-          _callItem(phone: "+234 801 234 5678", onTap: () {}),
+          _callItem(
+            phone: "+234 901 085 3849",
+            onTap: () {
+              callNumber("09010853849");
+            },
+          ),
 
           const SizedBox(height: 30),
 
           // ⭐ EMAIL
           _sectionHeader("Email", "Avg. response time: 12 hrs"),
-          _emailItem(email: "support@giftpay.africa", onTap: () {}),
+          _emailItem(
+            email: "support@giftpayhq.com",
+            onTap: () {
+              sendEmail("support@giftpayhq.com");
+            },
+          ),
 
           const SizedBox(height: 30),
 
           // ⭐ SUPPORT PORTAL
           _sectionHeader("Support", null),
-          _supportPortalItem(onTap: () {}),
+          _supportPortalItem(context: context),
 
           const SizedBox(height: 30),
 
@@ -125,7 +179,7 @@ class ContactSupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _supportPortalItem({required VoidCallback onTap}) {
+  Widget _supportPortalItem({required BuildContext context}) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: const Text(
@@ -140,7 +194,9 @@ class ContactSupportScreen extends StatelessWidget {
         "Read Now >",
         style: TextStyle(color: Color(0xFF0AC8FF)),
       ),
-      onTap: onTap,
+      onTap: () {
+        Navigator.pushNamed(context, "/help-center");
+      },
     );
   }
 

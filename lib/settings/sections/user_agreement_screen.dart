@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class TermsScreen extends StatelessWidget {
-  const TermsScreen({super.key});
+class UserAgreementScreen extends StatelessWidget {
+  const UserAgreementScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-        title: const Text("Terms of Service"),
+        title: const Text("User Agreement"),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -16,7 +16,7 @@ class TermsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: const [
           Text(
-            "GiftPay Terms of Service",
+            "GiftPay User Agreement",
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -44,18 +44,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "Welcome to GiftPay. By accessing or using the GiftPay mobile application, "
-            "you agree to be bound by these Terms of Service. These terms govern your "
-            "use of our services including wallet payments, airtime and data purchases, "
-            "electricity bills, gift card trading, and all other features provided within the app.",
+            "This User Agreement outlines the terms governing your use of the GiftPay mobile "
+            "application and services. By creating an account or using GiftPay, you agree to "
+            "comply with this Agreement, our Terms of Service, Privacy Policy, and Refund Policy.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ELIGIBILITY
+          // ACCOUNT CREATION
           Text(
-            "2. Eligibility",
+            "2. Account Creation & Verification",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -64,17 +63,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "To use GiftPay, you must be at least 18 years old and legally capable of "
-            "entering into binding agreements. By using the app, you confirm that the "
-            "information you provide is accurate and complete.",
+            "To use GiftPay, you must create an account and provide accurate information. "
+            "You agree to complete any required identity verification (KYC) steps. Failure to "
+            "provide accurate information may result in account suspension or termination.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ACCOUNT RESPONSIBILITY
+          // USER RESPONSIBILITIES
           Text(
-            "3. Account Responsibility",
+            "3. User Responsibilities",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -83,17 +82,21 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You are responsible for maintaining the confidentiality of your login details. "
-            "Any activity performed through your account will be considered authorized by you. "
-            "GiftPay is not liable for losses resulting from unauthorized access caused by your negligence.",
+            "You agree to:\n\n"
+            "• Use GiftPay only for lawful purposes.\n"
+            "• Keep your login credentials secure.\n"
+            "• Notify us immediately of unauthorized account access.\n"
+            "• Provide accurate information during transactions.\n"
+            "• Comply with all applicable laws and regulations.\n\n"
+            "You are responsible for all activity performed through your account.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // WALLET & PAYMENTS
+          // PROHIBITED ACTIVITIES
           Text(
-            "4. Wallet & Payments",
+            "4. Prohibited Activities",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -102,17 +105,21 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay provides a digital wallet for transactions such as airtime, data, electricity, "
-            "gift cards, and other supported services. All payments are final once processed. "
-            "Refunds for failed transactions will be issued automatically or after verification.",
+            "You agree not to engage in:\n\n"
+            "• Fraudulent transactions.\n"
+            "• Money laundering or illegal financial activity.\n"
+            "• Trading stolen or unauthorized gift cards.\n"
+            "• Attempting to bypass security systems.\n"
+            "• Using GiftPay for harmful or abusive behavior.\n\n"
+            "Violation of these rules may result in account suspension or legal action.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // GIFT CARD TRADING
+          // SERVICE AVAILABILITY
           Text(
-            "5. Gift Card Trading",
+            "5. Service Availability & Limitations",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -121,17 +128,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "By trading gift cards on GiftPay, you confirm that the cards belong to you and are "
-            "legally obtained. Fraudulent or invalid cards will be rejected, and your account may "
-            "be suspended pending investigation.",
+            "GiftPay strives to provide uninterrupted service, but we do not guarantee "
+            "continuous availability. Services may be affected by maintenance, network issues, "
+            "third‑party providers, or regulatory requirements.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // PROHIBITED USES
+          // ACCOUNT SUSPENSION
           Text(
-            "6. Prohibited Uses",
+            "6. Account Suspension & Termination",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -140,15 +147,18 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You agree not to use GiftPay for any unlawful activities including money laundering, "
-            "fraud, unauthorized transactions, or any activity that violates Nigerian laws or "
-            "international regulations.",
+            "GiftPay may suspend or terminate your account if:\n\n"
+            "• You violate this Agreement or any GiftPay policy.\n"
+            "• Fraudulent or suspicious activity is detected.\n"
+            "• Required KYC/AML information is not provided.\n"
+            "• You misuse the platform or engage in illegal activity.\n\n"
+            "You may also request account closure at any time.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // LIMITATION OF LIABILITY
+          // LIABILITY
           Text(
             "7. Limitation of Liability",
             style: TextStyle(
@@ -159,17 +169,20 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay is provided on an \"as-is\" basis. While we strive to ensure smooth and secure "
-            "operations, we are not liable for service interruptions, delays, or losses caused by "
-            "third-party providers, network issues, or user error.",
+            "GiftPay is not liable for losses resulting from:\n\n"
+            "• Unauthorized access caused by your negligence.\n"
+            "• Network or provider outages.\n"
+            "• Incorrect information provided by you.\n"
+            "• Third‑party service failures.\n\n"
+            "Your use of GiftPay is at your own risk.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // CHANGES TO TERMS
+          // CHANGES
           Text(
-            "8. Changes to Terms",
+            "8. Changes to This Agreement",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -178,8 +191,8 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay may update these Terms of Service at any time. Continued use of the app after "
-            "changes are published constitutes acceptance of the updated terms.",
+            "GiftPay may update this User Agreement at any time. Continued use of the app "
+            "after updates indicates acceptance of the revised terms.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
@@ -196,7 +209,7 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "For questions or concerns regarding these Terms of Service, please contact us at:\n"
+            "If you have questions about this User Agreement, please contact us at:\n"
             "support@giftpayhq.com",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),

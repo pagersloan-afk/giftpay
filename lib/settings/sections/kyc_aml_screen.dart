@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class TermsScreen extends StatelessWidget {
-  const TermsScreen({super.key});
+class KycAmlScreen extends StatelessWidget {
+  const KycAmlScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-        title: const Text("Terms of Service"),
+        title: const Text("KYC / AML Compliance"),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -16,7 +16,7 @@ class TermsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: const [
           Text(
-            "GiftPay Terms of Service",
+            "GiftPay KYC / AML Compliance Statement",
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -44,18 +44,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "Welcome to GiftPay. By accessing or using the GiftPay mobile application, "
-            "you agree to be bound by these Terms of Service. These terms govern your "
-            "use of our services including wallet payments, airtime and data purchases, "
-            "electricity bills, gift card trading, and all other features provided within the app.",
+            "GiftPay is committed to complying with all applicable Know Your Customer (KYC) "
+            "and Anti‑Money Laundering (AML) regulations. These measures help protect our users, "
+            "prevent fraud, and ensure the integrity of financial transactions conducted on our platform.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ELIGIBILITY
+          // REGULATORY FRAMEWORK
           Text(
-            "2. Eligibility",
+            "2. Regulatory Framework",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -64,17 +63,20 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "To use GiftPay, you must be at least 18 years old and legally capable of "
-            "entering into binding agreements. By using the app, you confirm that the "
-            "information you provide is accurate and complete.",
+            "GiftPay adheres to the following regulations and guidelines:\n\n"
+            "• Central Bank of Nigeria (CBN) KYC/AML Regulations.\n"
+            "• Nigeria Financial Intelligence Unit (NFIU) guidelines.\n"
+            "• NDPR (Nigeria Data Protection Regulation).\n"
+            "• FATF (Financial Action Task Force) global AML standards.\n\n"
+            "These frameworks guide how we verify users and monitor transactions.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ACCOUNT RESPONSIBILITY
+          // KYC REQUIREMENTS
           Text(
-            "3. Account Responsibility",
+            "3. KYC Verification Requirements",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -83,17 +85,22 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You are responsible for maintaining the confidentiality of your login details. "
-            "Any activity performed through your account will be considered authorized by you. "
-            "GiftPay is not liable for losses resulting from unauthorized access caused by your negligence.",
+            "To comply with regulatory requirements, GiftPay may request the following information:\n\n"
+            "• Full name.\n"
+            "• Date of birth.\n"
+            "• Phone number and email address.\n"
+            "• Government‑issued ID (NIN, BVN, Driver’s License, Voter’s Card, etc.).\n"
+            "• Selfie or biometric verification.\n"
+            "• Residential address.\n\n"
+            "This information is used solely for identity verification and fraud prevention.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // WALLET & PAYMENTS
+          // AML MONITORING
           Text(
-            "4. Wallet & Payments",
+            "4. Anti‑Money Laundering (AML) Monitoring",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -102,17 +109,20 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay provides a digital wallet for transactions such as airtime, data, electricity, "
-            "gift cards, and other supported services. All payments are final once processed. "
-            "Refunds for failed transactions will be issued automatically or after verification.",
+            "GiftPay actively monitors transactions to detect and prevent:\n\n"
+            "• Money laundering.\n"
+            "• Terrorist financing.\n"
+            "• Fraudulent activities.\n"
+            "• Suspicious or unusual transaction patterns.\n\n"
+            "We may temporarily restrict or review accounts involved in suspicious activity.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // GIFT CARD TRADING
+          // REPORTING OBLIGATIONS
           Text(
-            "5. Gift Card Trading",
+            "5. Reporting Obligations",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -121,17 +131,17 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "By trading gift cards on GiftPay, you confirm that the cards belong to you and are "
-            "legally obtained. Fraudulent or invalid cards will be rejected, and your account may "
-            "be suspended pending investigation.",
+            "GiftPay may report suspicious transactions to the Nigeria Financial Intelligence Unit (NFIU) "
+            "or other regulatory authorities as required by law. These reports are confidential and "
+            "do not require user notification.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // PROHIBITED USES
+          // DATA PROTECTION
           Text(
-            "6. Prohibited Uses",
+            "6. Data Protection & Privacy",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -140,17 +150,16 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You agree not to use GiftPay for any unlawful activities including money laundering, "
-            "fraud, unauthorized transactions, or any activity that violates Nigerian laws or "
-            "international regulations.",
+            "All KYC and AML data collected by GiftPay is securely stored and protected in accordance "
+            "with NDPR and global data protection standards. We do not sell or misuse your personal data.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // LIMITATION OF LIABILITY
+          // USER RESPONSIBILITIES
           Text(
-            "7. Limitation of Liability",
+            "7. User Responsibilities",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -159,17 +168,20 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay is provided on an \"as-is\" basis. While we strive to ensure smooth and secure "
-            "operations, we are not liable for service interruptions, delays, or losses caused by "
-            "third-party providers, network issues, or user error.",
+            "Users agree to:\n\n"
+            "• Provide accurate and truthful information.\n"
+            "• Update their details when changes occur.\n"
+            "• Avoid fraudulent or illegal transactions.\n"
+            "• Cooperate with verification requests.\n\n"
+            "Failure to comply may result in account restrictions or closure.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // CHANGES TO TERMS
+          // CHANGES
           Text(
-            "8. Changes to Terms",
+            "8. Changes to This Compliance Statement",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -178,8 +190,8 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay may update these Terms of Service at any time. Continued use of the app after "
-            "changes are published constitutes acceptance of the updated terms.",
+            "GiftPay may update this KYC/AML Compliance Statement at any time. Continued use of the "
+            "platform after updates indicates acceptance of the revised terms.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
@@ -196,7 +208,7 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "For questions or concerns regarding these Terms of Service, please contact us at:\n"
+            "For questions regarding KYC or AML compliance, please contact us at:\n"
             "support@giftpayhq.com",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),

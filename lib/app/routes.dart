@@ -21,7 +21,6 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 // Gift Cards
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
-import 'package:utilityhub/features/home/home_shell.dart';
 import 'package:utilityhub/features/services/services_screen.dart';
 
 // Wallet
@@ -58,9 +57,13 @@ import 'package:utilityhub/settings/language_screen.dart';
 import 'package:utilityhub/settings/linked_devices_screen.dart';
 import 'package:utilityhub/settings/quick_actions_customization_screen.dart';
 import 'package:utilityhub/settings/sections/contact_support_screen.dart';
+import 'package:utilityhub/settings/sections/cookie_policy_screen.dart';
 import 'package:utilityhub/settings/sections/help_center_section.dart';
+import 'package:utilityhub/settings/sections/kyc_aml_screen.dart';
 import 'package:utilityhub/settings/sections/privacy_policy_section.dart';
+import 'package:utilityhub/settings/sections/refund_policy_screen.dart';
 import 'package:utilityhub/settings/sections/terms_of_service.dart';
+import 'package:utilityhub/settings/sections/user_agreement_screen.dart';
 import 'package:utilityhub/settings/settings_screen.dart';
 import 'package:utilityhub/settings/two_factor_screen.dart';
 
@@ -147,4 +150,8 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/contact-support': (_) => wrap(const ContactSupportScreen()),
   '/terms': (_) => wrap(const TermsScreen()),
   '/privacy': (_) => wrap(const PrivacyScreen()),
+  '/refund-policy': (_) => wrap(const RefundPolicyScreen()),
+  '/cookie-policy': (_) => wrap(const CookiePolicyScreen()),
+  '/user-agreement': (_) => wrap(const UserAgreementScreen()),
+  '/kyc-aml': (_) => wrap(const KycAmlScreen()),
 };

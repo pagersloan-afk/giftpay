@@ -14,6 +14,14 @@ class SupportLegalSection extends StatelessWidget {
         _item(context, "Terms of Service", "/terms"),
         _divider(),
         _item(context, "Privacy Policy", "/privacy"),
+        _divider(),
+        _item(context, "Refund Policy", "/refund-policy"),
+        _divider(),
+        _item(context, "Cookie Policy", "/cookie-policy"),
+        _divider(),
+        _item(context, "User Agreement", "/user-agreement"),
+        _divider(),
+        _item(context, "KYC / AML Compliance", "/kyc-aml"),
       ],
     );
   }

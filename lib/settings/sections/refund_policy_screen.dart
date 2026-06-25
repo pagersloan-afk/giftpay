@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class TermsScreen extends StatelessWidget {
-  const TermsScreen({super.key});
+class RefundPolicyScreen extends StatelessWidget {
+  const RefundPolicyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-        title: const Text("Terms of Service"),
+        title: const Text("Refund Policy"),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -16,7 +16,7 @@ class TermsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: const [
           Text(
-            "GiftPay Terms of Service",
+            "GiftPay Refund Policy",
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -44,18 +44,18 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "Welcome to GiftPay. By accessing or using the GiftPay mobile application, "
-            "you agree to be bound by these Terms of Service. These terms govern your "
-            "use of our services including wallet payments, airtime and data purchases, "
-            "electricity bills, gift card trading, and all other features provided within the app.",
+            "This Refund Policy explains how refunds are handled on the GiftPay platform. "
+            "By using GiftPay, you agree to the terms outlined in this policy. Refunds apply "
+            "to wallet transactions, electricity vending, airtime/data purchases, gift card trades, "
+            "and other supported services.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ELIGIBILITY
+          // GENERAL REFUND RULES
           Text(
-            "2. Eligibility",
+            "2. General Refund Rules",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -64,17 +64,19 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "To use GiftPay, you must be at least 18 years old and legally capable of "
-            "entering into binding agreements. By using the app, you confirm that the "
-            "information you provide is accurate and complete.",
+            "• Refunds are issued only for failed or incomplete transactions.\n"
+            "• Successful transactions are final and non‑refundable.\n"
+            "• Refunds are returned to your GiftPay wallet balance.\n"
+            "• Refunds do not go back to your bank account unless explicitly stated.\n"
+            "• Processing time for refunds may vary depending on the service provider.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // ACCOUNT RESPONSIBILITY
+          // ELECTRICITY PURCHASES
           Text(
-            "3. Account Responsibility",
+            "3. Electricity Purchases",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -83,17 +85,19 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You are responsible for maintaining the confidentiality of your login details. "
-            "Any activity performed through your account will be considered authorized by you. "
-            "GiftPay is not liable for losses resulting from unauthorized access caused by your negligence.",
+            "If you purchase electricity and do not receive a token:\n\n"
+            "• GiftPay will automatically requery the transaction.\n"
+            "• If the vending fails, your full amount (including fees) is refunded instantly.\n"
+            "• If the vending succeeds later, the token will be delivered to your app.\n"
+            "• Refunds are not issued for successful vending, even if delayed.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // WALLET & PAYMENTS
+          // AIRTIME & DATA
           Text(
-            "4. Wallet & Payments",
+            "4. Airtime & Data Purchases",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -102,17 +106,18 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay provides a digital wallet for transactions such as airtime, data, electricity, "
-            "gift cards, and other supported services. All payments are final once processed. "
-            "Refunds for failed transactions will be issued automatically or after verification.",
+            "Airtime and data purchases are usually instant. Refunds apply only when:\n\n"
+            "• The network provider fails to deliver the airtime/data.\n"
+            "• The transaction is marked as failed by the provider.\n\n"
+            "Refunds are processed automatically within minutes.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // GIFT CARD TRADING
+          // GIFT CARDS
           Text(
-            "5. Gift Card Trading",
+            "5. Gift Card Transactions",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -121,17 +126,19 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "By trading gift cards on GiftPay, you confirm that the cards belong to you and are "
-            "legally obtained. Fraudulent or invalid cards will be rejected, and your account may "
-            "be suspended pending investigation.",
+            "Gift card trades are final once verified. Refunds are not issued for:\n\n"
+            "• Successfully verified cards.\n"
+            "• Cards that have already been redeemed.\n"
+            "• Invalid or tampered cards.\n\n"
+            "If a card cannot be verified, it will be rejected and no deduction will occur.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // PROHIBITED USES
+          // WALLET FUNDING
           Text(
-            "6. Prohibited Uses",
+            "6. Wallet Funding",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -140,17 +147,19 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "You agree not to use GiftPay for any unlawful activities including money laundering, "
-            "fraud, unauthorized transactions, or any activity that violates Nigerian laws or "
-            "international regulations.",
+            "If your wallet funding is successful but not reflected:\n\n"
+            "• GiftPay will automatically verify the payment.\n"
+            "• If confirmed, your wallet will be credited.\n"
+            "• If the payment fails, your bank may reverse the funds within 24–72 hours.\n\n"
+            "GiftPay cannot speed up bank reversals.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
           SizedBox(height: 30),
 
-          // LIMITATION OF LIABILITY
+          // TIMELINE
           Text(
-            "7. Limitation of Liability",
+            "7. Refund Timeline",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -159,27 +168,11 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "GiftPay is provided on an \"as-is\" basis. While we strive to ensure smooth and secure "
-            "operations, we are not liable for service interruptions, delays, or losses caused by "
-            "third-party providers, network issues, or user error.",
-            style: TextStyle(color: Colors.white70, height: 1.5),
-          ),
-
-          SizedBox(height: 30),
-
-          // CHANGES TO TERMS
-          Text(
-            "8. Changes to Terms",
-            style: TextStyle(
-              color: Color(0xFF0AC8FF),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            "GiftPay may update these Terms of Service at any time. Continued use of the app after "
-            "changes are published constitutes acceptance of the updated terms.",
+            "Refunds are typically processed:\n\n"
+            "• Instantly for electricity, airtime, and data failures.\n"
+            "• Within minutes for wallet‑based reversals.\n"
+            "• Within 24–72 hours for bank‑related issues.\n\n"
+            "Delays may occur due to network or provider issues.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
@@ -187,7 +180,7 @@ class TermsScreen extends StatelessWidget {
 
           // CONTACT
           Text(
-            "9. Contact Information",
+            "8. Contact Support",
             style: TextStyle(
               color: Color(0xFF0AC8FF),
               fontSize: 18,
@@ -196,8 +189,10 @@ class TermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            "For questions or concerns regarding these Terms of Service, please contact us at:\n"
-            "support@giftpayhq.com",
+            "If you believe you are eligible for a refund or have questions about a transaction, "
+            "please contact us at:\n"
+            "support@giftpayhq.com\n\n"
+            "Include your transaction ID for faster resolution.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
