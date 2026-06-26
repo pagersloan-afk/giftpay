@@ -117,8 +117,9 @@ class GiftPayTheme {
 
 class AppHeaderr extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final VoidCallback? onBack; // ⭐ optional custom back handler
 
-  const AppHeaderr({super.key, required this.title});
+  const AppHeaderr({super.key, required this.title, this.onBack});
 
   @override
   Size get preferredSize => const Size.fromHeight(78);
@@ -135,15 +136,22 @@ class AppHeaderr extends StatelessWidget implements PreferredSizeWidget {
             height: 76,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: const BoxDecoration(color: Color(0xFF0F1115)),
-
             child: Row(
               children: [
-                // LEFT SIDE: Back + Title
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: () {
+                        if (onBack != null) {
+                          onBack!(); // ⭐ use custom behavior when provided
+                        } else {
+                          final nav = Navigator.of(context);
+                          if (nav.canPop()) {
+                            nav.pop();
+                          }
+                        }
+                      },
                       child: const Icon(
                         Icons.arrow_back_ios_new,
                         color: Colors.white,
@@ -161,24 +169,18 @@ class AppHeaderr extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ],
                 ),
-
-                // CENTER SPACER (keeps title centered)
                 Expanded(child: Container()),
-
-                // RIGHT SIDE: LOGO ONLY ON MOBILE, FULL BRAND ON DESKTOP
                 isMobile ? _MobileLogo() : _DesktopBrandBlock(),
               ],
             ),
           ),
-
-          Container(height: 2, color: Colors.white.withOpacity(0.12)),
+          Container(height: 2, color: Colors.white12),
         ],
       ),
     );
   }
 }
 
-// ⭐ MOBILE: LOGO ONLY (scaled down, shifted right)
 class _MobileLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -209,7 +211,6 @@ class _MobileLogo extends StatelessWidget {
   }
 }
 
-// ⭐ DESKTOP: FULL BRAND (GiftPay + Logo)
 class _DesktopBrandBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -251,9 +252,7 @@ class _DesktopBrandBlock extends StatelessWidget {
             ),
           ),
         ),
-
         const SizedBox(width: 10),
-
         Stack(
           alignment: Alignment.center,
           children: [

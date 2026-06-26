@@ -32,7 +32,11 @@ class BankTile extends StatelessWidget {
         leading: BankLogo(code: code),
         title: Text(
           name,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         subtitle: Text(
           code,

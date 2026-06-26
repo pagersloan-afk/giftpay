@@ -1,9 +1,12 @@
-// lib/features/services/services_screen.dart
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:utilityhub/features/home/widgets/home_service_card.dart';
 
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
+
+  // ⭐ Get logged‑in user ID
+  String get userId => FirebaseAuth.instance.currentUser!.uid;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +43,11 @@ class ServicesScreen extends StatelessWidget {
         {"title": "Betting", "icon": Icons.sports_soccer, "route": "/betting"},
         {"title": "Gaming", "icon": Icons.sports_esports, "route": "/psgames"},
         {
+          "title": "Gift Cards",
+          "icon": Icons.card_giftcard,
+          "route": "/giftcards",
+        },
+        {
           "title": "Utilities",
           "icon": Icons.lightbulb,
           "route": "/electricity",
@@ -64,20 +72,28 @@ class ServicesScreen extends StatelessWidget {
         {"title": "Limits", "icon": Icons.lock, "route": "/settings"},
         {"title": "Settings", "icon": Icons.settings, "route": "/settings"},
 
-        // ⭐ LOGOUT (RED)
         {
           "title": "Logout",
           "icon": Icons.logout,
           "route": "/login",
-          "iconColor": Colors.redAccent, // ⭐ FIXED
+          "iconColor": Colors.redAccent,
         },
       ],
     };
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("All Services"),
         backgroundColor: Colors.black87,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          "All Services",
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
       ),
 
       body: ListView.builder(
@@ -87,112 +103,55 @@ class ServicesScreen extends StatelessWidget {
           final sectionName = grouped.keys.elementAt(index);
           final items = grouped[sectionName]!;
 
-          return _AnimatedSection(
-            delay: index * 120,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 18, bottom: 10),
-                  child: Text(
-                    sectionName,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFE5E7EB),
-                    ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 18, bottom: 10),
+                child: Text(
+                  sectionName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFE5E7EB),
                   ),
                 ),
+              ),
 
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: items.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    childAspectRatio: 0.92,
-                  ),
-                  itemBuilder: (context, i) {
-                    final s = items[i];
-                    return HomeServiceCard(
-                      title: s["title"],
-                      icon: s["icon"],
-                      route: s["route"],
-                      iconColor: s["iconColor"], // ⭐ FIXED
-                    );
-                  },
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: items.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 0.92,
                 ),
+                itemBuilder: (context, i) {
+                  final s = items[i];
+                  return HomeServiceCard(
+                    title: s["title"],
+                    icon: s["icon"],
+                    route: s["route"],
+                    iconColor: s["iconColor"],
+                    userId: userId, // ⭐ REQUIRED
+                  );
+                },
+              ),
 
-                const SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-                if (index != grouped.length - 1)
-                  Container(
-                    height: 1,
-                    margin: const EdgeInsets.only(top: 6, bottom: 6),
-                    color: Colors.white.withOpacity(0.08),
-                  ),
-              ],
-            ),
+              if (index != grouped.length - 1)
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.only(top: 6, bottom: 6),
+                  color: Colors.white.withOpacity(0.08),
+                ),
+            ],
           );
         },
       ),
     );
-  }
-}
-
-class _AnimatedSection extends StatefulWidget {
-  final Widget child;
-  final int delay;
-
-  const _AnimatedSection({required this.child, required this.delay});
-
-  @override
-  State<_AnimatedSection> createState() => _AnimatedSectionState();
-}
-
-class _AnimatedSectionState extends State<_AnimatedSection>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacity;
-  late Animation<Offset> _slide;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 450),
-    );
-
-    _opacity = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(position: _slide, child: widget.child),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 }

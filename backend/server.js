@@ -17,6 +17,8 @@ const transferRoutes = require("./src/routes/transfer.routes");
 const dvaRoutes = require("./src/routes/dva.routes");
 const cableRoutes = require("./src/routes/cable.routes");
 const bettingRoutes = require("./src/routes/betting.routes.js");
+const userServicesRoutes = require("./src/routes/userServices.routes");
+const analyticsRoutes = require("./src/routes/analytics.routes");
 
 
 const app = express();
@@ -86,6 +88,8 @@ app.get("/", (req, res) => {
 // =========================
 app.use("/", transactionRoutes);
 app.use("/", walletRoutes);
+app.use("/", userServicesRoutes);
+app.use("/", analyticsRoutes);
 
 // ClubKonnect / VTPass feature routes
 app.use("/api/electricity", electricityRoutes);

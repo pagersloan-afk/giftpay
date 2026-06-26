@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:utilityhub/features/home/home_screen.dart';
 import 'package:utilityhub/features/services/services_screen.dart';
-import 'package:utilityhub/features/transaction-history/transaction_history_screen.dart';
-import 'package:utilityhub/settings/settings_screen.dart';
+import 'package:utilityhub/features/rewards/rewards_screen.dart';
+import 'package:utilityhub/features/cards/cards_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -16,9 +16,9 @@ class _HomeShellState extends State<HomeShell> {
 
   final screens = const [
     HomeScreen(),
-    TransactionHistoryScreen(),
+    RewardsScreen(), // ⭐ NEW
     ServicesScreen(),
-    SettingsScreen(),
+    CardsScreen(), // ⭐ NEW
   ];
 
   @override
@@ -49,16 +49,16 @@ class _HomeShellState extends State<HomeShell> {
               label: "Home",
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.swap_horiz),
-              label: "History",
+              icon: Icon(Icons.card_giftcard),
+              label: "Rewards",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.grid_view_rounded),
               label: "Services",
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: "Settings",
+              icon: Icon(Icons.credit_card),
+              label: "Cards",
             ),
           ],
         ),

@@ -15,42 +15,44 @@ class TransferFromCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ⭐ SAME LABEL STYLE AS TransferToCard
-          Text(
-            "Transfer From",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withOpacity(0.95),
+      child: SizedBox(
+        height: 92, // ⭐ MATCH height of other cards
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Transfer From",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withOpacity(0.95),
+              ),
             ),
-          ),
 
-          const SizedBox(height: 12), // ⭐ SAME SPACING
-          // ⭐ SAME TITLE STYLE AS TransferToCard
-          Text(
-            "GiftPay Wallet",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.95),
-            ),
-          ),
+            const SizedBox(height: 12),
 
-          const SizedBox(height: 6), // ⭐ SAME spacing pattern
-          // ⭐ SAME META TEXT STYLE AS TransferToCard
-          Text(
-            balance == null
-                ? "Balance: Loading..."
-                : "Balance: ₦${_formatAmount(balance!)}",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.55),
+            Text(
+              "GiftPay Wallet",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.95),
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 6),
+
+            Text(
+              balance == null
+                  ? "Balance: Loading..."
+                  : "Balance: ₦${_formatAmount(balance!)}",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.55),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

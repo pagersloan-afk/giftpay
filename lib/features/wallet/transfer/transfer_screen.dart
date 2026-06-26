@@ -16,7 +16,6 @@ import 'wigets/auth_method_dialog.dart';
 import 'wigets/confirm_dialog.dart';
 import 'wigets/description_card.dart';
 import 'wigets/pin_entry_dialog.dart';
-import 'wigets/transfer_from_card.dart';
 import 'wigets/transfer_to_card.dart';
 
 class TransferScreen extends StatefulWidget {
@@ -257,7 +256,6 @@ class _TransferScreenState extends State<TransferScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  TransferFromCard(balance: walletBalance),
                   TransferToCard(
                     selectedBankName: selectedBankName,
                     resolvedName: resolvedName,

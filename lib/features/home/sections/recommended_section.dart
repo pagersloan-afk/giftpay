@@ -1,5 +1,6 @@
 // lib/features/home/sections/recommended_section.dart
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../widgets/home_service_card.dart';
 
@@ -18,31 +19,34 @@ class _RecommendedSectionState extends State<RecommendedSection>
   late AnimationController _controller;
   late Animation<Offset> _slide;
 
+  // ⭐ Get logged‑in user ID
+  String get userId => FirebaseAuth.instance.currentUser!.uid;
+
   // ⭐ Fallback recommended services WITH COLORS
   final List<Map<String, dynamic>> fallback = const [
     {
       "title": "Electricity",
       "icon": Icons.flash_on,
       "route": "/electricity",
-      "color": Color(0xFFFFD54F), // amber
+      "color": Color(0xFFFFD54F),
     },
     {
       "title": "Airtime",
       "icon": Icons.phone_android,
       "route": "/airtime",
-      "color": Color(0xFF4FC3F7), // cyan
+      "color": Color(0xFF4FC3F7),
     },
     {
       "title": "Cable TV",
       "icon": Icons.tv,
       "route": "/cable",
-      "color": Color(0xFFBA68C8), // purple
+      "color": Color(0xFFBA68C8),
     },
     {
       "title": "Data",
       "icon": Icons.wifi,
       "route": "/data",
-      "color": Color(0xFF81C784), // green
+      "color": Color(0xFF81C784),
     },
   ];
 
@@ -142,7 +146,8 @@ class _RecommendedSectionState extends State<RecommendedSection>
                     title: s["title"],
                     icon: s["icon"],
                     route: s["route"],
-                    iconColor: s["color"], // ⭐ COLOR APPLIED HERE
+                    iconColor: s["color"],
+                    userId: userId, // ⭐ REQUIRED FIX
                   ),
                 ),
               );

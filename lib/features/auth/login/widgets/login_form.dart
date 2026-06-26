@@ -67,7 +67,7 @@ class _LoginFormState extends State<LoginForm> {
         const Text(
           "Welcome Back",
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),

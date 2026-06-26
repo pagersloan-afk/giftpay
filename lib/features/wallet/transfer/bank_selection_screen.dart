@@ -52,9 +52,15 @@ class _BankSelectionScreenState extends State<BankSelectionScreen> {
                 ],
               ),
               child: TextField(
+                style: const TextStyle(
+                  color: Colors.black87, // ⭐ You can now see what you type
+                ),
                 decoration: InputDecoration(
                   hintText: "Search bank...",
-                  prefixIcon: const Icon(Icons.search),
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade500, // ⭐ Visible hint
+                  ),
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 ),

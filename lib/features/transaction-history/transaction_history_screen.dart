@@ -7,7 +7,9 @@ import 'package:utilityhub/features/transaction-history/utils/history_date_forma
 import 'package:utilityhub/features/transaction-history/widgets/history_tile.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
-  const TransactionHistoryScreen({super.key});
+  final bool fromBottomNav; // ⭐ NEW FLAG
+
+  const TransactionHistoryScreen({super.key, this.fromBottomNav = false});
 
   @override
   State<TransactionHistoryScreen> createState() =>
@@ -27,15 +29,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   int _safeTimestamp(dynamic value) {
     if (value == null) return 0;
 
-    // Already int
     if (value is int) return value;
 
-    // String number → convert to int
     if (value is String && int.tryParse(value) != null) {
       return int.parse(value);
     }
 
-    // Date string → convert to timestamp
     try {
       final dt = DateTime.tryParse(value.toString());
       if (dt != null) return dt.millisecondsSinceEpoch;
@@ -48,7 +47,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
-    // ⭐ 1. Load WALLET transactions
     final walletDoc = await FirebaseFirestore.instance
         .collection("wallets")
         .doc(userId)
@@ -58,7 +56,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         .whereType<Map<String, dynamic>>()
         .toList();
 
-    // ⭐ 2. Load ELECTRICITY transactions
     final elecSnap = await FirebaseFirestore.instance
         .collection("users")
         .doc(userId)
@@ -67,13 +64,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
     final elecTx = elecSnap.docs.map((d) => d.data()).toList();
 
-    // ⭐ 3. Merge both safely
     final merged = <Map<String, dynamic>>[
       ...walletTx.map((e) => Map<String, dynamic>.from(e)),
       ...elecTx.map((e) => Map<String, dynamic>.from(e)),
     ];
 
-    // ⭐ 4. Sort newest → oldest using SAFE timestamp
     merged.sort((a, b) {
       final t1 = _safeTimestamp(a["timestamp"] ?? a["date"]);
       final t2 = _safeTimestamp(b["timestamp"] ?? b["date"]);
@@ -89,7 +84,24 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppHeaderr(title: "Transaction History"),
+      // ⭐ If opened from bottom nav → simple AppBar
+      // ⭐ If opened via push → GiftPay AppHeaderr
+      appBar: widget.fromBottomNav
+          ? AppBar(
+              backgroundColor: const Color(0xFF0F1115),
+              elevation: 0,
+              centerTitle: true,
+              title: const Text(
+                "Transaction History",
+                style: TextStyle(
+                  fontSize: 17, // ⭐ same as GiftPay AppHeaderr
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            )
+          : const AppHeaderr(title: "Transaction History"),
+
       body: AppResponsiveLayout(
         child: Padding(
           padding: const EdgeInsets.all(24),

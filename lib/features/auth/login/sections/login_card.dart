@@ -12,7 +12,7 @@ class LoginCard extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
-          margin: const EdgeInsets.all(40),
+          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 40),
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),

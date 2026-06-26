@@ -9,13 +9,32 @@ import 'sections/notifications_section.dart';
 import 'sections/support_legal_section.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  final bool fromBottomNav; // ⭐ NEW FLAG
+
+  const SettingsScreen({super.key, this.fromBottomNav = false});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF05070A),
-      appBar: const AppHeaderr(title: "Settings"),
+
+      // ⭐ If opened from bottom nav → simple AppBar with centered title
+      // ⭐ If opened via push → GiftPay AppHeaderr with back button
+      appBar: fromBottomNav
+          ? AppBar(
+              backgroundColor: const Color(0xFF0F1115),
+              elevation: 0,
+              centerTitle: true,
+              title: const Text(
+                "Settings",
+                style: TextStyle(
+                  fontSize: 17, // ⭐ same as GiftPay AppHeaderr
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            )
+          : const AppHeaderr(title: "Settings"),
 
       body: Stack(
         children: [
@@ -23,9 +42,9 @@ class SettingsScreen extends StatelessWidget {
           Positioned.fill(
             child: Center(
               child: Opacity(
-                opacity: 0.06, // subtle, premium, non-intrusive
+                opacity: 0.06,
                 child: Image.asset(
-                  "assets/logo/giftpay_1.png", // your new shield logo
+                  "assets/logo/giftpay_1.png",
                   width: 420,
                   height: 420,
                   fit: BoxFit.contain,

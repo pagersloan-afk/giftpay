@@ -27,19 +27,22 @@ class SupportLegalSection extends StatelessWidget {
   }
 
   Widget _item(BuildContext context, String label, String route) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      dense: true,
-      title: Text(
-        label,
-        style: const TextStyle(color: Color(0xFFE5E7EB), fontSize: 15),
+    return Material(
+      color: Colors.transparent, // ⭐ FIX: allows ListTile ink splash to render
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        title: Text(
+          label,
+          style: const TextStyle(color: Color(0xFFE5E7EB), fontSize: 15),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right,
+          color: Colors.white54,
+          size: 20,
+        ),
+        onTap: () => Navigator.pushNamed(context, route),
       ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        color: Colors.white54,
-        size: 20,
-      ),
-      onTap: () => Navigator.pushNamed(context, route),
     );
   }
 

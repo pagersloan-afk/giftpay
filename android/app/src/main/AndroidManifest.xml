@@ -3,7 +3,12 @@
         android:label="GiftPay"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">   <!-- ⭐ FIX ADDED HERE -->
+        android:usesCleartextTraffic="true">
+
+        <!-- ⭐ DISABLE IMPELLER TO FIX FREEZING ON VIVO/TECNO/INFINIX -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
 
         <activity
             android:name=".MainActivity"
