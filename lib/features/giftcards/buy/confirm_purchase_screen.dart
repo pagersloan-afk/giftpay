@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_paystack_plus/flutter_paystack_plus.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/features/giftcards/buy/success_screen.dart';
+import 'package:utilityhub/features/giftcards/services/giftcard_service.dart';
 
 class ConfirmGiftCardPurchaseScreen extends StatefulWidget {
   final String brandName;
-  final String amount;
+  final String cardType;
+  final String amount; // USD amount
 
   const ConfirmGiftCardPurchaseScreen({
     super.key,
     required this.brandName,
+    required this.cardType,
     required this.amount,
   });
 
@@ -22,51 +23,62 @@ class ConfirmGiftCardPurchaseScreen extends StatefulWidget {
 class _ConfirmGiftCardPurchaseScreenState
     extends State<ConfirmGiftCardPurchaseScreen> {
   bool loading = false;
+  bool loadingQuote = true;
 
-  Future<void> payForGiftCard() async {
-    final amountInKobo = (int.parse(widget.amount) * 100).toString();
+  String? nairaToCharge;
+  String? fxRate;
 
+  @override
+  void initState() {
+    super.initState();
+    loadQuote();
+  }
+
+  Future<void> loadQuote() async {
+    try {
+      final quote = await GiftCardService().getQuote(
+        brand: widget.brandName,
+        cardType: widget.cardType,
+        usdAmount: widget.amount,
+      );
+
+      setState(() {
+        nairaToCharge = quote["nairaToCharge"].toString();
+        fxRate = quote["fxRate"].toString();
+        loadingQuote = false;
+      });
+    } catch (e) {
+      setState(() => loadingQuote = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to load price: $e")));
+    }
+  }
+
+  Future<void> buyGiftCard() async {
     setState(() => loading = true);
 
     try {
-      await FlutterPaystackPlus.openPaystackPopup(
-        customerEmail: "gift@example.com", // TODO: replace with real user email
-        amount: amountInKobo,
-        reference: DateTime.now().millisecondsSinceEpoch.toString(),
+      final code = await GiftCardService().buyGiftCard(
+        brand: widget.brandName,
+        cardType: widget.cardType,
+        usdAmount: widget.amount,
+      );
 
-        // Web
-        publicKey: kIsWeb ? "pk_test_xxx" : null,
-
-        // Mobile
-        secretKey: !kIsWeb ? "sk_test_xxx" : null,
-        context: !kIsWeb ? context : null,
-
-        onClosed: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("Payment cancelled")));
-        },
-
-        onSuccess: () async {
-          // TODO: Call your backend or API to generate the real gift card code
-          const generatedCode = "XXXX-XXXX-XXXX";
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => GiftCardSuccessScreen(
-                brandName: widget.brandName,
-                amount: widget.amount,
-                code: generatedCode,
-              ),
-            ),
-          );
-        },
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => GiftCardSuccessScreen(
+            brandName: widget.brandName,
+            amount: widget.amount,
+            code: code,
+          ),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Payment error: $e")));
+      ).showSnackBar(SnackBar(content: Text("Purchase failed: $e")));
     }
 
     setState(() => loading = false);
@@ -84,16 +96,8 @@ class _ConfirmGiftCardPurchaseScreenState
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFF0F1115),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade300),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,6 +107,7 @@ class _ConfirmGiftCardPurchaseScreenState
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
 
@@ -112,28 +117,50 @@ class _ConfirmGiftCardPurchaseScreenState
                       "Gift Card Value: \$${widget.amount}",
                       style: const TextStyle(
                         fontSize: 16,
-                        color: Colors.black87,
+                        color: Colors.white70,
                       ),
                     ),
 
                     const SizedBox(height: 12),
 
-                    const Text(
-                      "You will be charged in NGN based on your payment provider's USD rate.",
-                      style: TextStyle(fontSize: 14, color: Colors.black54),
-                    ),
+                    loadingQuote
+                        ? const Text(
+                            "Fetching NGN price...",
+                            style: TextStyle(color: Colors.white54),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "FX Rate: ₦$fxRate per \$1",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "You will be charged: ₦$nairaToCharge",
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
 
                     const SizedBox(height: 24),
 
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: loading ? null : payForGiftCard,
+                        onPressed: loading || loadingQuote ? null : buyGiftCard,
                         child: loading
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : const Text("Proceed to Payment"),
+                            : const Text("Buy Gift Card"),
                       ),
                     ),
                   ],

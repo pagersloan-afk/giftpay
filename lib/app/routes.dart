@@ -3,6 +3,8 @@ import 'package:utilityhub/core/widgets/giftpay_background.dart';
 
 // Auth
 import 'package:utilityhub/features/auth/login/login_screen.dart';
+import 'package:utilityhub/features/auth/login/login_security_screen.dart';
+import 'package:utilityhub/features/auth/pin/authorization_pin_screen.dart';
 import 'package:utilityhub/features/auth/verify_email_screen.dart';
 
 // Home
@@ -21,7 +23,13 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 // Gift Cards
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
+import 'package:utilityhub/features/limits/edit_daily_airtime_limit_screen.dart';
+import 'package:utilityhub/features/limits/edit_daily_transfer_limit_screen.dart';
+import 'package:utilityhub/features/limits/limits_screen.dart';
 import 'package:utilityhub/features/services/services_screen.dart';
+import 'package:utilityhub/features/statement/statement_download_screen.dart';
+import 'package:utilityhub/features/statement/statement_pdf_screen.dart';
+import 'package:utilityhub/features/statement/statement_screen.dart';
 
 // Wallet
 import 'package:utilityhub/features/wallet/wallet_screen.dart';
@@ -154,4 +162,17 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/cookie-policy': (_) => wrap(const CookiePolicyScreen()),
   '/user-agreement': (_) => wrap(const UserAgreementScreen()),
   '/kyc-aml': (_) => wrap(const KycAmlScreen()),
+
+  // ⭐ STATEMENT & LIMITS
+  '/statement': (_) => wrap(const StatementScreen()),
+  '/limits': (_) => wrap(const LimitsScreen()),
+  '/edit-daily-transfer-limit': (_) =>
+      wrap(const EditDailyTransferLimitScreen()),
+  '/edit-daily-airtime-limit': (_) => wrap(const EditDailyAirtimeLimitScreen()),
+  '/statement-download': (_) => wrap(const StatementDownloadScreen()),
+  '/statement-pdf': (_) => wrap(const StatementPdfScreen()),
+
+  // ⭐ ACCOUNT & SECURITY
+  '/auth-pin': (_) => wrap(const AuthorizationPinScreen()),
+  '/login-security': (_) => wrap(const LoginSecurityScreen()),
 };

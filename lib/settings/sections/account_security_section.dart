@@ -14,6 +14,41 @@ class AccountSecuritySection extends StatelessWidget {
         ),
         _divider(),
 
+        // ⭐ NEW — Authorization PIN
+        _item(
+          label: "Authorization PIN",
+          onTap: () => Navigator.pushNamed(context, "/auth-pin"),
+        ),
+        _divider(),
+
+        // ⭐ NEW — Login & Security
+        _item(
+          label: "Login & Security",
+          onTap: () => Navigator.pushNamed(context, "/login-security"),
+        ),
+        _divider(),
+
+        // ⭐ NEW — Device Login
+        _item(
+          label: "Device Login",
+          onTap: () => Navigator.pushNamed(context, "/linked-devices"),
+        ),
+        _divider(),
+
+        // ⭐ NEW — Statements
+        _item(
+          label: "Statements",
+          onTap: () => Navigator.pushNamed(context, "/statement"),
+        ),
+        _divider(),
+
+        // ⭐ NEW — Limits
+        _item(
+          label: "Limits",
+          onTap: () => Navigator.pushNamed(context, "/limits"),
+        ),
+        _divider(),
+
         _item(
           label: "Change Password",
           onTap: () => Navigator.pushNamed(context, "/change-password"),
@@ -41,7 +76,6 @@ class AccountSecuritySection extends StatelessWidget {
     );
   }
 
-  // ⭐ REUSABLE ITEM
   Widget _item({
     required String label,
     bool isDestructive = false,
@@ -73,7 +107,6 @@ class AccountSecuritySection extends StatelessWidget {
     );
   }
 
-  // ⭐ DIVIDER
   Widget _divider() {
     return Divider(
       height: 1,
@@ -82,7 +115,6 @@ class AccountSecuritySection extends StatelessWidget {
     );
   }
 
-  // ⭐ LOGOUT CONFIRMATION (iOS + Android style)
   void _confirmLogout(BuildContext context) {
     showCupertinoModalPopup(
       context: context,

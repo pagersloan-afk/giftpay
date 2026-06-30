@@ -10,6 +10,7 @@ import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/core/widgets/success_dialog.dart';
 import 'package:utilityhub/features/wallet/transfer/bank_selection_screen.dart';
+import 'package:utilityhub/features/wallet/transfer/wigets/transfer_notice_card.dart';
 
 import 'wigets/amount_card.dart';
 import 'wigets/auth_method_dialog.dart';
@@ -17,6 +18,7 @@ import 'wigets/confirm_dialog.dart';
 import 'wigets/description_card.dart';
 import 'wigets/pin_entry_dialog.dart';
 import 'wigets/transfer_to_card.dart';
+import 'wigets/transfer_from_card.dart'; // ⭐ NEW CARD IMPORT
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -232,13 +234,12 @@ class _TransferScreenState extends State<TransferScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1115), // ⭐ Premium dark background
+      backgroundColor: const Color(0xFF0F1115),
 
       appBar: const AppHeaderr(title: "Transfer to Bank"),
 
       body: Stack(
         children: [
-          // ⭐ Cyan glow behind content
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -253,9 +254,33 @@ class _TransferScreenState extends State<TransferScreen> {
 
           AppResponsiveLayout(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(8),
               child: Column(
                 children: [
+                  // ⭐ NOTICE CARD
+                  const TransferNoticeCard(),
+
+                  const SizedBox(height: 18),
+                  // ⭐ TITLE ABOVE THE CARD (Moniepoint style)
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Paying from",
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFFE5E7EB),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // ⭐ FIRESTORE‑POWERED TRANSFER FROM CARD
+                  const TransferFromCard(),
+
+                  const SizedBox(height: 6),
+
                   TransferToCard(
                     selectedBankName: selectedBankName,
                     resolvedName: resolvedName,
@@ -270,7 +295,6 @@ class _TransferScreenState extends State<TransferScreen> {
 
                   const SizedBox(height: 32),
 
-                  // ⭐ MOST PREMIUM BUTTON (Cyan Glow Button)
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -301,7 +325,6 @@ class _TransferScreenState extends State<TransferScreen> {
             ),
           ),
 
-          // ⭐ GP‑1 LOADING OVERLAY
           if (submitting)
             Positioned.fill(
               child: Container(

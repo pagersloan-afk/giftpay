@@ -47,7 +47,7 @@ class GiftCardSuccessScreen extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // Gold card
+              // Gold card container
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -127,11 +127,13 @@ class GiftCardSuccessScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.popUntil(context, ModalRoute.withName('/home'));
+                    // ⭐ FIX: Return to HomeShell (bottom navigation stays)
+                    Navigator.of(context).popUntil((route) => route.isFirst);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFD700),
                     foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text("Done"),
                 ),

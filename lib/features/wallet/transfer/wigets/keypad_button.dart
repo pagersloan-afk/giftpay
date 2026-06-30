@@ -15,26 +15,28 @@ class KeypadButton extends StatelessWidget {
         margin: const EdgeInsets.all(6),
         alignment: Alignment.center,
         padding: const EdgeInsets.all(18),
+
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06), // ⭐ transparent
+          color: Colors.white.withOpacity(
+            0.18,
+          ), // ⭐ light glass → perfect contrast
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.12), // ⭐ soft border
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.28), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4FC3F7).withOpacity(0.08), // ⭐ glow
+              color: Colors.black.withOpacity(0.35),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
           ],
         ),
+
         child: Text(
           label,
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: Colors.white, // ⭐ Always visible
           ),
         ),
       ),

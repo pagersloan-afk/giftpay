@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
-import 'package:utilityhub/features/giftcards/models/giftcard_brand.dart';
-import 'package:utilityhub/features/giftcards/buy/confirm_purchase_screen.dart';
-import 'package:utilityhub/features/giftcards/services/giftcard_service.dart';
+import 'package:utilityhub/features/giftcards/buy/enter_amount_screen.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 
 class BuyGiftCardScreen extends StatefulWidget {
@@ -13,11 +11,20 @@ class BuyGiftCardScreen extends StatefulWidget {
 }
 
 class _BuyGiftCardScreenState extends State<BuyGiftCardScreen> {
-  final service = GiftCardService();
-
-  GiftCardBrand? selectedBrand;
+  String? selectedBrand;
   String? selectedCardType;
   final amountCtrl = TextEditingController();
+
+  final brands = {
+    "Amazon": ["USA", "UK", "Global"],
+    "Apple": ["USA", "UK", "Canada"],
+    "Steam": ["Global", "USA"],
+    "Google Play": ["USA", "Global"],
+    "PlayStation": ["USA", "UK"],
+    "Xbox": ["USA", "Global"],
+    "Netflix": ["Global"],
+    "Spotify": ["Global"],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -29,39 +36,23 @@ class _BuyGiftCardScreenState extends State<BuyGiftCardScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Text("Select Brand", style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
 
-              FutureBuilder<List<GiftCardBrand>>(
-                future: service.getBrands(),
-                builder: (_, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final brands = snapshot.data!;
-
-                  return DropdownButtonFormField<GiftCardBrand>(
-                    initialValue: selectedBrand,
-
-                    // ⭐ FIX: remove border override
-                    decoration: const InputDecoration(labelText: "Brand"),
-
-                    // ⭐ FIX: force dark dropdown menu
-                    dropdownColor: const Color(0xFF1F2937),
-
-                    items: brands.map((b) {
-                      return DropdownMenuItem(value: b, child: Text(b.name));
-                    }).toList(),
-
-                    onChanged: (v) {
-                      setState(() {
-                        selectedBrand = v;
-                        selectedCardType = null;
-                      });
-                    },
-                  );
+              DropdownButtonFormField<String>(
+                value: selectedBrand,
+                decoration: const InputDecoration(labelText: "Brand"),
+                dropdownColor: const Color(0xFF1F2937),
+                items: brands.keys.map((b) {
+                  return DropdownMenuItem(value: b, child: Text(b));
+                }).toList(),
+                onChanged: (v) {
+                  setState(() {
+                    selectedBrand = v;
+                    selectedCardType = null;
+                  });
                 },
               ),
 
@@ -72,18 +63,12 @@ class _BuyGiftCardScreenState extends State<BuyGiftCardScreen> {
                 const SizedBox(height: 8),
 
                 DropdownButtonFormField<String>(
-                  initialValue: selectedCardType,
-
-                  // ⭐ FIX: remove border override
+                  value: selectedCardType,
                   decoration: const InputDecoration(labelText: "Card Type"),
-
-                  // ⭐ FIX: force dark dropdown menu
                   dropdownColor: const Color(0xFF1F2937),
-
-                  items: selectedBrand!.cardTypes.map((t) {
+                  items: brands[selectedBrand]!.map((t) {
                     return DropdownMenuItem(value: t, child: Text(t));
                   }).toList(),
-
                   onChanged: (v) {
                     setState(() => selectedCardType = v);
                   },
@@ -98,12 +83,10 @@ class _BuyGiftCardScreenState extends State<BuyGiftCardScreen> {
               TextField(
                 controller: amountCtrl,
                 keyboardType: TextInputType.number,
-
-                // ⭐ FIX: remove border override
                 decoration: const InputDecoration(labelText: "Amount"),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 32),
 
               SizedBox(
                 width: double.infinity,
@@ -121,10 +104,9 @@ class _BuyGiftCardScreenState extends State<BuyGiftCardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ConfirmGiftCardPurchaseScreen(
-                          brandName:
-                              "${selectedBrand!.name} (${selectedCardType!})",
-                          amount: amountCtrl.text.trim(),
+                        builder: (_) => EnterGiftCardAmountScreen(
+                          brandName: selectedBrand!,
+                          cardType: selectedCardType!, // ⭐ FIXED
                         ),
                       ),
                     );

@@ -317,16 +317,6 @@ class _DataScreenState extends State<DataScreen> {
 
               const SizedBox(height: 20),
 
-              Center(
-                child: Image.asset(
-                  networkLogos[selectedNetworkCode]!,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
               if (loadingPlans || plans.isEmpty) ...[
                 const Center(child: CircularProgressIndicator()),
                 const SizedBox(height: 20),

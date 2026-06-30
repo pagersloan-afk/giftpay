@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/core/security/device_trust.dart';
+import 'package:utilityhub/features/auth/email_otp_screen.dart';
 import 'package:utilityhub/features/auth/login/signup/signup_screen.dart';
 import 'package:utilityhub/features/auth/reset/reset_password_screen.dart';
-
-// ⭐ Notification listener
-import 'package:utilityhub/features/notifications/notification_center.dart';
 
 // ⭐ Login success screen
 import 'package:utilityhub/features/auth/login/login_success_screen.dart';
@@ -32,30 +31,36 @@ class _LoginFormState extends State<LoginForm> {
         password: passwordCtrl.text.trim(),
       );
 
-      final user = FirebaseAuth.instance.currentUser;
+      final user = FirebaseAuth.instance.currentUser!;
 
-      if (user != null) {
-        if (!user.emailVerified) {
-          Navigator.pushReplacementNamed(context, "/verify-email");
-          return;
-        }
-
-        NotificationCenter.I.setUser(user.uid);
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginSuccessScreen()),
-          );
-        }
+      if (!user.emailVerified) {
+        Navigator.pushReplacementNamed(context, "/verify-email");
+        return;
       }
-    } on FirebaseAuthException catch (e) {
+
+      final trusted = await DeviceTrust.isTrustedDevice(user.uid);
+
+      if (!trusted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EmailOtpScreen(email: emailCtrl.text.trim()),
+          ),
+        );
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginSuccessScreen()),
+      );
+    } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => loading = false);
     }
-
-    setState(() => loading = false);
   }
 
   @override

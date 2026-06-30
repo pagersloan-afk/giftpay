@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/core/security/device_trust.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 
 class LinkedDevicesScreen extends StatefulWidget {
@@ -9,34 +12,31 @@ class LinkedDevicesScreen extends StatefulWidget {
 }
 
 class _LinkedDevicesScreenState extends State<LinkedDevicesScreen> {
-  // ⭐ Mocked device list (replace with real API later)
-  List<Map<String, dynamic>> devices = [
-    {
-      "name": "iPhone 14 Pro",
-      "location": "Port Harcourt, Nigeria",
-      "lastActive": "Active now",
-      "isCurrent": true,
-      "icon": Icons.phone_iphone,
-    },
-    {
-      "name": "Windows PC",
-      "location": "Lagos, Nigeria",
-      "lastActive": "2 days ago",
-      "isCurrent": false,
-      "icon": Icons.computer,
-    },
-    {
-      "name": "Samsung Galaxy S22",
-      "location": "Abuja, Nigeria",
-      "lastActive": "1 week ago",
-      "isCurrent": false,
-      "icon": Icons.android,
-    },
-  ];
+  String? currentDeviceId;
 
-  void removeDevice(int index) {
-    final device = devices[index];
+  @override
+  void initState() {
+    super.initState();
+    loadCurrentDeviceId();
+  }
 
+  Future<void> loadCurrentDeviceId() async {
+    currentDeviceId = await DeviceTrust.getDeviceId();
+    setState(() {});
+  }
+
+  IconData _deviceIcon(String type) {
+    switch (type) {
+      case "android":
+        return Icons.android;
+      case "ios":
+        return Icons.phone_iphone;
+      default:
+        return Icons.devices;
+    }
+  }
+
+  void _removeDevice(String userId, String deviceId) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -45,9 +45,9 @@ class _LinkedDevicesScreenState extends State<LinkedDevicesScreen> {
           "Remove Device",
           style: TextStyle(color: Colors.white),
         ),
-        content: Text(
-          "Are you sure you want to remove '${device["name"]}'?",
-          style: const TextStyle(color: Colors.white70),
+        content: const Text(
+          "Are you sure you want to remove this device?",
+          style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -58,9 +58,21 @@ class _LinkedDevicesScreenState extends State<LinkedDevicesScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              setState(() => devices.removeAt(index));
+
+              await FirebaseFirestore.instance
+                  .collection("users")
+                  .doc(userId)
+                  .collection("devices")
+                  .doc(deviceId)
+                  .delete();
+
+              if (deviceId == currentDeviceId) {
+                await DeviceTrust.clearDeviceTrust();
+              }
+
+              setState(() {});
             },
             child: const Text(
               "Remove",
@@ -74,96 +86,129 @@ class _LinkedDevicesScreenState extends State<LinkedDevicesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser!;
+    final devicesRef = FirebaseFirestore.instance
+        .collection("users")
+        .doc(user.uid)
+        .collection("devices")
+        .orderBy("lastLogin", descending: true);
+
     return Scaffold(
       appBar: const AppHeaderr(title: "Linked Devices"),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: devicesRef.snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          }
 
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-        children: [
-          const Text(
-            "These are the devices currently logged into your GiftPay account.",
-            style: TextStyle(
-              color: Color(0xFFE5E7EB),
-              fontSize: 14,
-              height: 1.4,
-            ),
-          ),
+          final docs = snapshot.data!.docs;
 
-          const SizedBox(height: 24),
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text(
+                "No linked devices found.",
+                style: TextStyle(color: Colors.white70),
+              ),
+            );
+          }
 
-          ...List.generate(devices.length, (index) {
-            final d = devices[index];
+          return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+            children: [
+              const Text(
+                "These are the devices currently logged into your GiftPay account.",
+                style: TextStyle(
+                  color: Color(0xFFE5E7EB),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
 
-            return Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.12)),
-                  ),
+              ...docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final deviceId = data["deviceId"];
+                final isCurrent = deviceId == currentDeviceId;
 
-                  child: Row(
-                    children: [
-                      Icon(d["icon"], color: Colors.white, size: 28),
-
-                      const SizedBox(width: 14),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              d["name"],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              d["location"],
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.55),
-                                fontSize: 12.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              d["lastActive"],
-                              style: TextStyle(
-                                color: d["isCurrent"]
-                                    ? Colors.greenAccent
-                                    : Colors.white54,
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ],
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.12),
                         ),
                       ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _deviceIcon(data["deviceType"]),
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 14),
 
-                      if (!d["isCurrent"])
-                        TextButton(
-                          onPressed: () => removeDevice(index),
-                          child: const Text(
-                            "Remove",
-                            style: TextStyle(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.w600,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data["deviceName"] ?? "Unknown Device",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  isCurrent ? "This device" : "Trusted device",
+                                  style: TextStyle(
+                                    color: isCurrent
+                                        ? Colors.greenAccent
+                                        : Colors.white54,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Last active: ${data["lastLogin"] != null ? data["lastLogin"].toDate().toString() : "Unknown"}",
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.55),
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
 
-                const SizedBox(height: 14),
-              ],
-            );
-          }),
-        ],
+                          if (!isCurrent)
+                            TextButton(
+                              onPressed: () =>
+                                  _removeDevice(user.uid, deviceId),
+                              child: const Text(
+                                "Remove",
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                );
+              }).toList(),
+            ],
+          );
+        },
       ),
     );
   }

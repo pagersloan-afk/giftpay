@@ -52,6 +52,27 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
     }
   }
 
+  String formatDate(dynamic raw) {
+    if (raw == null) return "";
+
+    // Try ISO string first
+    final iso = DateTime.tryParse(raw.toString());
+    if (iso != null) {
+      return DateFormat("MMM d, h:mm a").format(iso);
+    }
+
+    // Try timestamp
+    final ts = int.tryParse(raw.toString());
+    if (ts != null) {
+      return DateFormat(
+        "MMM d, h:mm a",
+      ).format(DateTime.fromMillisecondsSinceEpoch(ts));
+    }
+
+    // Fallback
+    return raw.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -100,23 +121,34 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: recentTx.map((t) {
-              final type = t["type"];
-              final title = t["title"];
-              final amount = t["amount"];
-              final date = t["date"] ?? t["timestamp"];
+              final type = t["type"] ?? "unknown";
+              final title = t["title"] ?? "Transaction";
+              final amount = t["amount"] ?? 0;
+              final rawDate = t["date"] ?? t["timestamp"];
+              final formattedDate = formatDate(rawDate);
 
               IconData icon;
               Color color;
 
-              if (type == "credit") {
-                icon = Icons.arrow_downward;
-                color = Colors.greenAccent;
-              } else if (type == "electricity") {
-                icon = Icons.flash_on;
-                color = Colors.orangeAccent;
-              } else {
-                icon = Icons.arrow_upward;
-                color = Colors.redAccent;
+              switch (type) {
+                case "credit":
+                  icon = Icons.arrow_downward;
+                  color = Colors.greenAccent;
+                  break;
+
+                case "electricity":
+                  icon = Icons.flash_on;
+                  color = Colors.orangeAccent;
+                  break;
+
+                case "giftcard":
+                  icon = Icons.card_giftcard;
+                  color = Colors.amberAccent;
+                  break;
+
+                default:
+                  icon = Icons.arrow_upward;
+                  color = Colors.redAccent;
               }
 
               return Padding(
@@ -148,7 +180,7 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            date.toString(),
+                            formattedDate,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.55),
                               fontSize: 12.5,

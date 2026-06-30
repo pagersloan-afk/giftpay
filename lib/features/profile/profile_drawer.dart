@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/core/security/device_trust.dart';
 
 class ProfileDrawer extends StatelessWidget {
   const ProfileDrawer({super.key});
 
   Future<void> logout(BuildContext context) async {
+    // Clear local trust so OTP is required next login
+    await DeviceTrust.clearDeviceTrust();
+
+    // Sign out user
     await FirebaseAuth.instance.signOut();
-    Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+
+    // Navigate cleanly to login screen
+    Navigator.pushNamedAndRemoveUntil(context, "/login", (route) => false);
   }
 
   @override
@@ -92,7 +99,7 @@ class ProfileDrawer extends StatelessWidget {
                 icon: Icons.logout,
                 label: "Logout",
                 color: Colors.redAccent,
-                onTap: () => logout(context),
+                onTap: () async => await logout(context),
               ),
             ],
           ),

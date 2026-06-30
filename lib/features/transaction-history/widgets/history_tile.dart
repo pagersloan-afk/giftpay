@@ -12,6 +12,7 @@ import 'package:utilityhub/features/data/data_receipt_screen.dart';
 import 'package:utilityhub/features/cable/cable_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/wallet_receipt_screen.dart';
 import 'package:utilityhub/features/betting/betting_receipt_screen.dart';
+import 'package:utilityhub/features/wallet/giftcard_receipt_screen.dart';
 
 class HistoryTile extends StatelessWidget {
   final Map<String, dynamic> transaction;
@@ -55,7 +56,7 @@ class HistoryTile extends StatelessWidget {
 
     final titleLower = (transaction["title"] ?? "").toLowerCase();
 
-    // ⭐ ELECTRICITY — load directly from users/{uid}/transactions
+    // ⭐ ELECTRICITY
     if (titleLower.startsWith("electricity")) {
       final snap = await FirebaseFirestore.instance
           .collection("users")
@@ -82,7 +83,7 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ⭐ For all other transactions → load from wallet
+    // ⭐ WALLET TRANSACTIONS
     final walletDoc = await FirebaseFirestore.instance
         .collection("wallets")
         .doc(userId)
@@ -94,6 +95,17 @@ class HistoryTile extends StatelessWidget {
     final realTx = txList.firstWhere((t) => t["id"] == id, orElse: () => {});
 
     final lower = (realTx["title"] ?? "").toLowerCase();
+
+    // ⭐ GIFT CARD RECEIPT
+    if (realTx["type"] == "giftcard") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => GiftCardReceiptScreen(transaction: realTx),
+        ),
+      );
+      return;
+    }
 
     // ⭐ AIRTIME
     if (lower.startsWith("airtime")) {
@@ -131,7 +143,7 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ⭐ WALLET / DEFAULT
+    // ⭐ WALLET DEFAULT RECEIPT
     Navigator.push(
       context,
       MaterialPageRoute(

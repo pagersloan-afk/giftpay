@@ -1,47 +1,71 @@
-import 'dart:async';
-import 'package:utilityhub/features/giftcards/models/giftcard_brand.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'package:utilityhub/config/api.dart';
 
 class GiftCardService {
-  final bool mockMode;
-
-  GiftCardService({this.mockMode = true});
-
-  /// Fetch all gift card brands + their card types
-  Future<List<GiftCardBrand>> getBrands() async {
-    if (mockMode) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      return [
-        GiftCardBrand(
-          id: "1",
-          name: "Amazon",
-          cardTypes: ["USA", "UK", "Global"],
-        ),
-        GiftCardBrand(
-          id: "2",
-          name: "Apple",
-          cardTypes: ["USA", "UK", "Canada"],
-        ),
-        GiftCardBrand(id: "3", name: "Steam", cardTypes: ["Global", "USA"]),
-      ];
-    }
-
-    // TODO: Replace with real backend API
-    return [];
-  }
-
-  /// Buy a gift card after successful Paystack payment
   Future<String> buyGiftCard({
     required String brand,
     required String cardType,
-    required String amount,
+    required String usdAmount, // ⭐ USD value (e.g. "500")
   }) async {
-    if (mockMode) {
-      await Future.delayed(const Duration(seconds: 1));
-      return "GC-${DateTime.now().millisecondsSinceEpoch}";
+    final user = FirebaseAuth.instance.currentUser;
+    final token = await user!.getIdToken();
+
+    final url = ApiConfig.api("/api/giftcard/buy");
+
+    final res = await http.post(
+      Uri.parse(url),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "userId": user.uid,
+        "brand": brand,
+        "cardType": cardType,
+        "usdAmount": usdAmount, // ⭐ send USD to backend
+      }),
+    );
+
+    final data = jsonDecode(res.body);
+
+    if (data["status"] != true) {
+      throw Exception(data["message"]);
     }
 
-    // TODO: Replace with real backend API call
-    await Future.delayed(const Duration(seconds: 1));
-    return "XXXX-XXXX-XXXX";
+    return data["code"]; // ⭐ real gift card code from backend
+  }
+
+  Future<Map<String, dynamic>> getQuote({
+    required String brand,
+    required String cardType,
+    required String usdAmount,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final token = await user!.getIdToken();
+
+    final url = ApiConfig.api("/api/giftcard/quote");
+
+    final res = await http.post(
+      Uri.parse(url),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "brand": brand,
+        "cardType": cardType,
+        "usdAmount": usdAmount,
+      }),
+    );
+
+    final data = jsonDecode(res.body);
+
+    if (data["status"] != true) {
+      throw Exception(data["message"]);
+    }
+
+    return {"fxRate": data["fxRate"], "nairaToCharge": data["nairaToCharge"]};
   }
 }

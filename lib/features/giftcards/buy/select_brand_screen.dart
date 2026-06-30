@@ -8,14 +8,46 @@ class SelectBrandScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brands = [
-      {"name": "Apple", "icon": Icons.apple},
-      {"name": "Google Play", "icon": Icons.android},
-      {"name": "Amazon", "icon": Icons.shopping_bag},
-      {"name": "Steam", "icon": Icons.games},
-      {"name": "PlayStation", "icon": Icons.sports_esports},
-      {"name": "Xbox", "icon": Icons.videogame_asset},
-      {"name": "Netflix", "icon": Icons.movie},
-      {"name": "Spotify", "icon": Icons.music_note},
+      {
+        "name": "Apple",
+        "icon": Icons.apple,
+        "types": ["USA", "UK", "Canada"],
+      },
+      {
+        "name": "Google Play",
+        "icon": Icons.android,
+        "types": ["USA", "Global"],
+      },
+      {
+        "name": "Amazon",
+        "icon": Icons.shopping_bag,
+        "types": ["USA", "UK", "Global"],
+      },
+      {
+        "name": "Steam",
+        "icon": Icons.games,
+        "types": ["Global", "USA"],
+      },
+      {
+        "name": "PlayStation",
+        "icon": Icons.sports_esports,
+        "types": ["USA", "UK"],
+      },
+      {
+        "name": "Xbox",
+        "icon": Icons.videogame_asset,
+        "types": ["USA", "Global"],
+      },
+      {
+        "name": "Netflix",
+        "icon": Icons.movie,
+        "types": ["Global"],
+      },
+      {
+        "name": "Spotify",
+        "icon": Icons.music_note,
+        "types": ["Global"],
+      },
     ];
 
     return Scaffold(
@@ -41,6 +73,8 @@ class SelectBrandScreen extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => EnterGiftCardAmountScreen(
                         brandName: brand["name"] as String,
+                        cardType: (brand["types"] as List<String>)
+                            .first, // ⭐ DEFAULT TYPE
                       ),
                     ),
                   );

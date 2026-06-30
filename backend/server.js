@@ -7,6 +7,25 @@ const axios = require("axios");
 const admin = require("firebase-admin");
 const fs = require("fs");
 
+// ENV
+const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET;
+const VTPASS_API_KEY = process.env.VTPASS_API_KEY;
+const VTPASS_SECRET_KEY = process.env.VTPASS_SECRET_KEY;
+const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+
+// Firebase init
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(
+    fs.readFileSync(FIREBASE_SERVICE_ACCOUNT_PATH, "utf8")
+  );
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
+const db = admin.firestore();
+
 // Route modules
 const electricityRoutes = require("./src/routes/electricity.routes.js");
 const airtimeRoutes = require("./src/routes/airtime.routes.js");
@@ -19,16 +38,15 @@ const cableRoutes = require("./src/routes/cable.routes");
 const bettingRoutes = require("./src/routes/betting.routes.js");
 const userServicesRoutes = require("./src/routes/userServices.routes");
 const analyticsRoutes = require("./src/routes/analytics.routes");
+const authRoutes = require("./src/routes/auth.routes.js");
+const statementRoute = require("./src/routes/statement");
+const authMiddleware = require("./src/middleware/authMiddleware");
+const giftcardRoutes = require("./src/routes/giftcard.routes");
+
 
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-
-// ENV
-const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET;
-const VTPASS_API_KEY = process.env.VTPASS_API_KEY;
-const VTPASS_SECRET_KEY = process.env.VTPASS_SECRET_KEY;
-const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
 
 // VTPASS base URL
 const VTPASS_BASE_URL =
@@ -46,19 +64,6 @@ console.log("VTPASS_ENV:", process.env.VTPASS_ENV);
 console.log("CLUBKONNECT_APIKEY:", process.env.CLUBKONNECT_APIKEY);
 
 
-// Firebase init
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(
-    fs.readFileSync(FIREBASE_SERVICE_ACCOUNT_PATH, "utf8")
-  );
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
-
-const db = admin.firestore();
-
 // Middleware
 app.use(
   cors({
@@ -75,6 +80,8 @@ app.use(
 );
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 // =========================
 // Health check
@@ -90,6 +97,12 @@ app.use("/", transactionRoutes);
 app.use("/", walletRoutes);
 app.use("/", userServicesRoutes);
 app.use("/", analyticsRoutes);
+app.use("/auth", authRoutes);
+app.use("/v1/statement", authMiddleware, statementRoute);
+app.use("/api/giftcard", giftcardRoutes);
+
+
+
 
 // ClubKonnect / VTPass feature routes
 app.use("/api/electricity", electricityRoutes);

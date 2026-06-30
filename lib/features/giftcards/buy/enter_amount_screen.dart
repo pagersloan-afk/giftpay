@@ -4,8 +4,13 @@ import 'confirm_purchase_screen.dart';
 
 class EnterGiftCardAmountScreen extends StatefulWidget {
   final String brandName;
+  final String cardType;
 
-  const EnterGiftCardAmountScreen({super.key, required this.brandName});
+  const EnterGiftCardAmountScreen({
+    super.key,
+    required this.brandName,
+    required this.cardType,
+  });
 
   @override
   State<EnterGiftCardAmountScreen> createState() =>
@@ -35,6 +40,7 @@ class _EnterGiftCardAmountScreenState extends State<EnterGiftCardAmountScreen> {
       MaterialPageRoute(
         builder: (_) => ConfirmGiftCardPurchaseScreen(
           brandName: widget.brandName,
+          cardType: widget.cardType,
           amount: amountCtrl.text.trim(),
         ),
       ),
@@ -44,28 +50,27 @@ class _EnterGiftCardAmountScreenState extends State<EnterGiftCardAmountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.brandName)),
+      backgroundColor: const Color(0xFF05070A),
+      appBar: AppBar(
+        title: Text(widget.brandName),
+        backgroundColor: const Color(0xFF0F1115),
+      ),
+
       body: AppResponsiveLayout(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Card container
+              // DARK CARD CONTAINER
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFF0F1115), // ⭐ DARK BACKGROUND
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade300),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  border: Border.all(color: Colors.white10),
                 ),
+
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -74,12 +79,13 @@ class _EnterGiftCardAmountScreenState extends State<EnterGiftCardAmountScreen> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white, // ⭐ FIXED
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    // Preset amounts
+                    // PRESET AMOUNTS
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
@@ -95,8 +101,8 @@ class _EnterGiftCardAmountScreenState extends State<EnterGiftCardAmountScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? Colors.blue
-                                  : Colors.grey.shade200,
+                                  ? const Color(0xFF1E88E5) // GiftPay blue
+                                  : const Color(0xFF1F2937), // dark grey
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -104,7 +110,7 @@ class _EnterGiftCardAmountScreenState extends State<EnterGiftCardAmountScreen> {
                               style: TextStyle(
                                 color: isSelected
                                     ? Colors.white
-                                    : Colors.black87,
+                                    : Colors.white70, // ⭐ FIXED
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -115,23 +121,35 @@ class _EnterGiftCardAmountScreenState extends State<EnterGiftCardAmountScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Manual amount input
+                    // MANUAL AMOUNT INPUT
                     TextField(
                       controller: amountCtrl,
                       keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white), // ⭐ FIXED
                       decoration: const InputDecoration(
                         labelText: "Enter Amount (USD)",
+                        labelStyle: TextStyle(color: Colors.white70), // ⭐ FIXED
                         border: OutlineInputBorder(),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white24),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF1E88E5)),
+                        ),
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Continue button
+                    // CONTINUE BUTTON
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: continueToConfirm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E88E5),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
                         child: const Text("Continue"),
                       ),
                     ),

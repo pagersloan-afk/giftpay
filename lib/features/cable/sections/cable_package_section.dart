@@ -52,30 +52,37 @@ class CablePackageSection extends StatelessWidget {
             else if (packages.isEmpty)
               const Text("No packages loaded.", style: TextStyle(fontSize: 14))
             else
-              DropdownButtonFormField<String>(
-                initialValue: selectedCode,
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true, // ⭐ prevents overflow
+                      value: selectedCode,
 
-                // ⭐ FIX: remove border override
-                decoration: const InputDecoration(),
-
-                // ⭐ FIX: force dark dropdown background
-                dropdownColor: const Color(0xFF1F2937),
-
-                items: packages
-                    .map<DropdownMenuItem<String>>(
-                      (p) => DropdownMenuItem<String>(
-                        value: p["code"] as String,
-                        child: Text(
-                          "${p["name"]} - ₦${p["amount"]}",
-                          style: const TextStyle(fontSize: 14),
-                        ),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  final pkg = packages.firstWhere((p) => p["code"] == v);
-                  onSelect(pkg["code"], pkg["amount"]);
-                },
+
+                      dropdownColor: const Color(0xFF1F2937),
+
+                      items: packages.map((p) {
+                        return DropdownMenuItem<String>(
+                          value: p["code"] as String,
+                          child: Text(
+                            "${p["name"]} - ₦${p["amount"]}",
+                            overflow: TextOverflow.ellipsis, // ⭐ FIX
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+
+                      onChanged: (v) {
+                        final pkg = packages.firstWhere((p) => p["code"] == v);
+                        onSelect(pkg["code"], pkg["amount"]);
+                      },
+                    ),
+                  ),
+                ],
               ),
           ],
         ),

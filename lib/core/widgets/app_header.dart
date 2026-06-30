@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:utilityhub/core/security/device_trust.dart';
 import 'package:utilityhub/features/notifications/notification_center.dart';
 import 'package:utilityhub/features/notifications/notification_dropdown.dart';
 import 'package:utilityhub/features/wallet/services/wallet_service.dart';
@@ -327,13 +328,15 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
                   _item(
                     icon: Icons.logout,
                     label: "Logout",
-                    onTap: () {
+                    onTap: () async {
                       _toggle();
-                      FirebaseAuth.instance.signOut();
+                      await DeviceTrust.clearDeviceTrust();
+                      await FirebaseAuth.instance.signOut();
+
                       Navigator.of(
                         context,
                         rootNavigator: true,
-                      ).pushNamed("/login");
+                      ).pushNamedAndRemoveUntil("/login", (route) => false);
                     },
                   ),
                 ],
@@ -343,6 +346,17 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
         );
       },
     );
+  }
+
+  Future<void> logout(BuildContext context) async {
+    // 1. Clear local trust so OTP is required next login
+    await DeviceTrust.clearDeviceTrust();
+
+    // 2. Sign out from Firebase
+    await FirebaseAuth.instance.signOut();
+
+    // 3. Navigate to login screen
+    Navigator.pushNamedAndRemoveUntil(context, "/login", (route) => false);
   }
 
   @override

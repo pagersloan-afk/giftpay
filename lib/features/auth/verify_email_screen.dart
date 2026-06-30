@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/core/security/device_trust.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
@@ -73,8 +74,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   Future<void> _changeEmail() async {
+    // Clear local device trust so OTP is required next login
+    await DeviceTrust.clearDeviceTrust();
+
+    // Sign out user
     await FirebaseAuth.instance.signOut();
 
+    // Navigate to signup screen cleanly
     Navigator.pushNamedAndRemoveUntil(context, "/signup", (route) => false);
   }
 
