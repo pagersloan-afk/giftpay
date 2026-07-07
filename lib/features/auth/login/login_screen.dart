@@ -3,13 +3,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:utilityhub/core/widgets/giftpay_background.dart';
 import 'package:utilityhub/core/widgets/app_header.dart';
-import 'package:utilityhub/features/auth/login/sections/financial_business_showcase_row.dart';
-
-import 'sections/hero_section.dart';
-import 'sections/feature_cards_section.dart';
-import 'sections/app_showcase_section.dart';
-import 'sections/lifestyle_benefits_section.dart';
-import 'sections/footer_section.dart';
 
 import 'sections/login_desktop_layout.dart';
 import 'sections/login_mobile_layout.dart';
@@ -29,7 +22,7 @@ class LoginScreen extends StatelessWidget {
       );
     }
 
-    // ⭐ WEB USERS → full landing page
+    // ⭐ WEB USERS → show only login UI (NO LANDING SECTIONS)
     return GiftPayBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -41,17 +34,11 @@ class LoginScreen extends StatelessWidget {
             return SingleChildScrollView(
               child: Column(
                 children: [
-                  // ⭐ Desktop → Hero + LoginCard
+                  // ⭐ Desktop → LoginCard + Promo
                   if (isDesktop) const LoginDesktopLayout(),
 
-                  // ⭐ Mobile Web → Hero only
-                  if (!isDesktop) const HeroSection(),
-
-                  const FeatureCardsSection(),
-                  const FinancialBusinessShowcaseRow(),
-                  const AppShowcaseSection(),
-                  const LifestyleBenefitsSection(),
-                  const FooterSection(),
+                  // ⭐ Mobile Web → LoginCard only
+                  if (!isDesktop) const LoginMobileLayout(),
                 ],
               ),
             );

@@ -7,14 +7,16 @@ class PromoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(40),
+      // ↓ Reduced outer padding from 40 → 28
+      padding: const EdgeInsets.all(28), // ADJUSTED
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(40),
+            // ↓ Reduced inner padding from 40 → 28
+            padding: const EdgeInsets.all(28), // ADJUSTED
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(22),
@@ -23,7 +25,6 @@ class PromoSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ⭐ Updated headline
                 const Text(
                   "Fast, Secure & Global Digital Payments",
                   style: TextStyle(
@@ -34,9 +35,8 @@ class PromoSection extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16), // ↓ Reduced from 20 → 16
 
-                // ⭐ Updated subheadline
                 const Text(
                   "Transfer money, fund your wallet, buy utilities, and enjoy instant rewards — all in one place.",
                   style: TextStyle(
@@ -46,17 +46,15 @@ class PromoSection extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 24), // ↓ Reduced from 30 → 24
 
-                // ⭐ Updated stats (now includes Transfer + Deposit)
-                Row(
+                Wrap(
+                  spacing: 32, // ↓ Reduced from 40 → 32
+                  runSpacing: 16, // ↓ Reduced from 20 → 16
                   children: [
                     _stat("5M+", "Transactions Processed"),
-                    const SizedBox(width: 40),
                     _stat("Instant", "Wallet Funding"),
-                    const SizedBox(width: 40),
                     _stat("24/7", "Transfers & Support"),
-                    const SizedBox(width: 40),
                     _stat("100%", "Token Delivery"),
                   ],
                 ),

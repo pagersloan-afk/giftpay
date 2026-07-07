@@ -6,7 +6,11 @@ class FeatureCardsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+      // ↓ Reduced vertical padding from 60 → 32
+      padding: const EdgeInsets.symmetric(
+        horizontal: 40,
+        vertical: 32,
+      ), // ADJUSTED
       child: Wrap(
         spacing: 30,
         runSpacing: 30,
@@ -43,7 +47,8 @@ class FeatureCardsSection extends StatelessWidget {
   }) {
     return Container(
       width: 320,
-      padding: const EdgeInsets.all(24),
+      // ↓ Reduced inner padding from 24 → 20
+      padding: const EdgeInsets.all(20), // ADJUSTED
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
@@ -53,7 +58,7 @@ class FeatureCardsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 40, color: Colors.blueAccent),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16), // ↓ Reduced from 20 → 16
           Text(
             title,
             style: const TextStyle(
@@ -62,12 +67,12 @@ class FeatureCardsSection extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8), // ↓ Reduced from 10 → 8
           Text(
             subtitle,
             style: const TextStyle(color: Colors.white70, height: 1.4),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16), // ↓ Reduced from 20 → 16
           Text(
             action,
             style: const TextStyle(

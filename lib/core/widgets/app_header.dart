@@ -18,6 +18,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final wallet = WalletService();
 
     final isMobile = MediaQuery.of(context).size.width < 600;
+    final isLoggedIn = user != null; // ⭐ Added this line
 
     return SafeArea(
       bottom: false,
@@ -39,12 +40,15 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   children: [
                     // ⭐ LEFT SIDE
                     if (isMobile)
-                      // MOBILE → PROFILE AVATAR ONLY
                       _ProfileDropdown(photoUrl: user?.photoURL)
                     else
-                      // DESKTOP → BRAND BLOCK
-                      Padding(
-                        padding: const EdgeInsets.only(left: 46),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            "/landing",
+                          ); // or your landing route
+                        },
                         child: Row(
                           children: [
                             ShaderMask(
@@ -71,12 +75,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                                     Shadow(
                                       blurRadius: 14,
                                       color: Colors.black.withOpacity(0.45),
-                                      offset: const Offset(0, 2),
+                                      offset: Offset(0, 2),
                                     ),
                                     Shadow(
                                       blurRadius: 22,
                                       color: Colors.blue.withOpacity(0.28),
-                                      offset: const Offset(0, 4),
+                                      offset: Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -101,7 +105,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                                   ),
                                 ),
                                 Transform.translate(
-                                  offset: const Offset(0, 4),
+                                  offset: Offset(0, 4),
                                   child: Image.asset(
                                     "assets/logo/giftpay_1.png",
                                     height: 94,
@@ -113,10 +117,43 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                           ],
                         ),
                       ),
-
                     // ⭐ RIGHT SIDE
                     Row(
                       children: [
+                        // ⭐ DESKTOP NAVIGATION BUTTONS
+                        // ⭐ Only show About when NOT logged in
+                        if (!isMobile && !isLoggedIn) ...[
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/about');
+                            },
+                            child: const Text(
+                              "About",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          // ⭐ CONTACT BUTTON (NEW)
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/contact');
+                            },
+                            child: const Text(
+                              "Contact",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                        ],
+
                         // DESKTOP ONLY → WALLET BALANCE
                         if (!isMobile && user != null)
                           StreamBuilder<double>(
@@ -158,7 +195,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
                         const SizedBox(width: 14),
 
-                        // ⭐ NOTIFICATION BELL (MOBILE + DESKTOP)
+                        // ⭐ NOTIFICATION BELL
                         GestureDetector(
                           onTap: () async {
                             await showNotificationDropdown(context);

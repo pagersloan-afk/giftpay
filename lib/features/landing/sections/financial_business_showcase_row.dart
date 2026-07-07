@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/features/auth/login/sections/business_solutions_section.dart';
+import 'package:utilityhub/features/auth/login/sections/product_showcase_section.dart';
 import 'financial_education_section.dart';
-import 'product_showcase_section.dart';
-import 'business_solutions_section.dart';
 
 class FinancialBusinessShowcaseRow extends StatelessWidget {
   const FinancialBusinessShowcaseRow({super.key});
@@ -13,21 +13,18 @@ class FinancialBusinessShowcaseRow extends StatelessWidget {
         final isDesktop = constraints.maxWidth > 1000;
 
         if (isDesktop) {
-          return Padding(
-            // ↓ Reduced vertical padding from 60 → 32
-            padding: const EdgeInsets.symmetric(
-              horizontal: 40,
-              vertical: 32,
-            ), // ADJUSTED
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+          return Center(
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 1400),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Expanded(child: FinancialEducationSection()),
-                  SizedBox(width: 32), // ↓ Reduced from 40 → 32
+                  SizedBox(width: 24),
                   Expanded(child: ProductShowcaseSection()),
-                  SizedBox(width: 32), // ADJUSTED
+                  SizedBox(width: 24),
                   Expanded(child: BusinessSolutionsSection()),
                 ],
               ),
@@ -35,11 +32,10 @@ class FinancialBusinessShowcaseRow extends StatelessWidget {
           );
         }
 
-        // Mobile
         return Column(
           children: const [
             FinancialEducationSection(),
-            SizedBox(height: 24), // ↓ Added spacing control
+            SizedBox(height: 24),
             ProductShowcaseSection(),
             SizedBox(height: 24),
             BusinessSolutionsSection(),

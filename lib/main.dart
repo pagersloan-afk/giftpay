@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,20 +24,20 @@ import 'package:utilityhub/features/splash/giftpay_splash.dart';
 import 'package:utilityhub/features/auth/login/login_screen.dart';
 import 'package:utilityhub/features/home/home_shell.dart';
 
+// ⭐ LANDING PAGE (WEB)
+import 'package:utilityhub/features/landing/landing_page.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize Supabase
   await supa.Supabase.initialize(
     url: "https://mzvwtxozwnprsiipoxkx.supabase.co",
     anonKey:
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16dnd0eG96d25wcnNpaXBveGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMjEyOTksImV4cCI6MjA5MDU5NzI5OX0.wchked2h0b5OMvu8qKi9pkYIPJs4_PX5Mqx7HNEpmto",
   );
 
-  // ⭐ Attach NotificationCenter to FirebaseAuth
   FirebaseAuth.instance.authStateChanges().listen((user) {
     if (user != null) {
       NotificationCenter.I.setUser(user.uid);
@@ -56,20 +57,16 @@ class UtilityHubApp extends StatelessWidget {
     return MaterialApp(
       title: 'UtilityHub',
       debugShowCheckedModeBanner: false,
-
-      // ⭐ GLOBAL THEME
       theme: GiftPayTheme.theme,
-
-      // ⭐ GLOBAL BACKGROUND FOR ALL SCREENS EXCEPT SPLASH
       builder: (context, child) {
-        if (child is GiftPaySplash) return child;
+        // Splash and web landing must NOT be wrapped
+        if (child is GiftPaySplash || child is LandingPage) {
+          return child!;
+        }
         return GiftPayBackground(child: child!);
       },
-
-      // ⭐ SHOW SPLASH FIRST
-      home: const GiftPaySplash(),
-
-      // ⭐ ROUTES ("/" REMOVED)
+      // ⭐ MOBILE → Splash → Login, WEB → Landing
+      home: kIsWeb ? const LandingPage() : const GiftPaySplash(),
       routes: appRoutes,
     );
   }
@@ -91,7 +88,7 @@ class AuthGate extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          return const HomeShell(); // ⭐ bottom navigation root
+          return const HomeShell();
         }
 
         return const LoginScreen();

@@ -23,6 +23,7 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 // Gift Cards
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
+import 'package:utilityhub/features/landing/landing_page.dart';
 import 'package:utilityhub/features/limits/edit_daily_airtime_limit_screen.dart';
 import 'package:utilityhub/features/limits/edit_daily_transfer_limit_screen.dart';
 import 'package:utilityhub/features/limits/limits_screen.dart';
@@ -59,6 +60,10 @@ import 'package:utilityhub/features/betting/betting_screen.dart';
 
 // Paystack callback
 import 'package:utilityhub/features/payments/paystack_web_callback_screen.dart';
+import 'package:utilityhub/screen/about_us.dart';
+import 'package:utilityhub/screen/contact_us.dart';
+import 'package:utilityhub/screen/privacy_policy.dart';
+import 'package:utilityhub/screen/terms_conditions.dart';
 import 'package:utilityhub/settings/change_password_screen.dart';
 import 'package:utilityhub/settings/currency_display_screen.dart';
 import 'package:utilityhub/settings/language_screen.dart';
@@ -83,6 +88,7 @@ Widget wrap(Widget screen) {
 final Map<String, WidgetBuilder> appRoutes = {
   '/login': (_) => wrap(const LoginScreen()),
   '/home': (_) => wrap(const HomeScreen()),
+  '/landing': (context) => const LandingPage(),
 
   // Electricity
   '/electricity': (_) => wrap(const ElectricityScreen()),
@@ -175,4 +181,11 @@ final Map<String, WidgetBuilder> appRoutes = {
   // ⭐ ACCOUNT & SECURITY
   '/auth-pin': (_) => wrap(const AuthorizationPinScreen()),
   '/login-security': (_) => wrap(const LoginSecurityScreen()),
+
+  '/about': (_) => wrap(const AboutUsScreen()),
+  '/contact': (context) => const ContactUsScreen(),
+  '/terms-and-conditions': (_) => wrap(const TermsConditionsScreen()),
+  '/privacy-policy': (_) => wrap(const PrivacyPolicyScreen()),
+  '/refund-policy': (_) => wrap(const RefundPolicyScreen()),
+  '/refund': (_) => const RefundPolicyScreen(),
 };

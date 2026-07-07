@@ -11,20 +11,23 @@ class AppResponsiveLayout extends StatelessWidget {
     this.desktopMaxWidth = 640,
   });
 
-  bool _isAuthScreen() {
-    final name = child.runtimeType.toString();
-    return name.contains("Login") ||
-        name.contains("SignUp") ||
-        name.contains("Reset") ||
-        name.contains("Verify");
+  bool _isAuthOrLanding(BuildContext context) {
+    final route = ModalRoute.of(context)?.settings.name ?? "";
+
+    // ⭐ NO SIDEBAR ON AUTH SCREENS OR LANDING PAGE
+    return route == "/login" ||
+        route == "/signup" ||
+        route == "/reset" ||
+        route == "/verify" ||
+        route == "/home"; // ⭐ landing page must NOT show sidebar
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
-    // ⭐ AUTH SCREENS → Centered card with max width
-    if (_isAuthScreen()) {
+    // ⭐ AUTH + LANDING → NO SIDEBAR
+    if (_isAuthOrLanding(context)) {
       return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -33,7 +36,7 @@ class AppResponsiveLayout extends StatelessWidget {
       );
     }
 
-    // ⭐ DESKTOP MODE
+    // ⭐ DESKTOP MODE → SIDEBAR + CONTENT
     if (width >= desktopMaxWidth + 200) {
       return Row(
         children: [
@@ -56,14 +59,11 @@ class AppResponsiveLayout extends StatelessWidget {
       );
     }
 
-    // ⭐ MOBILE MODE → FULL WIDTH, MINIMAL PADDING
+    // ⭐ MOBILE MODE → FULL WIDTH
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 4, // ⭐ tighter
-          vertical: 10, // ⭐ tighter
-        ),
-        child: child, // ⭐ no width constraint
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+        child: child,
       ),
     );
   }

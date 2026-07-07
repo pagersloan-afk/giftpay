@@ -99,6 +99,16 @@ flutter:
     - assets/providers/gotv.png
     - assets/providers/startimes.png
     - assets/providers/showmax.png
+    - assets/screens/screen1.png
+    - assets/screens/screen2.png
+    - assets/screens/screen3.png
+    - assets/screens/screen4.png
+    - assets/screens/screen5.png
+    - assets/screens/screen6.png
+    - assets/screens/screen7.png
+    - assets/screens/screen8.png
+    - assets/screens/screen9.png
+    - assets/screens/screen10.png
 
 # ⭐ NATIVE SPLASH CONFIG (MUST BE AT BOTTOM)
 flutter_native_splash:

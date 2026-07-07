@@ -7,14 +7,19 @@ class ProductShowcaseSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 80),
+      // ↓ Reduced vertical padding from 80 → 40
+      padding: const EdgeInsets.symmetric(
+        horizontal: 40,
+        vertical: 40,
+      ), // ADJUSTED
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(40),
+            // ↓ Reduced inner padding from 40 → 28
+            padding: const EdgeInsets.all(28), // ADJUSTED
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(22),
@@ -31,7 +36,7 @@ class ProductShowcaseSection extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 12), // ↓ Reduced from 16 → 12
                 Text(
                   "Compare electricity providers, data bundles, and airtime plans to get the best value.",
                   style: TextStyle(
@@ -40,7 +45,7 @@ class ProductShowcaseSection extends StatelessWidget {
                     height: 1.4,
                   ),
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: 16), // ↓ Reduced from 20 → 16
                 Text(
                   "Compare plans >",
                   style: TextStyle(
