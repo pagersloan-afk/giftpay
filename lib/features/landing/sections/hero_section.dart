@@ -1,213 +1,291 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import '../widgets/phone_showcase_carousel.dart';
 
 class HeroSection extends StatelessWidget {
   const HeroSection({super.key});
 
+  // Greeting logic
   String _getGreeting() {
     final hour = DateTime.now().hour;
-
     if (hour < 12) return "Good morning";
     if (hour < 17) return "Good afternoon";
     return "Good evening";
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 900;
+    final double width = MediaQuery.of(context).size.width;
+
+    final bool isMobile = width < 900;
+    final bool isTablet = width >= 900 && width < 1200;
+    final bool isDesktop = width >= 1200;
 
     return Center(
       child: Container(
         width: double.infinity,
         constraints: const BoxConstraints(maxWidth: 1400),
         padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12 : 20,
-          vertical: isMobile ? 24 : 50,
+          horizontal: isMobile ? 12.0 : 20.0,
+          vertical: isMobile ? 24.0 : 50.0,
         ),
         decoration: const BoxDecoration(
           color: Color.fromARGB(255, 243, 241, 241),
         ),
+
         child: isMobile
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _loginPanel(isMobile),
+                  _loginPanel(true),
                   const SizedBox(height: 28),
-                  _walletPromo(context, isMobile),
+                  _walletPromo(context, true),
                   const SizedBox(height: 28),
-                  _servicesPromo(context, isMobile),
+                  _servicesPromo(context, true),
                   const SizedBox(height: 28),
-                  _phonePreview(isMobile),
+                  _phonePreview(true),
+                ],
+              )
+            : isTablet
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _loginPanel(false)),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _walletPromo(context, false),
+                        const SizedBox(height: 24),
+                        _servicesPromo(context, false),
+                      ],
+                    ),
+                  ),
                 ],
               )
             : Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 1, child: _loginPanel(isMobile)),
+                  Expanded(child: _loginPanel(false)),
                   const SizedBox(width: 40),
                   Expanded(
-                    flex: 1,
                     child: Column(
                       children: [
-                        _walletPromo(context, isMobile),
+                        _walletPromo(context, false),
                         const SizedBox(height: 28),
-                        _servicesPromo(context, isMobile),
+                        _servicesPromo(context, false),
                       ],
                     ),
                   ),
                   const SizedBox(width: 40),
-                  Expanded(flex: 1, child: _phonePreview(isMobile)),
+                  Expanded(child: _phonePreview(false)),
                 ],
               ),
       ),
     );
   }
 
-  // ⭐ COLUMN 1 — LOGIN PANEL
+  // ⭐ LOGIN PANEL
   Widget _loginPanel(bool isMobile) {
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 18 : 28),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _getGreeting(),
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w600,
-              fontSize: isMobile ? 18 : 20,
-              color: Colors.black,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 20),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double maxWidth = constraints.maxWidth;
 
-          TextField(
-            decoration: InputDecoration(
-              labelText: "Username",
-              labelStyle: const TextStyle(color: Colors.black87),
-              border: const OutlineInputBorder(),
-              enabledBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.black38),
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.black),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
-              ),
-            ),
-            style: const TextStyle(color: Colors.black),
-          ),
-          const SizedBox(height: 14),
+        // Extra responsive rules for very small screens
+        final bool isTiny = maxWidth < 350;
 
-          TextField(
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: "Password",
-              labelStyle: const TextStyle(color: Colors.black87),
-              border: const OutlineInputBorder(),
-              enabledBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.black38),
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.black),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
-              ),
-            ),
-            style: const TextStyle(color: Colors.black),
-          ),
-          const SizedBox(height: 14),
-
-          Row(
-            children: [
-              Checkbox(value: false, onChanged: (_) {}),
-              Text(
-                "Save username",
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: isMobile ? 13 : 15,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFB31B1B),
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 26 : 32,
-                    vertical: isMobile ? 14 : 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                child: Text(
-                  "Sign On",
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                    fontSize: isMobile ? 15 : 17,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 26 : 32,
-                    vertical: isMobile ? 14 : 16,
-                  ),
-                  side: const BorderSide(color: Colors.black87),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                child: Text(
-                  "Enroll",
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: isMobile ? 15 : 17,
-                    color: Colors.black,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          Column(
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isTiny ? 12.0 : (isMobile ? 16.0 : 28.0)),
+          decoration: _cardDecoration(),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _link("Forgot username or password?", isMobile),
-              _link("Security Center", isMobile),
-              _link("Privacy, Cookies, and Legal", isMobile),
+              Text(
+                _getGreeting(),
+                style: TextStyle(
+                  fontFamily: 'SegoeUI',
+                  fontWeight: FontWeight.w600,
+                  fontSize: isTiny ? 16.0 : (isMobile ? 18.0 : 20.0),
+                  color: Colors.black,
+                  height: 1.3,
+                ),
+              ),
+
+              SizedBox(height: isTiny ? 14.0 : 20.0),
+
+              // ⭐ TextFields shrink properly now
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: TextField(
+                  decoration: _inputDecoration("Username"),
+                  style: const TextStyle(color: Colors.black),
+                ),
+              ),
+
+              const SizedBox(height: 14.0),
+
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: TextField(
+                  obscureText: true,
+                  decoration: _inputDecoration("Password"),
+                  style: const TextStyle(color: Colors.black),
+                ),
+              ),
+
+              const SizedBox(height: 14.0),
+
+              // ⭐ Checkbox row is now responsive
+              Row(
+                children: [
+                  Checkbox(
+                    value: false,
+                    onChanged: (_) {},
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  Flexible(
+                    child: Text(
+                      "Save username",
+                      style: TextStyle(
+                        fontFamily: 'SegoeUI',
+                        fontSize: isTiny ? 12.0 : (isMobile ? 13.0 : 15.0),
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: isTiny ? 16.0 : 20.0),
+
+              // ⭐ Buttons: stack on mobile, row on desktop
+              isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GiftPayTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 26.0,
+                              vertical: isTiny ? 12.0 : 14.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6.0),
+                            ),
+                          ),
+                          child: Text(
+                            "Sign On",
+                            style: TextStyle(
+                              fontFamily: 'SegoeUI',
+                              fontWeight: FontWeight.w600,
+                              fontSize: isTiny ? 14.0 : 15.0,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12.0),
+
+                        OutlinedButton(
+                          onPressed: () {},
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 26.0,
+                              vertical: isTiny ? 12.0 : 14.0,
+                            ),
+                            side: const BorderSide(color: Colors.black87),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6.0),
+                            ),
+                          ),
+                          child: Text(
+                            "Enroll",
+                            style: TextStyle(
+                              fontFamily: 'SegoeUI',
+                              fontSize: isTiny ? 14.0 : 15.0,
+                              color: Colors.black,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GiftPayTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32.0,
+                              vertical: 16.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6.0),
+                            ),
+                          ),
+                          child: const Text(
+                            "Sign On",
+                            style: TextStyle(
+                              fontFamily: 'SegoeUI',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 17.0,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 14.0),
+
+                        OutlinedButton(
+                          onPressed: () {},
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32.0,
+                              vertical: 16.0,
+                            ),
+                            side: const BorderSide(color: Colors.black87),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6.0),
+                            ),
+                          ),
+                          child: const Text(
+                            "Enroll",
+                            style: TextStyle(
+                              fontFamily: 'SegoeUI',
+                              fontSize: 17.0,
+                              color: Colors.black,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+              SizedBox(height: isTiny ? 16.0 : 20.0),
+
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _link("Forgot username or password?", isMobile),
+                  _link("Security Center", isMobile),
+                  _link("Privacy, Cookies, and Legal", isMobile),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // ⭐ COLUMN 2 — GIFT PAY WALLET PROMO
+  // ⭐ WALLET PROMO
   Widget _walletPromo(BuildContext context, bool isMobile) {
     return Container(
       padding: EdgeInsets.all(isMobile ? 18 : 28),
@@ -218,7 +296,8 @@ class HeroSection extends StatelessWidget {
           Text(
             "Your Digital Wallet, Supercharged",
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'SegoeUI',
+
               fontWeight: FontWeight.w700,
               fontSize: isMobile ? 18 : 20,
               color: Colors.black,
@@ -229,19 +308,20 @@ class HeroSection extends StatelessWidget {
           Text(
             "Fund your wallet instantly, withdraw anytime, and manage all your payments in one secure place.",
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'SegoeUI',
               fontSize: isMobile ? 14 : 15,
               color: Colors.black87,
               height: 1.5,
             ),
           ),
           const SizedBox(height: 20),
+
           ElevatedButton(
             onPressed: () {
               Navigator.pushNamed(context, '/login');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFB31B1B),
+              backgroundColor: GiftPayTheme.primaryBlue,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(
                 horizontal: isMobile ? 30 : 38,
@@ -254,7 +334,7 @@ class HeroSection extends StatelessWidget {
             child: const Text(
               "Open Wallet",
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'SegoeUI',
                 fontWeight: FontWeight.w600,
                 fontSize: 17,
                 letterSpacing: 0.3,
@@ -266,7 +346,7 @@ class HeroSection extends StatelessWidget {
     );
   }
 
-  // ⭐ COLUMN 2 — GIFT PAY SERVICES PROMO
+  // ⭐ SERVICES PROMO
   Widget _servicesPromo(BuildContext context, bool isMobile) {
     return Container(
       padding: EdgeInsets.all(isMobile ? 18 : 28),
@@ -277,7 +357,7 @@ class HeroSection extends StatelessWidget {
           Text(
             "All Your Utilities, One Platform",
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'SegoeUI',
               fontWeight: FontWeight.w700,
               fontSize: isMobile ? 18 : 20,
               color: Colors.black,
@@ -288,17 +368,18 @@ class HeroSection extends StatelessWidget {
           Text(
             "Electricity, Airtime, Data, Gift Cards, TV, Health — fast, reliable, and always available.",
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'SegoeUI',
               fontSize: isMobile ? 14 : 15,
               color: Colors.black87,
               height: 1.5,
             ),
           ),
           const SizedBox(height: 20),
+
           ElevatedButton(
             onPressed: () {},
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFB31B1B),
+              backgroundColor: GiftPayTheme.primaryBlue,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(
                 horizontal: isMobile ? 26 : 32,
@@ -311,7 +392,7 @@ class HeroSection extends StatelessWidget {
             child: const Text(
               "Explore Services",
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'SegoeUI',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
                 letterSpacing: 0.2,
@@ -323,7 +404,7 @@ class HeroSection extends StatelessWidget {
     );
   }
 
-  // ⭐ COLUMN 3 — PHONE PREVIEW (animated screenshots)
+  // ⭐ PHONE PREVIEW
   Widget _phonePreview(bool isMobile) {
     return PhoneShowcaseCarousel(
       screens: [
@@ -342,6 +423,7 @@ class HeroSection extends StatelessWidget {
     );
   }
 
+  // ⭐ Shared Decorations
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: Colors.white,
@@ -356,13 +438,28 @@ class HeroSection extends StatelessWidget {
     );
   }
 
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.black87),
+      border: const OutlineInputBorder(),
+      enabledBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.black38),
+      ),
+      focusedBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.black),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
+
   Widget _link(String text, bool isMobile) {
     return TextButton(
       onPressed: () {},
       child: Text(
         text,
         style: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'SegoeUI',
           fontSize: isMobile ? 13 : 15,
           color: Colors.black87,
           height: 1.4,

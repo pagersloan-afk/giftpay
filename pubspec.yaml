@@ -57,6 +57,9 @@ flutter:
     - assets/3d/glossy_coin.png
     - assets/illustrations/giftpay_box.png
     - assets/illustrations/tech_analytics.png
+    - assets/illustrations/utility_spending.png
+    - assets/illustrations/utility_plan_compare.png
+    - assets/illustrations/business_solutions.png
     - assets/logo/giftpay_box.png
     - assets/sounds/login_success.mp3
     - assets/networks/mtn.png
@@ -109,7 +112,20 @@ flutter:
     - assets/screens/screen8.png
     - assets/screens/screen9.png
     - assets/screens/screen10.png
+    - assets/illustrations/rewards.png
+    - assets/illustrations/travel.png
+    - assets/illustrations/shopping.png
+    - assets/illustrations/bulk_electricity.jpg
+    - assets/illustrations/airtime_distribution.png
+    - assets/illustrations/corporate_data.png
+    - assets/illustrations/business_hero_bg.png
 
+  fonts:
+    - family: SegoeUI
+      fonts:
+        - asset: assets/fonts/segoe/SegoeUI-VF.ttf
+
+        
 # ⭐ NATIVE SPLASH CONFIG (MUST BE AT BOTTOM)
 flutter_native_splash:
   color: "#000000"

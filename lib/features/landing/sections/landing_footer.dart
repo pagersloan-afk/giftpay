@@ -5,11 +5,13 @@ class LandingFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 900;
+    final width = MediaQuery.of(context).size.width;
+    final bool isMobile = width < 900;
+    final bool isTablet = width >= 900 && width < 1200;
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0A0F1F), // ⭐ DARK NIGHT BACKGROUND
+      color: const Color(0xFF0A0F1F),
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? 16 : 32,
         vertical: isMobile ? 40 : 60,
@@ -29,8 +31,8 @@ class LandingFooter extends StatelessWidget {
               : Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(width: 320, child: _regulatoryColumn()),
-                    const SizedBox(width: 60),
+                    SizedBox(width: 300, child: _regulatoryColumn()),
+                    const SizedBox(width: 40),
                     Expanded(child: _columnsWrap(context)),
                   ],
                 ),
@@ -39,7 +41,6 @@ class LandingFooter extends StatelessWidget {
     );
   }
 
-  // ⭐ REGULATORY COLUMN
   Widget _regulatoryColumn() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,14 +49,13 @@ class LandingFooter extends StatelessWidget {
           "GiftPay is operated by Gift Technology Ltd and complies with Nigerian financial regulations. "
           "Deposits and wallet balances are secured using industry‑standard encryption and protected infrastructure.",
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'SegoeUI',
             fontSize: 14,
             color: Colors.white70,
             height: 1.5,
           ),
         ),
         const SizedBox(height: 24),
-
         Row(
           children: [
             _storeButton(Icons.apple, "App Store"),
@@ -71,7 +71,7 @@ class LandingFooter extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF111827), // ⭐ Dark card
+        color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
@@ -82,7 +82,7 @@ class LandingFooter extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'SegoeUI',
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: Colors.white,
@@ -93,11 +93,18 @@ class LandingFooter extends StatelessWidget {
     );
   }
 
-  // ⭐ FOUR COLUMNS
   Widget _columnsWrap(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    final bool isMobile = width < 900;
+    final bool isTablet = width >= 900 && width < 1200;
+
+    final double spacing = isMobile ? 12 : (isTablet ? 20 : 24);
+    final double runSpacing = isMobile ? 20 : 28;
+
     return Wrap(
-      spacing: 40,
-      runSpacing: 40,
+      spacing: spacing,
+      runSpacing: runSpacing,
       children: [
         _column("Products", [
           _item(context, "Electricity", "/"),
@@ -128,22 +135,22 @@ class LandingFooter extends StatelessWidget {
 
   Widget _column(String title, List<Widget> items) {
     return SizedBox(
-      width: 200,
+      width: 180, // ⭐ tightened from 200 → 180
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
             style: const TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'SegoeUI',
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           for (final item in items)
-            Padding(padding: const EdgeInsets.only(bottom: 8), child: item),
+            Padding(padding: const EdgeInsets.only(bottom: 6), child: item),
         ],
       ),
     );
@@ -155,7 +162,7 @@ class LandingFooter extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: 'SegoeUI',
           fontSize: 14,
           color: Colors.white70,
           decoration: TextDecoration.underline,

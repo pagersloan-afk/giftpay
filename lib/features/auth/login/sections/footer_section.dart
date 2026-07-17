@@ -113,7 +113,7 @@ class FooterSection extends StatelessWidget {
 
   Widget _columnsWrap(BuildContext context) {
     return Wrap(
-      spacing: 20, // reduced from 80
+      spacing: 10, // reduced from 80
       runSpacing: 20,
       children: [
         _column("Products", [

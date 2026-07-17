@@ -45,7 +45,7 @@ class PromoSection extends StatelessWidget {
         Text(
           "Fast, Secure & Global Digital Payments",
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'SegoeUI',
             fontWeight: FontWeight.bold,
             fontSize: isMobile ? 22 : 28,
             color: Colors.black,
@@ -55,7 +55,7 @@ class PromoSection extends StatelessWidget {
         Text(
           "Transfer money, fund your wallet, buy utilities, and enjoy instant rewards — all in one place.",
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'SegoeUI',
             fontSize: isMobile ? 13 : 15,
             color: Colors.black54,
           ),
@@ -93,7 +93,7 @@ class PromoSection extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'SegoeUI',
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Colors.black,
@@ -102,7 +102,7 @@ class PromoSection extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'SegoeUI',
             fontSize: 14,
             color: Colors.black54,
           ),

@@ -24,6 +24,12 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
 import 'package:utilityhub/features/landing/landing_page.dart';
+import 'package:utilityhub/features/landing/public_screens/business.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/airtime_distribution_page.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/bulk_electricity_page.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/business_dashboard_page.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/corporate_data_page.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/giftpay_wallet_page.dart';
 import 'package:utilityhub/features/limits/edit_daily_airtime_limit_screen.dart';
 import 'package:utilityhub/features/limits/edit_daily_transfer_limit_screen.dart';
 import 'package:utilityhub/features/limits/limits_screen.dart';
@@ -188,4 +194,13 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/privacy-policy': (_) => wrap(const PrivacyPolicyScreen()),
   '/refund-policy': (_) => wrap(const RefundPolicyScreen()),
   '/refund': (_) => const RefundPolicyScreen(),
+
+  // ⭐ PUBLIC SCREENS
+  '/business': (_) => const BusinessPage(),
+  '/personal': (_) => const LandingPage(),
+  '/bulk-electricity': (_) => const BulkElectricityPage(),
+  '/airtime-distribution': (_) => const AirtimeDistributionPage(),
+  '/corporate-data': (_) => const CorporateDataPage(),
+  '/p-wallet': (_) => const GiftPayWalletPage(),
+  '/business-dashboard': (_) => const BusinessDashboardPage(),
 };
