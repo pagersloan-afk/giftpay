@@ -36,15 +36,14 @@ class ProductShowcaseSection extends StatelessWidget {
             children: [
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final double imgHeight = constraints.maxWidth < 500
-                      ? 120.0
-                      : 180.0;
+                  final double imgHeight = isMobile ? 180.0 : 260.0;
 
                   return SizedBox(
+                    width: double.infinity,
                     height: imgHeight,
                     child: Image.asset(
                       "assets/illustrations/utility_plan_compare.png",
-                      fit: BoxFit.contain,
+                      fit: BoxFit.cover, // ⭐ fills width beautifully
                     ),
                   );
                 },

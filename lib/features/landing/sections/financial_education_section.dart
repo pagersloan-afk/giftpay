@@ -36,19 +36,24 @@ class FinancialEducationSection extends StatelessWidget {
             children: [
               LayoutBuilder(
                 builder: (context, constraints) {
-                  // ⭐ FIX: Fully responsive image height
-                  final double imgHeight = constraints.maxWidth * 0.28;
+                  // ⭐ FIX: Fully responsive image height based on card width
+                  final double imgHeight = constraints.maxWidth * 0.32;
 
                   return ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: 100.0,
-                      maxHeight: isMobile ? 140.0 : 180.0,
+                      minHeight: isMobile
+                          ? 160.0
+                          : 260.0, // ⭐ Increased minimum height
+                      maxHeight: isMobile
+                          ? 220.0
+                          : 380.0, // ⭐ Increased maximum height
                     ),
                     child: SizedBox(
+                      width: double.infinity,
                       height: imgHeight,
                       child: Image.asset(
                         "assets/illustrations/utility_spending.png",
-                        fit: BoxFit.contain,
+                        fit: BoxFit.cover, // ⭐ Fills width beautifully
                       ),
                     ),
                   );

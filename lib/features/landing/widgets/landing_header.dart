@@ -166,8 +166,8 @@ class _LandingHeaderState extends State<LandingHeader> {
               ),
             ),
 
-            _navLink(context, "About", "/about"),
-            _navLink(context, "Contact", "/contact"),
+            _navLink(context, "About", "/about_us"),
+            _navLink(context, "Contact", "/contact_us"),
             const Icon(Icons.search, color: Colors.white, size: 22),
             const SizedBox(width: 20),
             _signInButton(context, isMobile: false),

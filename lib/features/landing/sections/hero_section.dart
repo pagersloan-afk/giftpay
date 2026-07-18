@@ -2,8 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import '../widgets/phone_showcase_carousel.dart';
 
-class HeroSection extends StatelessWidget {
+class HeroSection extends StatefulWidget {
   const HeroSection({super.key});
+
+  @override
+  State<HeroSection> createState() => _HeroSectionState();
+}
+
+class _HeroSectionState extends State<HeroSection>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ⭐ Smooth Stripe-style animation (12 seconds loop)
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   // Greeting logic
   String _getGreeting() {
@@ -14,7 +39,6 @@ class HeroSection extends StatelessWidget {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width;
 
@@ -22,66 +46,87 @@ class HeroSection extends StatelessWidget {
     final bool isTablet = width >= 900 && width < 1200;
     final bool isDesktop = width >= 1200;
 
-    return Center(
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 1400),
-        padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12.0 : 20.0,
-          vertical: isMobile ? 24.0 : 50.0,
-        ),
-        decoration: const BoxDecoration(
-          color: Color.fromARGB(255, 243, 241, 241),
-        ),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // ⭐ Stripe-style animated gradient movement
+        final alignmentShift = _controller.value * 0.6;
 
-        child: isMobile
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _loginPanel(true),
-                  const SizedBox(height: 28),
-                  _walletPromo(context, true),
-                  const SizedBox(height: 28),
-                  _servicesPromo(context, true),
-                  const SizedBox(height: 28),
-                  _phonePreview(true),
-                ],
-              )
-            : isTablet
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _loginPanel(false)),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _walletPromo(context, false),
-                        const SizedBox(height: 24),
-                        _servicesPromo(context, false),
-                      ],
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment(-1 + alignmentShift, -1),
+              end: Alignment(1, 1 - alignmentShift),
+              colors: [
+                GiftPayTheme.primaryBlue.withOpacity(0.25),
+                const Color.fromARGB(255, 243, 241, 241),
+                GiftPayTheme.primaryBlue.withOpacity(0.15),
+              ],
+            ),
+          ),
+          child: child,
+        );
+      },
+      child: Center(
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(maxWidth: 1400),
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 12.0 : 20.0,
+            vertical: isMobile ? 24.0 : 50.0,
+          ),
+
+          // ⭐ Your existing hero layout preserved
+          child: isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _loginPanel(true),
+                    const SizedBox(height: 28),
+                    _walletPromo(context, true),
+                    const SizedBox(height: 28),
+                    _servicesPromo(context, true),
+                    const SizedBox(height: 28),
+                    _phonePreview(true),
+                  ],
+                )
+              : isTablet
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _loginPanel(false)),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _walletPromo(context, false),
+                          const SizedBox(height: 24),
+                          _servicesPromo(context, false),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              )
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _loginPanel(false)),
-                  const SizedBox(width: 40),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _walletPromo(context, false),
-                        const SizedBox(height: 28),
-                        _servicesPromo(context, false),
-                      ],
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _loginPanel(false)),
+                    const SizedBox(width: 40),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _walletPromo(context, false),
+                          const SizedBox(height: 28),
+                          _servicesPromo(context, false),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 40),
-                  Expanded(child: _phonePreview(false)),
-                ],
-              ),
+                    const SizedBox(width: 40),
+                    Expanded(child: _phonePreview(false)),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -91,8 +136,6 @@ class HeroSection extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final double maxWidth = constraints.maxWidth;
-
-        // Extra responsive rules for very small screens
         final bool isTiny = maxWidth < 350;
 
         return Container(
@@ -115,7 +158,6 @@ class HeroSection extends StatelessWidget {
 
               SizedBox(height: isTiny ? 14.0 : 20.0),
 
-              // ⭐ TextFields shrink properly now
               ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxWidth),
                 child: TextField(
@@ -137,7 +179,6 @@ class HeroSection extends StatelessWidget {
 
               const SizedBox(height: 14.0),
 
-              // ⭐ Checkbox row is now responsive
               Row(
                 children: [
                   Checkbox(
@@ -160,7 +201,6 @@ class HeroSection extends StatelessWidget {
 
               SizedBox(height: isTiny ? 16.0 : 20.0),
 
-              // ⭐ Buttons: stack on mobile, row on desktop
               isMobile
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -297,7 +337,6 @@ class HeroSection extends StatelessWidget {
             "Your Digital Wallet, Supercharged",
             style: TextStyle(
               fontFamily: 'SegoeUI',
-
               fontWeight: FontWeight.w700,
               fontSize: isMobile ? 18 : 20,
               color: Colors.black,

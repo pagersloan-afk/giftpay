@@ -2,33 +2,25 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-// ⭐ LANDING HEADER + FOOTER
-import 'widgets/landing_header.dart';
+// ⭐ Shared Landing Header + Footer
+import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 import 'package:utilityhub/features/landing/sections/landing_footer.dart';
 
-// ⭐ LANDING SECTIONS
-import 'sections/hero_section.dart';
-import 'sections/feature_cards_section.dart';
-import 'sections/financial_business_showcase_row.dart';
-import 'sections/app_showcase_section.dart';
-import 'sections/lifestyle_benefits_section.dart';
-import 'sections/pricing_section.dart';
-import 'sections/product_showcase_section.dart';
+// ⭐ Landing Responsive Layout
+import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
 
-// ⭐ NEW PARENT CARD
-import 'widgets/parent_overlay_card.dart';
+// ⭐ GiftPay About Sections
+import 'package:utilityhub/features/landing/public_screens/about/section/section_1.dart';
+import 'package:utilityhub/features/landing/public_screens/about/section/section_2.dart';
 
-// ⭐ NEW LANDING RESPONSIVE LAYOUT
-import 'widgets/landing_responsive_layout.dart';
-
-class LandingPage extends StatefulWidget {
-  const LandingPage({super.key});
+class AboutPage extends StatefulWidget {
+  const AboutPage({super.key});
 
   @override
-  State<LandingPage> createState() => _LandingPageState();
+  State<AboutPage> createState() => _AboutPageState();
 }
 
-class _LandingPageState extends State<LandingPage>
+class _AboutPageState extends State<AboutPage>
     with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   double _scrollOffset = 0;
@@ -93,22 +85,28 @@ class _LandingPageState extends State<LandingPage>
                 // ⭐ Floating particles
                 _buildParticlesLayer(t),
 
-                // ⭐ Main content
+                // ⭐ Main content (unchanged)
                 LandingResponsiveLayout(
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     child: Column(
                       children: const [
-                        HeroSection(),
+                        SizedBox(height: 40),
 
-                        ParentOverlayCard(child: FeatureCardsSection()),
-                        ParentOverlayCard(
-                          child: FinancialBusinessShowcaseRow(),
-                        ),
-                        ParentOverlayCard(child: AppShowcaseSection()),
-                        ParentOverlayCard(child: LifestyleBenefitsSection()),
-                        ParentOverlayCard(child: PricingSection()),
-                        ParentOverlayCard(child: ProductShowcaseSection()),
+                        HeroMarqueeSection(),
+                        SizedBox(height: 40),
+
+                        ThreeCardSection(),
+                        SizedBox(height: 40),
+
+                        CareerPromoSection(),
+                        SizedBox(height: 40),
+
+                        AdditionalCardsSection(),
+                        SizedBox(height: 40),
+
+                        HistorySection(),
+                        SizedBox(height: 40),
 
                         LandingFooter(),
                       ],

@@ -24,11 +24,15 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
 import 'package:utilityhub/features/landing/landing_page.dart';
+import 'package:utilityhub/features/landing/public_screens/about/about.dart';
 import 'package:utilityhub/features/landing/public_screens/business.dart';
+import 'package:utilityhub/features/landing/public_screens/contact/contact_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/airtime_distribution_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/bulk_electricity_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/business_dashboard_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/corporate_data_page.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/giftpay_api_page.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/giftpay_personal_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/giftpay_wallet_page.dart';
 import 'package:utilityhub/features/limits/edit_daily_airtime_limit_screen.dart';
 import 'package:utilityhub/features/limits/edit_daily_transfer_limit_screen.dart';
@@ -203,4 +207,8 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/corporate-data': (_) => const CorporateDataPage(),
   '/p-wallet': (_) => const GiftPayWalletPage(),
   '/business-dashboard': (_) => const BusinessDashboardPage(),
+  '/contact_us': (_) => const ContactPage(),
+  '/about_us': (_) => const AboutPage(),
+  '/personal-home': (_) => const GiftPayPersonalPage(),
+  '/api': (_) => const GiftPayApiPage(),
 };

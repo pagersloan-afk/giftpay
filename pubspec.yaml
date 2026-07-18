@@ -119,6 +119,15 @@ flutter:
     - assets/illustrations/airtime_distribution.png
     - assets/illustrations/corporate_data.png
     - assets/illustrations/business_hero_bg.png
+    - assets/images/contact.png
+    - assets/images/about-hero-lg.png
+    - assets/icons/card-investor-relations.png
+    - assets/icons/card-leadership.png
+    - assets/icons/card-accessibility.png
+    - assets/icons/responsibility-icon.png
+    - assets/icons/news-icon.png
+    - assets/icons/stories-icon.png
+    - assets/icons/career-promo.png
 
   fonts:
     - family: SegoeUI

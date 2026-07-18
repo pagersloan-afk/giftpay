@@ -1,118 +1,109 @@
 import 'package:flutter/material.dart';
 
+// ⭐ Shared Landing Header + Footer
+import 'package:utilityhub/features/landing/widgets/landing_header.dart';
+import 'package:utilityhub/features/landing/sections/landing_footer.dart';
+
+// ⭐ Landing Responsive Layout
+import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
+
+// ⭐ Modular Sections
+import 'package:utilityhub/features/landing/public_screens/products/screens/sections/giftpay_api/giftpay_api_hero_section.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/sections/giftpay_api/giftpay_api_features_section.dart';
+import 'package:utilityhub/features/landing/public_screens/products/screens/sections/giftpay_api/giftpay_api_cta_section.dart';
+
 class GiftPayApiPage extends StatelessWidget {
   const GiftPayApiPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 700;
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+      backgroundColor: const Color(0xFFF9F9F9),
+      appBar: const LandingHeader(),
+
+      body: LandingResponsiveLayout(
         child: Column(
           children: [
-            _heroSection(isMobile),
+            const AnimatedSection(child: GiftPayApiHeroSection()),
             const SizedBox(height: 40),
-            _featuresSection(),
+
+            const AnimatedSection(child: GiftPayApiFeaturesSection()),
             const SizedBox(height: 40),
-            _ctaSection(context),
+
+            const AnimatedSection(child: GiftPayApiCTASection()),
+            const SizedBox(height: 40),
+
+            const LandingFooter(),
           ],
         ),
       ),
     );
   }
-
-  Widget _heroSection(bool isMobile) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 60,
-        vertical: isMobile ? 40 : 80,
-      ),
-      decoration: const BoxDecoration(color: Color.fromARGB(255, 39, 61, 104)),
-      child: Column(
-        crossAxisAlignment: isMobile
-            ? CrossAxisAlignment.center
-            : CrossAxisAlignment.start,
-        children: const [
-          Text(
-            "GiftPay API",
-            style: TextStyle(
-              fontFamily: 'SegoeUI',
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: 20),
-          Text(
-            "Integrate electricity, airtime, and data automation directly into your apps and platforms.",
-            style: TextStyle(
-              fontFamily: 'SegoeUI',
-              fontSize: 18,
-              color: Colors.white70,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _featuresSection() {
-    return Column(
-      children: const [
-        Text(
-          "API Capabilities",
-          style: TextStyle(
-            fontFamily: 'SegoeUI',
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Color.fromARGB(255, 39, 61, 104),
-          ),
-        ),
-        SizedBox(height: 20),
-        _FeatureItem("Electricity token generation API"),
-        _FeatureItem("Airtime top‑up API"),
-        _FeatureItem("Data bundle purchase API"),
-        _FeatureItem("Wallet debit/credit API"),
-        _FeatureItem("Webhook notifications for all transactions"),
-        _FeatureItem("Enterprise‑grade authentication & security"),
-      ],
-    );
-  }
-
-  Widget _ctaSection(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color.fromARGB(255, 39, 61, 104),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-        shape: const StadiumBorder(),
-      ),
-      onPressed: () => Navigator.pushNamed(context, '/api-docs'),
-      child: const Text(
-        "View API Documentation",
-        style: TextStyle(fontFamily: 'SegoeUI', fontSize: 18),
-      ),
-    );
-  }
 }
 
-class _FeatureItem extends StatelessWidget {
-  final String text;
-  const _FeatureItem(this.text);
+// ⭐ Reusable Luxury Animation Wrapper
+class AnimatedSection extends StatefulWidget {
+  final Widget child;
+  const AnimatedSection({super.key, required this.child});
+
+  @override
+  State<AnimatedSection> createState() => _AnimatedSectionState();
+}
+
+class _AnimatedSectionState extends State<AnimatedSection>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _fade = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        "• $text",
-        style: const TextStyle(
-          fontFamily: 'SegoeUI',
-          fontSize: 18,
-          color: Colors.black87,
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.06),
+                blurRadius: 40,
+                spreadRadius: 4,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: widget.child,
         ),
       ),
     );

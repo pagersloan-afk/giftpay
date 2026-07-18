@@ -1,34 +1,27 @@
-import 'dart:math' as math;
-import 'dart:ui';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
-// ⭐ LANDING HEADER + FOOTER
-import 'widgets/landing_header.dart';
+// ⭐ Shared Landing Header + Footer
+import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 import 'package:utilityhub/features/landing/sections/landing_footer.dart';
 
-// ⭐ LANDING SECTIONS
-import 'sections/hero_section.dart';
-import 'sections/feature_cards_section.dart';
-import 'sections/financial_business_showcase_row.dart';
-import 'sections/app_showcase_section.dart';
-import 'sections/lifestyle_benefits_section.dart';
-import 'sections/pricing_section.dart';
-import 'sections/product_showcase_section.dart';
+// ⭐ Landing Responsive Layout
+import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
 
-// ⭐ NEW PARENT CARD
-import 'widgets/parent_overlay_card.dart';
+// ⭐ GiftPay Contact Sections
+import 'package:utilityhub/features/landing/public_screens/contact/section/contact_hero_section.dart';
+import 'package:utilityhub/features/landing/public_screens/contact/section/contact_form_section.dart';
+import 'package:utilityhub/features/landing/public_screens/contact/section/contact_location_section.dart';
 
-// ⭐ NEW LANDING RESPONSIVE LAYOUT
-import 'widgets/landing_responsive_layout.dart';
-
-class LandingPage extends StatefulWidget {
-  const LandingPage({super.key});
+class ContactPage extends StatefulWidget {
+  const ContactPage({super.key});
 
   @override
-  State<LandingPage> createState() => _LandingPageState();
+  State<ContactPage> createState() => _ContactPageState();
 }
 
-class _LandingPageState extends State<LandingPage>
+class _ContactPageState extends State<ContactPage>
     with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   double _scrollOffset = 0;
@@ -65,7 +58,6 @@ class _LandingPageState extends State<LandingPage>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const LandingHeader(),
-
       body: AnimatedBuilder(
         animation: _animController,
         builder: (context, child) {
@@ -78,38 +70,33 @@ class _LandingPageState extends State<LandingPage>
                 begin: Alignment(-1 + parallaxShift, -1),
                 end: Alignment(1, 1 - parallaxShift),
                 colors: [
-                  const Color(0xFF273D68).withOpacity(0.95), // GiftPay navy
+                  const Color(0xFF273D68).withOpacity(0.95), // deep navy
                   const Color(0xFF4A6BB8).withOpacity(0.85), // soft blue
                   const Color(0xFFF9F9F9).withOpacity(0.95), // light gray
                 ],
               ),
             ),
-
             child: Stack(
               children: [
-                // ⭐ Soft glow pulses
+                // ⭐ Soft glow pulses (background blobs)
                 _buildGlowLayer(t),
 
                 // ⭐ Floating particles
                 _buildParticlesLayer(t),
 
-                // ⭐ Main content
+                // ⭐ Main content with responsive layout
                 LandingResponsiveLayout(
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     child: Column(
                       children: const [
-                        HeroSection(),
-
-                        ParentOverlayCard(child: FeatureCardsSection()),
-                        ParentOverlayCard(
-                          child: FinancialBusinessShowcaseRow(),
-                        ),
-                        ParentOverlayCard(child: AppShowcaseSection()),
-                        ParentOverlayCard(child: LifestyleBenefitsSection()),
-                        ParentOverlayCard(child: PricingSection()),
-                        ParentOverlayCard(child: ProductShowcaseSection()),
-
+                        SizedBox(height: 40),
+                        ContactHeroSection(),
+                        SizedBox(height: 40),
+                        ContactFormSection(),
+                        SizedBox(height: 40),
+                        ContactLocationSection(),
+                        SizedBox(height: 40),
                         LandingFooter(),
                       ],
                     ),
@@ -125,7 +112,7 @@ class _LandingPageState extends State<LandingPage>
 
   // ⭐ Soft glow pulses layer
   Widget _buildGlowLayer(double t) {
-    final double glowShift = (0.5 + 0.5 * math.sin(2 * math.pi * t));
+    final double glowShift = (0.5 + 0.5 * (sin(2 * 3.1415 * t)));
 
     return IgnorePointer(
       child: CustomPaint(
@@ -185,8 +172,9 @@ class _ParticlesPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.35);
+    final paint = Paint()..color = const Color(0xFFFFFFFF).withOpacity(0.35);
 
+    // Simple parametric particle positions
     for (int i = 0; i < 18; i++) {
       final double progress = (t + i * 0.05) % 1.0;
       final double x = size.width * (0.1 + 0.8 * (i / 18));
