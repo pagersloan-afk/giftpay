@@ -147,15 +147,15 @@ class LandingFooter extends StatelessWidget {
         _column("Products", [
           _item(context, "Electricity", "/bulk-electricity"),
           _item(context, "Airtime & Data", "/airtime-distribution"),
-          _item(context, "Gift Cards", "/"),
-          _item(context, "Rewards", "/"),
+          _item(context, "Gift Cards", "/gift-cards"),
+          _item(context, "Rewards", "/rewards"),
           _item(context, "Business", "/business"),
         ]),
         _column("Company", [
           _item(context, "About GiftPay", "/about_us"),
-          _item(context, "Careers", "/"),
-          _item(context, "Press", "/"),
-          _item(context, "Security", "/"),
+          _item(context, "Careers", "/careers"),
+          _item(context, "Press", "/press"),
+          _item(context, "Security", "/security"),
         ]),
         _column("Support", [
           _item(context, "Help Center", "/help-center"),

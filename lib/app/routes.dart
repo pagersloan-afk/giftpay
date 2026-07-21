@@ -24,9 +24,12 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
 import 'package:utilityhub/features/landing/landing_page.dart';
+import 'package:utilityhub/features/landing/public_screens/Careers/careers.dart';
 import 'package:utilityhub/features/landing/public_screens/about/about.dart';
 import 'package:utilityhub/features/landing/public_screens/business.dart';
 import 'package:utilityhub/features/landing/public_screens/contact/contact_page.dart';
+import 'package:utilityhub/features/landing/public_screens/giftcards/giftcards.dart';
+import 'package:utilityhub/features/landing/public_screens/press/press.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/airtime_distribution_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/bulk_electricity_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/business_dashboard_page.dart';
@@ -34,6 +37,8 @@ import 'package:utilityhub/features/landing/public_screens/products/screens/corp
 import 'package:utilityhub/features/landing/public_screens/products/screens/giftpay_api_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/giftpay_personal_page.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/giftpay_wallet_page.dart';
+import 'package:utilityhub/features/landing/public_screens/rewards/rewards.dart';
+import 'package:utilityhub/features/landing/public_screens/security/security.dart';
 import 'package:utilityhub/features/limits/edit_daily_airtime_limit_screen.dart';
 import 'package:utilityhub/features/limits/edit_daily_transfer_limit_screen.dart';
 import 'package:utilityhub/features/limits/limits_screen.dart';
@@ -211,4 +216,9 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/about_us': (_) => const AboutPage(),
   '/personal-home': (_) => const GiftPayPersonalPage(),
   '/api': (_) => const GiftPayApiPage(),
+  '/careers': (_) => const CareersPage(),
+  '/press': (_) => const PressPage(),
+  '/security': (_) => const SecurityPage(),
+  '/gift-cards': (_) => const GiftCardsPage(),
+  '/rewards': (_) => const RewardsPage(),
 };
