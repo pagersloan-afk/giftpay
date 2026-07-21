@@ -11,36 +11,73 @@ class LandingFooter extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0A0F1F),
+
+      // ⭐ Full‑bleed luxury gradient (no gaps)
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0A0F1F), // deep navy
+            Color(0xFF111827), // darker blue-gray
+          ],
+        ),
+      ),
+
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? 16 : 32,
         vertical: isMobile ? 40 : 60,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1400),
-          child: isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _regulatoryColumn(),
-                    const SizedBox(height: 40),
-                    _columnsWrap(context),
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(width: 300, child: _regulatoryColumn()),
-                    const SizedBox(width: 40),
-                    Expanded(child: _columnsWrap(context)),
-                  ],
-                ),
-        ),
+
+      child: Column(
+        children: [
+          // ⭐ Constrain ONLY the inner content, not the footer background
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1400),
+            child: isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _regulatoryColumn(),
+                      const SizedBox(height: 40),
+                      _columnsWrap(context),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 300, child: _regulatoryColumn()),
+                      const SizedBox(width: 40),
+                      Expanded(child: _columnsWrap(context)),
+                    ],
+                  ),
+          ),
+
+          const SizedBox(height: 40),
+
+          // ⭐ Thin luxury divider
+          Container(
+            height: 1,
+            width: double.infinity,
+            color: Colors.white.withOpacity(0.08),
+          ),
+
+          const SizedBox(height: 20),
+
+          Text(
+            "© 2026 GiftPay. All rights reserved.",
+            style: TextStyle(
+              fontFamily: 'SegoeUI',
+              fontSize: isMobile ? 12 : 13,
+              color: Colors.white.withOpacity(0.55),
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  // ⭐ Regulatory column
   Widget _regulatoryColumn() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,6 +104,7 @@ class LandingFooter extends StatelessWidget {
     );
   }
 
+  // ⭐ Store button
   Widget _storeButton(IconData icon, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -93,9 +131,9 @@ class LandingFooter extends StatelessWidget {
     );
   }
 
+  // ⭐ Columns wrapper
   Widget _columnsWrap(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-
     final bool isMobile = width < 900;
     final bool isTablet = width >= 900 && width < 1200;
 
@@ -107,21 +145,21 @@ class LandingFooter extends StatelessWidget {
       runSpacing: runSpacing,
       children: [
         _column("Products", [
-          _item(context, "Electricity", "/"),
-          _item(context, "Airtime & Data", "/"),
+          _item(context, "Electricity", "/bulk-electricity"),
+          _item(context, "Airtime & Data", "/airtime-distribution"),
           _item(context, "Gift Cards", "/"),
           _item(context, "Rewards", "/"),
           _item(context, "Business", "/business"),
         ]),
         _column("Company", [
-          _item(context, "About GiftPay", "/about"),
+          _item(context, "About GiftPay", "/about_us"),
           _item(context, "Careers", "/"),
           _item(context, "Press", "/"),
           _item(context, "Security", "/"),
         ]),
         _column("Support", [
           _item(context, "Help Center", "/help-center"),
-          _item(context, "Contact Us", "/contact"),
+          _item(context, "Contact Us", "/contact_us"),
           _item(context, "FAQs", "/faqs"),
         ]),
         _column("Legal", [
@@ -133,9 +171,10 @@ class LandingFooter extends StatelessWidget {
     );
   }
 
+  // ⭐ Column
   Widget _column(String title, List<Widget> items) {
     return SizedBox(
-      width: 180, // ⭐ tightened from 200 → 180
+      width: 180,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -156,6 +195,7 @@ class LandingFooter extends StatelessWidget {
     );
   }
 
+  // ⭐ Footer link item
   Widget _item(BuildContext context, String label, String route) {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, route),

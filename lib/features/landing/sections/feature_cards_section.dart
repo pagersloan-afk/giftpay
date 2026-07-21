@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+// 🔵 Luxury Feature Cards Section (No Fade Animations)
 class FeatureCardsSection extends StatefulWidget {
   const FeatureCardsSection({super.key});
 
@@ -11,7 +12,26 @@ class FeatureCardsSection extends StatefulWidget {
 class _FeatureCardsSectionState extends State<FeatureCardsSection> {
   final ScrollController _scrollController = ScrollController();
 
-  // ⭐ All services from your ServicesScreen (public‑facing only)
+  double parallaxShift = 0.0;
+  Timer? _timer;
+
+  // ⭐ Representative colors for each icon
+  final Map<String, Color> iconColors = {
+    "Electricity": Colors.amber,
+    "Airtime": Colors.blueAccent,
+    "Data": Colors.green,
+    "Gift Cards": Colors.purple,
+    "Cable TV": Colors.redAccent,
+    "Betting": Colors.orange,
+    "Gaming": Colors.deepPurple,
+    "Utilities": Colors.teal,
+    "Health": Colors.red,
+    "Savings": Colors.indigo,
+    "Aviation": Colors.blueAccent,
+    "Ride Booking": const Color.fromARGB(255, 248, 199, 75),
+  };
+
+  // ⭐ All services
   final List<Map<String, dynamic>> services = [
     {
       "title": "Electricity",
@@ -44,6 +64,19 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
       "route": "/cable",
     },
     {
+      "title": "Aviation",
+      "subtitle": "Book flights instantly — local & international.",
+      "icon": Icons.flight_takeoff,
+      "route": "/aviation",
+    },
+    {
+      "title": "Ride Booking",
+      "subtitle": "Book Bolt & Uber rides instantly from GiftPay.",
+      "icon": Icons.local_taxi,
+      "route": "/rides",
+    },
+
+    {
       "title": "Betting",
       "subtitle": "Fund all betting platforms.",
       "icon": Icons.sports_soccer,
@@ -75,23 +108,28 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
     },
   ];
 
-  Timer? _timer;
-
   @override
   void initState() {
     super.initState();
 
-    // ⭐ Auto‑scroll every 30ms (slower + smoother)
-    _timer = Timer.periodic(const Duration(milliseconds: 30), (_) {
+    // ⭐ Parallax listener
+    _scrollController.addListener(() {
+      setState(() {
+        parallaxShift = (_scrollController.offset / 300).clamp(0, 1);
+      });
+    });
+
+    // ⭐ Faster + smoother auto-scroll
+    _timer = Timer.periodic(const Duration(milliseconds: 22), (_) {
       if (!_scrollController.hasClients) return;
 
       final max = _scrollController.position.maxScrollExtent;
       final current = _scrollController.offset;
 
       if (current >= max) {
-        _scrollController.jumpTo(0); // loop
+        _scrollController.jumpTo(0);
       } else {
-        _scrollController.jumpTo(current + 0.7); // slower movement
+        _scrollController.jumpTo(current + 1.1);
       }
     });
   }
@@ -115,7 +153,20 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
           horizontal: isMobile ? 12 : 16,
           vertical: isMobile ? 20 : 32,
         ),
-        color: const Color(0xFFF9F9F9),
+
+        // ⭐ Stronger luxury gradient (no fade animation)
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment(-1 + parallaxShift, -1),
+            end: Alignment(1, 1 - parallaxShift),
+            colors: [
+              Colors.white.withOpacity(0.90),
+              const Color(0xFF273D68).withOpacity(0.85),
+              const Color(0xFF4A6BB8).withOpacity(0.75),
+              const Color(0xFFE8E8E8).withOpacity(0.70),
+            ],
+          ),
+        ),
 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,23 +186,23 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
               ),
             ),
 
-            // ⭐ Parent overlay card
+            // ⭐ Parent overlay card (stronger elevation)
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withOpacity(0.92),
+                borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
 
               child: SizedBox(
-                height: isMobile ? 130 : 150,
+                height: isMobile ? 140 : 160,
                 child: ListView.builder(
                   controller: _scrollController,
                   scrollDirection: Axis.horizontal,
@@ -160,7 +211,7 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
                   itemBuilder: (context, index) {
                     final s = services[index];
                     return Padding(
-                      padding: const EdgeInsets.only(right: 16),
+                      padding: const EdgeInsets.only(right: 18),
                       child: _serviceCard(
                         icon: s["icon"],
                         title: s["title"],
@@ -179,7 +230,7 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
     );
   }
 
-  // ⭐ Individual service card (reduced height + tighter spacing)
+  // ⭐ Individual service card (stronger standout)
   Widget _serviceCard({
     required IconData icon,
     required String title,
@@ -190,45 +241,46 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, route),
       child: Container(
-        width: isMobile ? 150 : 180, // ⭐ smaller width
-        padding: const EdgeInsets.all(14), // ⭐ reduced padding
+        width: isMobile ? 150 : 180,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10), // ⭐ smaller radius
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              size: 30,
-              color: const Color.fromARGB(255, 39, 61, 104),
-            ), // ⭐ smaller icon
-            const SizedBox(height: 10),
+            // ⭐ Icon now uses its representative color
+            Icon(icon, size: 34, color: iconColors[title] ?? Colors.black87),
+
+            const SizedBox(height: 12),
+
             Text(
               title,
               style: TextStyle(
                 fontFamily: 'SegoeUI',
-                fontSize: isMobile ? 14 : 15, // ⭐ reduced font
+                fontSize: isMobile ? 15 : 16,
                 fontWeight: FontWeight.w700,
                 color: Colors.black,
               ),
             ),
-            const SizedBox(height: 4),
+
+            const SizedBox(height: 6),
+
             Text(
               subtitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: 'SegoeUI',
-                fontSize: isMobile ? 11 : 12, // ⭐ reduced font
+                fontSize: isMobile ? 12 : 13,
                 color: Colors.black54,
                 height: 1.3,
               ),

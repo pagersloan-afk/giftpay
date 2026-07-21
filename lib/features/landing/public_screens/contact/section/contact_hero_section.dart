@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/core/theme/giftpay_theme.dart';
 
 // 🔵 GiftPay Contact Hero Banner
 class ContactHeroSection extends StatelessWidget {
@@ -65,9 +66,19 @@ class ContactHeroSection extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0033CC),
+                  // ✅ Uniform color from GiftPayTheme
+                  backgroundColor: GiftPayTheme.primaryBlue,
                   foregroundColor: Colors.white,
+
+                  // ✅ Keep your current measurements
                   padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 child: const Text(
                   "Start the conversation",

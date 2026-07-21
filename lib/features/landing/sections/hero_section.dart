@@ -138,187 +138,184 @@ class _HeroSectionState extends State<HeroSection>
         final double maxWidth = constraints.maxWidth;
         final bool isTiny = maxWidth < 350;
 
-        return Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(isTiny ? 12.0 : (isMobile ? 16.0 : 28.0)),
-          decoration: _cardDecoration(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _getGreeting(),
-                style: TextStyle(
-                  fontFamily: 'SegoeUI',
-                  fontWeight: FontWeight.w600,
-                  fontSize: isTiny ? 16.0 : (isMobile ? 18.0 : 20.0),
-                  color: Colors.black,
-                  height: 1.3,
-                ),
-              ),
-
-              SizedBox(height: isTiny ? 14.0 : 20.0),
-
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                child: TextField(
-                  decoration: _inputDecoration("Username"),
-                  style: const TextStyle(color: Colors.black),
-                ),
-              ),
-
-              const SizedBox(height: 14.0),
-
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                child: TextField(
-                  obscureText: true,
-                  decoration: _inputDecoration("Password"),
-                  style: const TextStyle(color: Colors.black),
-                ),
-              ),
-
-              const SizedBox(height: 14.0),
-
-              Row(
-                children: [
-                  Checkbox(
-                    value: false,
-                    onChanged: (_) {},
-                    visualDensity: VisualDensity.compact,
+        return AnimatedLiftCard(
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(isTiny ? 12.0 : (isMobile ? 16.0 : 28.0)),
+            decoration: _cardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getGreeting(),
+                  style: TextStyle(
+                    fontFamily: 'SegoeUI',
+                    fontWeight: FontWeight.w700,
+                    fontSize: isTiny ? 18.0 : (isMobile ? 20.0 : 22.0),
+                    color: Colors.black87,
                   ),
-                  Flexible(
-                    child: Text(
-                      "Save username",
-                      style: TextStyle(
-                        fontFamily: 'SegoeUI',
-                        fontSize: isTiny ? 12.0 : (isMobile ? 13.0 : 15.0),
-                        color: Colors.black,
+                ),
+
+                SizedBox(height: isTiny ? 14.0 : 20.0),
+
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: TextField(
+                    decoration: _inputDecoration("Username"),
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                ),
+
+                const SizedBox(height: 14.0),
+
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: TextField(
+                    obscureText: true,
+                    decoration: _inputDecoration("Password"),
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                ),
+
+                const SizedBox(height: 14.0),
+
+                Row(
+                  children: [
+                    Checkbox(
+                      value: false,
+                      onChanged: (_) {},
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    Flexible(
+                      child: Text(
+                        "Save username",
+                        style: TextStyle(
+                          fontFamily: 'SegoeUI',
+                          fontSize: isTiny ? 12.0 : (isMobile ? 13.0 : 15.0),
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
-              SizedBox(height: isTiny ? 16.0 : 20.0),
+                SizedBox(height: isTiny ? 16.0 : 20.0),
 
-              isMobile
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: GiftPayTheme.primaryBlue,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 26.0,
-                              vertical: isTiny ? 12.0 : 14.0,
+                isMobile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: GiftPayTheme.primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 26.0,
+                                vertical: isTiny ? 12.0 : 14.0,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6.0),
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6.0),
+                            child: Text(
+                              "Sign On",
+                              style: TextStyle(
+                                fontFamily: 'SegoeUI',
+                                fontWeight: FontWeight.w600,
+                                fontSize: isTiny ? 14.0 : 15.0,
+                              ),
                             ),
                           ),
-                          child: Text(
-                            "Sign On",
-                            style: TextStyle(
-                              fontFamily: 'SegoeUI',
-                              fontWeight: FontWeight.w600,
-                              fontSize: isTiny ? 14.0 : 15.0,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ),
 
-                        const SizedBox(height: 12.0),
+                          const SizedBox(height: 12.0),
 
-                        OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 26.0,
-                              vertical: isTiny ? 12.0 : 14.0,
+                          OutlinedButton(
+                            onPressed: () {},
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 26.0,
+                                vertical: isTiny ? 12.0 : 14.0,
+                              ),
+                              side: const BorderSide(color: Colors.black87),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6.0),
+                              ),
                             ),
-                            side: const BorderSide(color: Colors.black87),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6.0),
-                            ),
-                          ),
-                          child: Text(
-                            "Enroll",
-                            style: TextStyle(
-                              fontFamily: 'SegoeUI',
-                              fontSize: isTiny ? 14.0 : 15.0,
-                              color: Colors.black,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: GiftPayTheme.primaryBlue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32.0,
-                              vertical: 16.0,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6.0),
+                            child: Text(
+                              "Enroll",
+                              style: TextStyle(
+                                fontFamily: 'SegoeUI',
+                                fontSize: isTiny ? 14.0 : 15.0,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
-                          child: const Text(
-                            "Sign On",
-                            style: TextStyle(
-                              fontFamily: 'SegoeUI',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 17.0,
-                              letterSpacing: 0.2,
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: GiftPayTheme.primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32.0,
+                                vertical: 16.0,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6.0),
+                              ),
+                            ),
+                            child: const Text(
+                              "Sign On",
+                              style: TextStyle(
+                                fontFamily: 'SegoeUI',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 17.0,
+                              ),
                             ),
                           ),
-                        ),
 
-                        const SizedBox(width: 14.0),
+                          const SizedBox(width: 14.0),
 
-                        OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32.0,
-                              vertical: 16.0,
+                          OutlinedButton(
+                            onPressed: () {},
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32.0,
+                                vertical: 16.0,
+                              ),
+                              side: const BorderSide(color: Colors.black87),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6.0),
+                              ),
                             ),
-                            side: const BorderSide(color: Colors.black87),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6.0),
+                            child: const Text(
+                              "Enroll",
+                              style: TextStyle(
+                                fontFamily: 'SegoeUI',
+                                fontSize: 17.0,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
-                          child: const Text(
-                            "Enroll",
-                            style: TextStyle(
-                              fontFamily: 'SegoeUI',
-                              fontSize: 17.0,
-                              color: Colors.black,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
 
-              SizedBox(height: isTiny ? 16.0 : 20.0),
+                SizedBox(height: isTiny ? 16.0 : 20.0),
 
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _link("Forgot username or password?", isMobile),
-                  _link("Security Center", isMobile),
-                  _link("Privacy, Cookies, and Legal", isMobile),
-                ],
-              ),
-            ],
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _link("Forgot username or password?", isMobile),
+                    _link("Security Center", isMobile),
+                    _link("Privacy, Cookies, and Legal", isMobile),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -327,118 +324,118 @@ class _HeroSectionState extends State<HeroSection>
 
   // ⭐ WALLET PROMO
   Widget _walletPromo(BuildContext context, bool isMobile) {
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 18 : 28),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Your Digital Wallet, Supercharged",
-            style: TextStyle(
-              fontFamily: 'SegoeUI',
-              fontWeight: FontWeight.w700,
-              fontSize: isMobile ? 18 : 20,
-              color: Colors.black,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            "Fund your wallet instantly, withdraw anytime, and manage all your payments in one secure place.",
-            style: TextStyle(
-              fontFamily: 'SegoeUI',
-              fontSize: isMobile ? 14 : 15,
-              color: Colors.black87,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/login');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: GiftPayTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 30 : 38,
-                vertical: isMobile ? 16 : 18,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            child: const Text(
-              "Open Wallet",
+    return AnimatedLiftCard(
+      child: Container(
+        padding: EdgeInsets.all(isMobile ? 18 : 28),
+        decoration: _cardDecoration(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Your Digital Wallet, Supercharged",
               style: TextStyle(
                 fontFamily: 'SegoeUI',
-                fontWeight: FontWeight.w600,
-                fontSize: 17,
-                letterSpacing: 0.3,
+                fontWeight: FontWeight.w700,
+                fontSize: isMobile ? 18 : 20,
+                color: Colors.black87,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              "Fund your wallet instantly, withdraw anytime, and manage all your payments in one secure place.",
+              style: TextStyle(
+                fontFamily: 'SegoeUI',
+                fontSize: isMobile ? 14 : 15,
+                color: Colors.black87,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/login');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GiftPayTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 30 : 38,
+                  vertical: isMobile ? 16 : 18,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              child: const Text(
+                "Open Wallet",
+                style: TextStyle(
+                  fontFamily: 'SegoeUI',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 17,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // ⭐ SERVICES PROMO
   Widget _servicesPromo(BuildContext context, bool isMobile) {
-    return Container(
-      padding: EdgeInsets.all(isMobile ? 18 : 28),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "All Your Utilities, One Platform",
-            style: TextStyle(
-              fontFamily: 'SegoeUI',
-              fontWeight: FontWeight.w700,
-              fontSize: isMobile ? 18 : 20,
-              color: Colors.black,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            "Electricity, Airtime, Data, Gift Cards, TV, Health — fast, reliable, and always available.",
-            style: TextStyle(
-              fontFamily: 'SegoeUI',
-              fontSize: isMobile ? 14 : 15,
-              color: Colors.black87,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: GiftPayTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 26 : 32,
-                vertical: isMobile ? 14 : 16,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            child: const Text(
-              "Explore Services",
+    return AnimatedLiftCard(
+      child: Container(
+        padding: EdgeInsets.all(isMobile ? 18 : 28),
+        decoration: _cardDecoration(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "All Your Utilities, One Platform",
               style: TextStyle(
                 fontFamily: 'SegoeUI',
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                letterSpacing: 0.2,
+                fontWeight: FontWeight.w700,
+                fontSize: isMobile ? 18 : 20,
+                color: Colors.black87,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              "Electricity, Airtime, Data, Gift Cards, TV, Health — fast, reliable, and always available.",
+              style: TextStyle(
+                fontFamily: 'SegoeUI',
+                fontSize: isMobile ? 14 : 15,
+                color: Colors.black87,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GiftPayTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 26 : 32,
+                  vertical: isMobile ? 14 : 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              child: const Text(
+                "Explore Services",
+                style: TextStyle(
+                  fontFamily: 'SegoeUI',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -465,13 +462,15 @@ class _HeroSectionState extends State<HeroSection>
   // ⭐ Shared Decorations
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
+      // ⭐ Transparent white glass effect
+      color: Colors.white.withOpacity(0.55),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Colors.white.withOpacity(0.30), width: 1.2),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.06),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
+          color: Colors.black.withOpacity(0.12),
+          blurRadius: 22,
+          offset: const Offset(0, 8),
         ),
       ],
     );
@@ -502,6 +501,51 @@ class _HeroSectionState extends State<HeroSection>
           fontSize: isMobile ? 13 : 15,
           color: Colors.black87,
           height: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+class AnimatedLiftCard extends StatefulWidget {
+  final Widget child;
+  const AnimatedLiftCard({super.key, required this.child});
+
+  @override
+  State<AnimatedLiftCard> createState() => _AnimatedLiftCardState();
+}
+
+class _AnimatedLiftCardState extends State<AnimatedLiftCard> {
+  double hoverScale = 1.0;
+  double tiltX = 0.0;
+  double tiltY = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hoverScale = 1.03),
+      onExit: (_) => setState(() {
+        hoverScale = 1.0;
+        tiltX = 0.0;
+        tiltY = 0.0;
+      }),
+      onHover: (event) {
+        setState(() {
+          tiltX = (event.localPosition.dy - 100) / 300;
+          tiltY = (event.localPosition.dx - 150) / 300;
+        });
+      },
+      child: AnimatedScale(
+        scale: hoverScale,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        child: Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001) // ⭐ perspective
+            ..rotateX(tiltX)
+            ..rotateY(-tiltY),
+          child: widget.child,
         ),
       ),
     );

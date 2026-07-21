@@ -128,6 +128,20 @@ flutter:
     - assets/icons/news-icon.png
     - assets/icons/stories-icon.png
     - assets/icons/career-promo.png
+    - assets/illustrations/automation.png
+    - assets/illustrations/spend_optimization.png
+    - assets/illustrations/api_integration.png
+    - assets/illustrations/bulk_electricity.png
+    - assets/illustrations/airtime_distribution.png
+    - assets/illustrations/corporate_data.png
+    - assets/illustrations/api_docs.png
+    - assets/illustrations/integration_guides.png
+    - assets/illustrations/a2_utility_plan_compare.png
+    - assets/illustrations/a2_rewards.png
+    - assets/illustrations/a2_travel.png    
+    - assets/illustrations/a2_shopping.png
+    - assets/illustrations/a2_aviation.png
+    - assets/illustrations/a2_rides.png
 
   fonts:
     - family: SegoeUI

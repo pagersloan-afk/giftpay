@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/core/theme/giftpay_theme.dart';
 
 class CorporateDataCTASection extends StatelessWidget {
   const CorporateDataCTASection({super.key});
@@ -6,13 +7,17 @@ class CorporateDataCTASection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
+      onPressed: () => Navigator.pushNamed(context, '/login'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color.fromARGB(255, 39, 61, 104),
+        // ✅ Uniform color from GiftPayTheme
+        backgroundColor: GiftPayTheme.primaryBlue,
         foregroundColor: Colors.white,
+
+        // ✅ Keep your current measurements
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
         shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
       ),
-      onPressed: () => Navigator.pushNamed(context, '/login'),
       child: const Text(
         "Get Started",
         style: TextStyle(fontFamily: 'SegoeUI', fontSize: 18),

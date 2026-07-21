@@ -9,7 +9,7 @@ class BusinessProductsSection extends StatelessWidget {
 
     final products = [
       {
-        "img": "assets/illustrations/bulk_electricity.jpg",
+        "img": "assets/illustrations/bulk_electricity.png",
         "title": "Bulk Electricity Tokens",
         "desc":
             "Instant multi‑meter electricity token generation for offices and facilities.",

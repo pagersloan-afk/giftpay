@@ -19,7 +19,8 @@ class _PricingSectionState extends State<PricingSection> {
         "Service fee: ₦10–₦25",
         "Minimum purchase: ₦100",
       ],
-      "icon": Icons.bolt, // ⚡ Electricity
+      "icon": Icons.bolt,
+      "gradient": [const Color(0xFF273D68), const Color(0xFF4A6BB8)],
     },
     {
       "title": "Airtime & Data",
@@ -28,7 +29,8 @@ class _PricingSectionState extends State<PricingSection> {
         "Processing fee: ₦0–₦10",
         "Instant delivery",
       ],
-      "icon": Icons.network_cell, // 📶 Airtime/Data
+      "icon": Icons.network_cell,
+      "gradient": [const Color(0xFF0033CC), const Color(0xFF4A6BB8)],
     },
     {
       "title": "Wallet Funding",
@@ -37,7 +39,8 @@ class _PricingSectionState extends State<PricingSection> {
         "Card payments: Gateway fees apply",
         "Instant wallet credit",
       ],
-      "icon": Icons.account_balance_wallet, // 👛 Wallet
+      "icon": Icons.account_balance_wallet,
+      "gradient": [const Color(0xFF4A6BB8), const Color(0xFF273D68)],
     },
     {
       "title": "Gift Cards",
@@ -46,7 +49,8 @@ class _PricingSectionState extends State<PricingSection> {
         "Processing fee: ₦0–₦20",
         "Instant digital delivery",
       ],
-      "icon": Icons.card_giftcard, // 🎁 Gift Cards
+      "icon": Icons.card_giftcard,
+      "gradient": [const Color(0xFF273D68), const Color(0xFF0033CC)],
     },
     {
       "title": "Transfers",
@@ -55,7 +59,8 @@ class _PricingSectionState extends State<PricingSection> {
         "Fee: ₦10–₦25",
         "Instant settlement",
       ],
-      "icon": Icons.send, // 💸 Transfers
+      "icon": Icons.send,
+      "gradient": [const Color(0xFF0033CC), const Color(0xFF4A6BB8)],
     },
     {
       "title": "Business Solutions",
@@ -64,7 +69,8 @@ class _PricingSectionState extends State<PricingSection> {
         "Custom pricing available",
         "Dedicated business support",
       ],
-      "icon": Icons.business_center, // 🏢 Business
+      "icon": Icons.business_center,
+      "gradient": [const Color(0xFF4A6BB8), const Color(0xFF0033CC)],
     },
   ];
 
@@ -84,7 +90,19 @@ class _PricingSectionState extends State<PricingSection> {
           horizontal: isMobile ? 12 : 16,
           vertical: isMobile ? 24 : 40,
         ),
-        color: const Color(0xFFF9F9F9),
+
+        // ⭐ Luxury gradient background (instead of solid gray)
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.90),
+              const Color(0xFFF0F0F0).withOpacity(0.85),
+              const Color(0xFFE8E8E8).withOpacity(0.80),
+            ],
+          ),
+        ),
 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,10 +159,11 @@ class _PricingSectionState extends State<PricingSection> {
                       return Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: _pricingCard(
+                          child: AnimatedPricingCard(
                             title: item["title"],
                             items: List<String>.from(item["items"]),
                             iconData: item["icon"],
+                            gradientColors: List<Color>.from(item["gradient"]),
                             isMobile: isMobile,
                           ),
                         ),
@@ -188,80 +207,111 @@ class _PricingSectionState extends State<PricingSection> {
       ),
     );
   }
+}
 
-  Widget _pricingCard({
-    required String title,
-    required List<String> items,
-    required IconData iconData,
-    required bool isMobile,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-        border: Border.all(
-          color: GiftPayTheme.primaryBlue.withOpacity(0.12),
-          width: 1.1,
-        ),
-      ),
+// ⭐ Animated Pricing Card
+class AnimatedPricingCard extends StatefulWidget {
+  final String title;
+  final List<String> items;
+  final IconData iconData;
+  final List<Color> gradientColors;
+  final bool isMobile;
 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: GiftPayTheme.primaryBlue.withOpacity(0.08),
-                ),
-                child: Icon(
-                  iconData,
-                  size: 22,
-                  color: GiftPayTheme.primaryBlue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'SegoeUI',
-                    fontWeight: FontWeight.w700,
-                    fontSize: isMobile ? 17 : 19,
-                    color: Colors.black87,
-                  ),
-                ),
+  const AnimatedPricingCard({
+    super.key,
+    required this.title,
+    required this.items,
+    required this.iconData,
+    required this.gradientColors,
+    required this.isMobile,
+  });
+
+  @override
+  State<AnimatedPricingCard> createState() => _AnimatedPricingCardState();
+}
+
+class _AnimatedPricingCardState extends State<AnimatedPricingCard> {
+  double hoverScale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hoverScale = 1.03),
+      onExit: (_) => setState(() => hoverScale = 1.0),
+      child: AnimatedScale(
+        scale: hoverScale,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: widget.gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
               ),
             ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.20),
+              width: 1.2,
+            ),
           ),
 
-          const SizedBox(height: 18),
-
-          for (final item in items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                "• $item",
-                style: TextStyle(
-                  fontFamily: 'SegoeUI',
-                  fontSize: isMobile ? 13 : 15,
-                  color: Colors.black54,
-                  height: 1.45,
-                ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withOpacity(0.20),
+                    ),
+                    child: Icon(widget.iconData, size: 24, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontFamily: 'SegoeUI',
+                        fontWeight: FontWeight.w700,
+                        fontSize: widget.isMobile ? 17 : 19,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-        ],
+
+              const SizedBox(height: 18),
+
+              for (final item in widget.items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    "• $item",
+                    style: TextStyle(
+                      fontFamily: 'SegoeUI',
+                      fontSize: widget.isMobile ? 13 : 15,
+                      color: Colors.white.withOpacity(0.90),
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
