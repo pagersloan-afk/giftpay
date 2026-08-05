@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:utilityhub/features/wallet/services/wallet_service.dart';
+import 'package:utilityhub/features/wallet/services/virtual_account_service.dart';
+import 'package:utilityhub/features/wallet/models/virtual_account.dart';
 
 class WalletCard extends StatefulWidget {
   const WalletCard({super.key});
@@ -59,6 +62,30 @@ class _WalletCardState extends State<WalletCard>
     super.dispose();
   }
 
+  // ⭐ NEW: Create virtual account before routing
+  Future<void> _handleDeposit(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final service = VirtualAccountService();
+
+    // 1. Try Firestore
+    VirtualAccount? va = await service.getVirtualAccount(user.uid);
+
+    // 2. If none, create via backend
+    if (va == null) {
+      va = await service.fetchOrCreateFromBackend(
+        userId: user.uid,
+        name: "${user.displayName ?? "GiftPay User"}",
+        email: user.email ?? "user@example.com",
+        phone: "09046480092", // You already store this in Firestore
+      );
+    }
+
+    // 3. Navigate only after creation
+    Navigator.pushNamed(context, "/add-money");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -78,12 +105,7 @@ class _WalletCardState extends State<WalletCard>
         AnimatedContainer(
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.fromLTRB(
-            18,
-            16,
-            18,
-            18,
-          ), // ⭐ tighter, more compact
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
 
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
@@ -104,6 +126,7 @@ class _WalletCardState extends State<WalletCard>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // HEADER
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -151,6 +174,7 @@ class _WalletCardState extends State<WalletCard>
 
               const SizedBox(height: 12),
 
+              // BALANCE
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 350),
                 switchInCurve: Curves.easeOut,
@@ -189,27 +213,28 @@ class _WalletCardState extends State<WalletCard>
 
               const SizedBox(height: 16),
 
+              // BUTTONS
               Row(
                 children: [
                   _walletButton(
                     label: "Deposit",
                     icon: Icons.add,
-                    route: "/fund",
                     color: const Color(0xFF4FC3F7),
+                    onTap: () => _handleDeposit(context),
                   ),
                   const SizedBox(width: 12),
                   _walletButton(
                     label: "Withdraw",
                     icon: Icons.arrow_upward,
-                    route: "/transfer",
                     color: Colors.white70,
+                    onTap: () => Navigator.pushNamed(context, "/transfer"),
                   ),
                   const SizedBox(width: 12),
                   _walletButton(
                     label: "History",
                     icon: Icons.receipt_long,
-                    route: "/transactions",
                     color: Colors.white70,
+                    onTap: () => Navigator.pushNamed(context, "/transactions"),
                   ),
                 ],
               ),
@@ -220,35 +245,32 @@ class _WalletCardState extends State<WalletCard>
     );
   }
 
+  // ⭐ UPDATED BUTTON: uses onTap instead of route
   Widget _walletButton({
     required String label,
     required IconData icon,
-    required String route,
     required Color color,
+    required VoidCallback onTap,
   }) {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => Navigator.pushNamed(context, route),
+        onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 6), // compact height
+          padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white.withOpacity(0.12)),
           ),
-
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ⭐ ICON ONLY ON DESKTOP
               if (!isMobile) ...[
                 Icon(icon, size: 14, color: color),
                 const SizedBox(width: 6),
               ],
-
-              // ⭐ TEXT ALWAYS CENTERED
               Text(
                 label,
                 style: TextStyle(

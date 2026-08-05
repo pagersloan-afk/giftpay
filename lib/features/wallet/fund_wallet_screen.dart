@@ -10,6 +10,10 @@ import 'package:utilityhub/config/api.dart';
 
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 
+// ⭐ Moniepoint Virtual Account
+import 'package:utilityhub/features/wallet/services/virtual_account_service.dart';
+import 'package:utilityhub/features/wallet/models/virtual_account.dart';
+
 class FundWalletScreen extends StatefulWidget {
   const FundWalletScreen({super.key});
 
@@ -20,6 +24,31 @@ class FundWalletScreen extends StatefulWidget {
 class _FundWalletScreenState extends State<FundWalletScreen> {
   final amountCtrl = TextEditingController();
   bool loading = false;
+
+  // ⭐ Virtual Account
+  VirtualAccount? virtualAccount;
+  bool vaLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadVirtualAccount();
+  }
+
+  Future<void> loadVirtualAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => vaLoading = false);
+      return;
+    }
+
+    final va = await VirtualAccountService().getVirtualAccount(user.uid);
+
+    setState(() {
+      virtualAccount = va;
+      vaLoading = false;
+    });
+  }
 
   Future<void> startPayment() async {
     final rawAmount = amountCtrl.text.trim();
@@ -65,8 +94,7 @@ class _FundWalletScreenState extends State<FundWalletScreen> {
           html.window.open(url, "_blank");
         }
 
-        // ⭐ MOBILE — use url_launcher or native Paystack SDK (future)
-        // For now, just show message
+        // ⭐ MOBILE — placeholder
         if (!kIsWeb) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -96,7 +124,59 @@ class _FundWalletScreenState extends State<FundWalletScreen> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ⭐ MONIEPOINT VIRTUAL ACCOUNT SECTION
+              if (vaLoading) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: LinearProgressIndicator(),
+                ),
+              ] else if (virtualAccount != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.12)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Bank Transfer",
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Bank: ${virtualAccount!.bankName}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        "Account Name: ${virtualAccount!.accountName}",
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        "Account Number: ${virtualAccount!.accountNumber}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // ⭐ PAYSTACK CARD PAYMENT SECTION
               TextField(
                 controller: amountCtrl,
                 keyboardType: TextInputType.number,
@@ -106,6 +186,7 @@ class _FundWalletScreenState extends State<FundWalletScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

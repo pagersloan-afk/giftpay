@@ -38,22 +38,45 @@ class CareersOpeningsSection extends StatelessWidget {
             ? CrossAxisAlignment.center
             : CrossAxisAlignment.start,
         children: [
-          Text(
-            "Open Roles",
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w800,
-              fontSize: isMobile ? 22 : 26,
-              color: Colors.black87,
+          // ⭐ TAG TEXT — upgraded to stand out
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 14 : 18,
+              vertical: isMobile ? 6 : 8,
+            ),
+            decoration: BoxDecoration(
+              color: GiftPayTheme.primaryBlue.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              "Open Roles",
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w800,
+                fontSize: isMobile ? 20 : 24,
+                color: const Color.fromARGB(255, 186, 198, 211),
+              ),
             ),
           ),
+
           const SizedBox(height: 20),
 
-          ...openings.map(
-            (job) => _JobCard(
-              title: job["title"]!,
-              location: job["location"]!,
-              route: job["route"]!,
+          // ⭐ SINGLE ROW SCROLL
+          SizedBox(
+            height: isMobile ? 210 : 230,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: openings.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 20),
+              itemBuilder: (_, index) {
+                final job = openings[index];
+                return _JobCard(
+                  title: job["title"]!,
+                  location: job["location"]!,
+                  route: job["route"]!,
+                );
+              },
             ),
           ),
         ],
@@ -78,17 +101,17 @@ class _JobCard extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 768;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      width: isMobile ? 260 : 300, // ⭐ Card width for single-row scroll
       padding: EdgeInsets.all(isMobile ? 14 : 18),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.65),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.30), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.10),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -101,12 +124,14 @@ class _JobCard extends StatelessWidget {
             title,
             style: TextStyle(
               fontFamily: 'Inter',
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               fontSize: isMobile ? 16 : 18,
               color: Colors.black87,
             ),
           ),
+
           const SizedBox(height: 6),
+
           Text(
             location,
             style: TextStyle(
@@ -115,27 +140,34 @@ class _JobCard extends StatelessWidget {
               color: Colors.black54,
             ),
           ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, route);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: GiftPayTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 20 : 24,
-                vertical: isMobile ? 10 : 12,
+
+          const Spacer(),
+
+          // ⭐ Upgraded CTA button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, route);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GiftPayTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 20 : 24,
+                  vertical: isMobile ? 10 : 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text(
-              "View Role",
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.bold,
+              child: const Text(
+                "View Role",
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

@@ -75,7 +75,6 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
       "icon": Icons.local_taxi,
       "route": "/rides",
     },
-
     {
       "title": "Betting",
       "subtitle": "Fund all betting platforms.",
@@ -114,22 +113,39 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
 
     // ⭐ Parallax listener
     _scrollController.addListener(() {
+      if (!mounted) return;
       setState(() {
         parallaxShift = (_scrollController.offset / 300).clamp(0, 1);
       });
     });
 
-    // ⭐ Faster + smoother auto-scroll
+    // ⭐ Start auto-scroll ONLY after first layout
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAutoScroll();
+    });
+  }
+
+  void _startAutoScroll() {
+    _timer?.cancel();
+
     _timer = Timer.periodic(const Duration(milliseconds: 22), (_) {
+      if (!mounted) return;
       if (!_scrollController.hasClients) return;
 
-      final max = _scrollController.position.maxScrollExtent;
-      final current = _scrollController.offset;
+      try {
+        // ⭐ This was the crashing line before:
+        // final max = _scrollController.position.maxScrollExtent;
+        final position = _scrollController.position;
+        final max = position.maxScrollExtent;
+        final current = _scrollController.offset;
 
-      if (current >= max) {
-        _scrollController.jumpTo(0);
-      } else {
-        _scrollController.jumpTo(current + 1.1);
+        if (current >= max) {
+          _scrollController.jumpTo(0);
+        } else {
+          _scrollController.jumpTo(current + 1.1);
+        }
+      } catch (_) {
+        // ⭐ Safety: if dimensions are not ready yet, just skip this tick
       }
     });
   }
@@ -257,11 +273,8 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ⭐ Icon now uses its representative color
             Icon(icon, size: 34, color: iconColors[title] ?? Colors.black87),
-
             const SizedBox(height: 12),
-
             Text(
               title,
               style: TextStyle(
@@ -271,9 +284,7 @@ class _FeatureCardsSectionState extends State<FeatureCardsSection> {
                 color: Colors.black,
               ),
             ),
-
             const SizedBox(height: 6),
-
             Text(
               subtitle,
               maxLines: 2,

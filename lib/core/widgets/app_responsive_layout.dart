@@ -18,8 +18,7 @@ class AppResponsiveLayout extends StatelessWidget {
     return route == "/login" ||
         route == "/signup" ||
         route == "/reset" ||
-        route == "/verify" ||
-        route == "/home"; // ⭐ landing page must NOT show sidebar
+        route == "/verify"; // ⭐ landing page must NOT show sidebar
   }
 
   @override
@@ -46,7 +45,7 @@ class AppResponsiveLayout extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 140),
+                  padding: const EdgeInsets.only(left: 180),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: desktopMaxWidth),
                     child: child,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:utilityhub/core/security/device_trust.dart';
 import 'package:utilityhub/features/auth/email_otp_screen.dart';
-import 'package:utilityhub/features/auth/login/signup/signup_screen.dart';
 import 'package:utilityhub/features/auth/reset/reset_password_screen.dart';
 
 // ⭐ Login success screen
@@ -177,10 +176,7 @@ class _LoginFormState extends State<LoginForm> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                );
+                Navigator.pushNamed(context, "/signup");
               },
               child: const Text(
                 "Sign Up",

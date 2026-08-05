@@ -42,6 +42,9 @@ const authRoutes = require("./src/routes/auth.routes.js");
 const statementRoute = require("./src/routes/statement");
 const authMiddleware = require("./src/middleware/authMiddleware");
 const giftcardRoutes = require("./src/routes/giftcard.routes");
+const monnifyRoutes = require("./src/routes/monnify.routes");
+const { monnifyWebhook } = require("./src/webhooks/monnify.webhook");
+const identityRoutes = require("./src/routes/identity.routes");
 
 
 
@@ -100,6 +103,9 @@ app.use("/", analyticsRoutes);
 app.use("/auth", authRoutes);
 app.use("/v1/statement", authMiddleware, statementRoute);
 app.use("/api/giftcard", giftcardRoutes);
+app.use("/api/monnify", monnifyRoutes);
+app.post("/api/monnify/webhook", monnifyWebhook);
+app.use("/api", identityRoutes);
 
 
 

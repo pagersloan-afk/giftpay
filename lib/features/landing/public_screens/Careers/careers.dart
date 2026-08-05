@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:utilityhub/features/landing/public_screens/Careers/sections/careers_hero.dart';
-import 'package:utilityhub/features/landing/public_screens/Careers/sections/careers_life.dart';
-import 'package:utilityhub/features/landing/public_screens/Careers/sections/careers_openings.dart';
-import 'package:utilityhub/features/landing/public_screens/Careers/sections/careers_values.dart';
+import 'package:utilityhub/features/landing/public_screens/careers/sections/careers_hero.dart';
+import 'package:utilityhub/features/landing/public_screens/careers/sections/careers_life.dart';
+import 'package:utilityhub/features/landing/public_screens/careers/sections/careers_openings.dart';
+import 'package:utilityhub/features/landing/public_screens/careers/sections/careers_values.dart';
 
 // ⭐ Shared Landing Header + Footer
 import 'package:utilityhub/features/landing/widgets/landing_header.dart';
@@ -86,8 +86,6 @@ class _CareersPageState extends State<CareersPage>
                     controller: _scrollController,
                     child: Column(
                       children: const [
-                        SizedBox(height: 40),
-
                         CareersHeroSection(),
                         SizedBox(height: 40),
 

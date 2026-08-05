@@ -39,6 +39,7 @@ dependencies:
   reorderables: ^0.6.0
   flutter_secure_storage: ^10.3.1
   device_info_plus: ^12.4.0
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -142,6 +143,34 @@ flutter:
     - assets/illustrations/a2_shopping.png
     - assets/illustrations/a2_aviation.png
     - assets/illustrations/a2_rides.png
+    - assets/icons/catalog-airtime.png
+    - assets/icons/catalog-shopping.png
+    - assets/icons/catalog-entertainment.png
+    - assets/icons/catalog-gaming.png
+    - assets/images/giftcards-hero-lg.png
+    - assets/brands/netflix.png
+    - assets/brands/spotify.png
+    - assets/brands/amazon.png
+    - assets/brands/playstation.png
+    - assets/brands/xbox.png
+    - assets/brands/apple.png
+    - assets/images/careers-hero-lg.png
+    - assets/icons/culture-icon.png
+    - assets/icons/team-icon.png
+    - assets/icons/mission-icon.png
+    - assets/images/press-hero-lg.png
+    - assets/icons/press-announcement.png
+    - assets/icons/press-award.png
+    - assets/icons/press-update.png
+    - assets/icons/security-encryption.png
+    - assets/icons/security-fraud.png
+    - assets/icons/security-infra.png
+    - assets/images/security-features.png
+    - assets/images/rewards-hero-lg.png
+    - assets/icons/reward-cashback.png
+    - assets/icons/reward-points.png
+    - assets/icons/reward-bonus.png
+    - assets/images/careers-life.png
 
   fonts:
     - family: SegoeUI

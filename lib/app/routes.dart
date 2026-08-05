@@ -4,6 +4,9 @@ import 'package:utilityhub/core/widgets/giftpay_background.dart';
 // Auth
 import 'package:utilityhub/features/auth/login/login_screen.dart';
 import 'package:utilityhub/features/auth/login/login_security_screen.dart';
+import 'package:utilityhub/features/auth/login/signup/screens/signup_basic_info_screen.dart';
+import 'package:utilityhub/features/auth/login/signup/screens/signup_pin_screen.dart';
+import 'package:utilityhub/features/auth/login/signup/screens/signup_wallet_creation_screen.dart';
 import 'package:utilityhub/features/auth/pin/authorization_pin_screen.dart';
 import 'package:utilityhub/features/auth/verify_email_screen.dart';
 
@@ -24,7 +27,7 @@ import 'package:utilityhub/features/cable/cable_screen.dart';
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
 import 'package:utilityhub/features/giftcards/trade/submit_trade.dart';
 import 'package:utilityhub/features/landing/landing_page.dart';
-import 'package:utilityhub/features/landing/public_screens/Careers/careers.dart';
+import 'package:utilityhub/features/landing/public_screens/careers/careers.dart';
 import 'package:utilityhub/features/landing/public_screens/about/about.dart';
 import 'package:utilityhub/features/landing/public_screens/business.dart';
 import 'package:utilityhub/features/landing/public_screens/contact/contact_page.dart';
@@ -76,6 +79,7 @@ import 'package:utilityhub/features/betting/betting_screen.dart';
 // Paystack callback
 import 'package:utilityhub/features/payments/paystack_web_callback_screen.dart';
 import 'package:utilityhub/screen/about_us.dart';
+import 'package:utilityhub/screen/add_money_screen.dart';
 import 'package:utilityhub/screen/contact_us.dart';
 import 'package:utilityhub/screen/privacy_policy.dart';
 import 'package:utilityhub/screen/terms_conditions.dart';
@@ -104,6 +108,7 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/login': (_) => wrap(const LoginScreen()),
   '/home': (_) => wrap(const HomeScreen()),
   '/landing': (context) => const LandingPage(),
+  '/logout': (_) => wrap(const LoginScreen()),
 
   // Electricity
   '/electricity': (_) => wrap(const ElectricityScreen()),
@@ -221,4 +226,10 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/security': (_) => const SecurityPage(),
   '/gift-cards': (_) => const GiftCardsPage(),
   '/rewards': (_) => const RewardsPage(),
+  "/add-money": (_) => const AddMoneyScreen(),
+
+  // Signup
+  '/signup-pin': (_) => (const SignupPinScreen()),
+  '/signup-wallet': (_) => (const SignupWalletCreationScreen()),
+  '/signup': (_) => (const SignupBasicInfoScreen()),
 };

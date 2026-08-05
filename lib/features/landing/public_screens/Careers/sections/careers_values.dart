@@ -27,7 +27,9 @@ class _CareersValuesSectionState extends State<CareersValuesSection> {
       builder: (context, constraints) {
         final double maxWidth = constraints.maxWidth;
         final bool isMobile = maxWidth < 768;
-        final double cardWidth = isMobile ? maxWidth * 0.85 : maxWidth * 0.40;
+
+        // ⭐ Desktop: Two cards per screen
+        final double cardWidth = isMobile ? maxWidth * 0.75 : maxWidth * 0.45;
 
         final cards = [
           _ValueCard(
@@ -55,7 +57,8 @@ class _CareersValuesSectionState extends State<CareersValuesSection> {
           child: Column(
             children: [
               SizedBox(
-                height: isMobile ? 420 : (maxWidth * 0.42).clamp(550, 600),
+                // ⭐ Adjust section height here
+                height: isMobile ? 360 : 380,
                 child: Stack(
                   children: [
                     ListView.separated(
@@ -145,7 +148,13 @@ class _ValueCard extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 768;
 
     return Container(
-      padding: EdgeInsets.all(isMobile ? 14 : 18),
+      // ⭐ Card height control
+      constraints: BoxConstraints(
+        minHeight: isMobile ? 260 : 300,
+        maxHeight: isMobile ? 260 : 300,
+      ),
+
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF9F9F9),
         borderRadius: BorderRadius.circular(14),
@@ -157,29 +166,40 @@ class _ValueCard extends StatelessWidget {
           ),
         ],
       ),
+
       child: Column(
         children: [
-          Image.asset(imagePath, height: isMobile ? 120 : 160),
-          const SizedBox(height: 16),
+          // ⭐ Bold, large icon (adjust here)
+          Image.asset(
+            imagePath,
+            height: isMobile ? 110 : 150, // ← bold icon size
+          ),
+
+          const SizedBox(height: 14),
+
           Text(
             title,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Inter',
-              fontWeight: FontWeight.bold,
-              fontSize: isMobile ? 15 : 17,
+              fontWeight: FontWeight.w700, // ← bolder title
+              fontSize: isMobile ? 15 : 18,
               color: Colors.black,
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: isMobile ? 13 : 14,
-              color: Colors.black54,
-              height: 1.4,
+
+          const SizedBox(height: 8),
+
+          Expanded(
+            child: Text(
+              description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: isMobile ? 13 : 14,
+                color: Colors.black54,
+                height: 1.35,
+              ),
             ),
           ),
         ],

@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -10,6 +11,11 @@ class DeviceTrust {
 
   // ⭐ Generate or retrieve persistent deviceId
   static Future<String> getDeviceId() async {
+    if (kIsWeb) {
+      // Web cannot use secure storage → use a fixed ID per browser session
+      return "web-browser-device";
+    }
+
     String? id = await SecureStorage.read("deviceId");
 
     if (id == null) {
@@ -22,6 +28,10 @@ class DeviceTrust {
 
   // ⭐ Get device name
   static Future<String> getDeviceName() async {
+    if (kIsWeb) {
+      return "Web Browser";
+    }
+
     final info = DeviceInfoPlugin();
 
     if (Platform.isAndroid) {
@@ -39,6 +49,11 @@ class DeviceTrust {
 
   // ⭐ Check if device is trusted
   static Future<bool> isTrustedDevice(String userId) async {
+    if (kIsWeb) {
+      // Web cannot store trust tokens → always allow
+      return true;
+    }
+
     final deviceId = await getDeviceId();
     final localToken = await SecureStorage.read("trustToken");
 
@@ -59,6 +74,11 @@ class DeviceTrust {
 
   // ⭐ Mark device as trusted
   static Future<void> markDeviceTrusted(String userId) async {
+    if (kIsWeb) {
+      // Web cannot store trust tokens → skip trust logic
+      return;
+    }
+
     final deviceId = await getDeviceId();
     final deviceName = await getDeviceName();
     final trustToken = _uuid.v4();
@@ -88,6 +108,8 @@ class DeviceTrust {
 
   // ⭐ Clear trust on logout
   static Future<void> clearDeviceTrust() async {
+    if (kIsWeb) return;
+
     await SecureStorage.delete("trustToken");
     await SecureStorage.delete("userId");
   }

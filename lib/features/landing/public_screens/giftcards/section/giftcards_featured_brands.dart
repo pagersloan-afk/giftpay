@@ -8,6 +8,7 @@ class GiftCardsFeaturedBrandsSection extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 768;
 
     final brands = [
+      "assets/brands/apple.png",
       "assets/brands/netflix.png",
       "assets/brands/spotify.png",
       "assets/brands/amazon.png",

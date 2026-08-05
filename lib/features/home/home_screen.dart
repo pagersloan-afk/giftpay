@@ -10,12 +10,12 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GiftPayBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        drawer: const ProfileDrawer(),
-        appBar: const AppHeader(),
-        body: const AppResponsiveLayout(child: HomeBody()),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      drawer: const ProfileDrawer(),
+      appBar: const AppHeader(),
+      body: GiftPayBackground(
+        child: const AppResponsiveLayout(child: HomeBody()),
       ),
     );
   }

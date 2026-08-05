@@ -6,7 +6,6 @@ import 'package:utilityhub/features/transaction-history/transaction_history_scre
 import 'package:utilityhub/features/wallet/services/wallet_service.dart';
 import 'fund_wallet_screen.dart';
 import 'withdraw_screen.dart';
-import 'virtual_account_card.dart'; // ⭐ Add this import
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -118,11 +117,6 @@ class _WalletScreenState extends State<WalletScreen> {
                       );
                     },
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // ⭐ NEW: VIRTUAL ACCOUNT CARD
-                  const VirtualAccountCard(),
 
                   const SizedBox(height: 24),
 

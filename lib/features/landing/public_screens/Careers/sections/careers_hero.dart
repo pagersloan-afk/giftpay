@@ -8,7 +8,7 @@ class CareersHeroSection extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 768;
 
     return SizedBox(
-      height: isMobile ? 220 : 400,
+      height: isMobile ? 220 : 450,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,

@@ -29,15 +29,17 @@ import 'package:utilityhub/features/landing/landing_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  // ⭐ INITIALIZE FIREBASE
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // ⭐ INITIALIZE SUPABASE
   await supa.Supabase.initialize(
     url: "https://mzvwtxozwnprsiipoxkx.supabase.co",
     anonKey:
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16dnd0eG96d25wcnNpaXBveGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMjEyOTksImV4cCI6MjA5MDU5NzI5OX0.wchked2h0b5OMvu8qKi9pkYIPJs4_PX5Mqx7HNEpmto",
   );
 
+  // ⭐ ATTACH NOTIFICATION CENTER
   FirebaseAuth.instance.authStateChanges().listen((user) {
     if (user != null) {
       NotificationCenter.I.setUser(user.uid);

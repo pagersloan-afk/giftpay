@@ -1,5 +1,5 @@
 // lib/features/home/widgets/home_service_card.dart
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/services/user_services_api.dart';
 
@@ -58,10 +58,13 @@ class _HomeServiceCardState extends State<HomeServiceCard>
     await Future.delayed(const Duration(milliseconds: 120));
     setState(() => scale = 1.0);
 
+    // ⭐ FIX: Remove Platform.operatingSystem (breaks on web)
+    final device = Theme.of(context).platform.name;
+
     await UserServicesApi.logUsage(
       userId: widget.userId,
       serviceName: widget.title,
-      device: Platform.operatingSystem,
+      device: device,
     );
 
     if (mounted) {
@@ -81,8 +84,8 @@ class _HomeServiceCardState extends State<HomeServiceCard>
           borderRadius: BorderRadius.circular(16),
 
           child: Container(
-            width: double.infinity, // ⭐ FORCE EQUAL WIDTH
-            height: 78, // ⭐ UNIFORM HEIGHT (same as All Services)
+            width: double.infinity,
+            height: 78,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
 
             decoration: BoxDecoration(
@@ -103,18 +106,18 @@ class _HomeServiceCardState extends State<HomeServiceCard>
               children: [
                 Icon(
                   widget.icon,
-                  size: 22, // ⭐ Slightly bigger for balance
+                  size: 22,
                   color: widget.iconColor ?? Colors.white.withOpacity(0.90),
                 ),
 
                 const SizedBox(height: 6),
 
                 SizedBox(
-                  height: 20, // ⭐ FIXED HEIGHT (prevents shrinking)
+                  height: 20,
                   child: Text(
                     widget.title,
                     textAlign: TextAlign.center,
-                    maxLines: 1, // ⭐ One line like All Services
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 11.5,
