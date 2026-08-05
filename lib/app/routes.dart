@@ -4,6 +4,7 @@ import 'package:utilityhub/core/widgets/giftpay_background.dart';
 // Auth
 import 'package:utilityhub/features/auth/login/login_screen.dart';
 import 'package:utilityhub/features/auth/login/login_security_screen.dart';
+import 'package:utilityhub/features/auth/login/login_success_screen.dart';
 import 'package:utilityhub/features/auth/login/signup/screens/signup_basic_info_screen.dart';
 import 'package:utilityhub/features/auth/login/signup/screens/signup_pin_screen.dart';
 import 'package:utilityhub/features/auth/login/signup/screens/signup_wallet_creation_screen.dart';
@@ -150,7 +151,22 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/notifications': (_) => wrap(const NotificationScreen()),
 
   // Verify email
-  '/verify-email': (_) => wrap(const VerifyEmailScreen()),
+  '/verify-email': (context) {
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+
+    return wrap(
+      VerifyEmailScreen(
+        userId: args['userId'],
+        firstName: args['firstName'],
+        lastName: args['lastName'],
+        email: args['email'],
+        phone: args['phone'],
+        country: args['country'],
+        password: args['password'],
+      ),
+    );
+  },
 
   // Transfer
   '/transfer': (_) => wrap(const TransferScreen()),
@@ -232,4 +248,6 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/signup-pin': (_) => (const SignupPinScreen()),
   '/signup-wallet': (_) => (const SignupWalletCreationScreen()),
   '/signup': (_) => (const SignupBasicInfoScreen()),
+
+  '/login-success': (_) => const LoginSuccessScreen(),
 };

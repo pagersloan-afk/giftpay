@@ -62,28 +62,27 @@ class _WalletCardState extends State<WalletCard>
     super.dispose();
   }
 
-  // ⭐ NEW: Create virtual account before routing
   Future<void> _handleDeposit(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final service = VirtualAccountService();
 
-    // 1. Try Firestore
-    VirtualAccount? va = await service.getVirtualAccount(user.uid);
+    // ⭐ Only FETCH existing virtual account (no creation here)
+    final VirtualAccount? va = await service.getVirtualAccount(user.uid);
 
-    // 2. If none, create via backend
     if (va == null) {
-      va = await service.fetchOrCreateFromBackend(
-        userId: user.uid,
-        name: "${user.displayName ?? "GiftPay User"}",
-        email: user.email ?? "user@example.com",
-        phone: "09046480092", // You already store this in Firestore
+      // Virtual account missing – handle gracefully
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Virtual account not found. Please contact support."),
+        ),
       );
+      return;
     }
 
-    // 3. Navigate only after creation
-    Navigator.pushNamed(context, "/add-money");
+    // ⭐ Route to Add Money screen with the existing virtual account
+    Navigator.pushNamed(context, "/add-money", arguments: va);
   }
 
   @override

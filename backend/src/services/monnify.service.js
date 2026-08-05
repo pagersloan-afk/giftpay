@@ -25,6 +25,7 @@ async function createReservedAccount(payload) {
     accountName: payload.accountName,
     customerEmail: payload.customerEmail,
     customerName: payload.customerName,
+    customerPhoneNumber: payload.customerPhoneNumber,   // ⭐ REQUIRED
     currencyCode: "NGN",
     contractCode: process.env.MONNIFY_CONTRACT_CODE,
     getAllAvailableBanks: true

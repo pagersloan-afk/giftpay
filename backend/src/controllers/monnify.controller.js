@@ -5,7 +5,7 @@ const { createReservedAccount } = require("../services/monnify.service");
 
 const createReservedAccountController = async (req, res) => {
   try {
-    const { userId, name, email } = req.body;
+    const { userId, name, email, phone } = req.body;
 
     const accountRef = `USER_${userId}`;
 
@@ -14,24 +14,35 @@ const createReservedAccountController = async (req, res) => {
       accountName: name,
       customerEmail: email,
       customerName: name,
+      customerPhoneNumber: phone,   // ⭐ REQUIRED
     });
+
+    console.log("MONNIFY RESPONSE:", JSON.stringify(va, null, 2));
+
+    // ⭐ Extract primary bank account
+    const primaryAccount = va.accounts?.[0];
+    if (!primaryAccount) {
+      throw new Error("Monnify returned no accounts array");
+    }
 
     await firestore.collection("users").doc(userId).set({
       virtualAccount: {
-        accountNumber: va.accountNumber,
-        bankName: va.bankName,
-        accountName: va.accountName,
+        accountNumber: primaryAccount.accountNumber,
+        bankName: primaryAccount.bankName,
+        accountName: primaryAccount.accountName,
         reference: accountRef,
+        allAccounts: va.accounts,   // ⭐ Optional: store all banks
       },
     }, { merge: true });
 
     return res.status(200).json({
       status: true,
       data: {
-        accountNumber: va.accountNumber,
-        bankName: va.bankName,
-        accountName: va.accountName,
+        accountNumber: primaryAccount.accountNumber,
+        bankName: primaryAccount.bankName,
+        accountName: primaryAccount.accountName,
         reference: accountRef,
+        allAccounts: va.accounts,
       },
     });
   } catch (err) {

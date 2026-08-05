@@ -93,11 +93,11 @@ class SignupSuccessDialog {
       },
     );
 
+    // ⭐ NEW LOGIC: only close dialog — DO NOT navigate
     Future.delayed(const Duration(seconds: 2), () {
       if (Navigator.of(context).canPop()) {
-        Navigator.pop(context);
+        Navigator.pop(context); // just close dialog
       }
-      Navigator.pushReplacementNamed(context, "/login");
       confettiController.dispose();
     });
   }

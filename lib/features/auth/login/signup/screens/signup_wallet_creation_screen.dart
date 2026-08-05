@@ -77,7 +77,7 @@ class _SignupWalletCreationScreenState
 
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.pushReplacementNamed(context, "/home");
+                      Navigator.pushReplacementNamed(context, "/login-success");
                     },
                     child: const Text("Continue"),
                   ),

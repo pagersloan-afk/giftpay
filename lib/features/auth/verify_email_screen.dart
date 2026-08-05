@@ -1,10 +1,30 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:country_picker/country_picker.dart';
 import 'package:utilityhub/core/security/device_trust.dart';
+import 'package:utilityhub/features/auth/login/signup/screens/signup_identity_screen.dart';
+import 'package:utilityhub/features/wallet/services/giftpay_wallet_initializer.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
-  const VerifyEmailScreen({super.key});
+  final String userId;
+  final String firstName;
+  final String lastName;
+  final String email;
+  final String phone;
+  final Country country;
+  final String password;
+
+  const VerifyEmailScreen({
+    super.key,
+    required this.userId,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.phone,
+    required this.country,
+    required this.password,
+  });
 
   @override
   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
@@ -14,19 +34,27 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool checking = false;
   bool sending = false;
 
-  int cooldown = 0; // seconds remaining
-  Timer? timer;
+  int cooldown = 60;
+  Timer? cooldownTimer;
+  Timer? pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCooldown();
+    _startPolling();
+  }
 
   @override
   void dispose() {
-    timer?.cancel();
+    cooldownTimer?.cancel();
+    pollTimer?.cancel();
     super.dispose();
   }
 
-  void startCooldown() {
-    setState(() => cooldown = 60);
-
-    timer = Timer.periodic(const Duration(seconds: 1), (t) {
+  // ⭐ Countdown timer for resend
+  void _startCooldown() {
+    cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (cooldown == 0) {
         t.cancel();
       } else {
@@ -35,14 +63,30 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     });
   }
 
+  // ⭐ Poll Firebase every 3 seconds
+  void _startPolling() {
+    pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      await FirebaseAuth.instance.currentUser?.reload();
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null && user.emailVerified) {
+        pollTimer?.cancel();
+        await GiftPayWalletInitializer.createPrimaryWalletIfMissing();
+        _goToIdentityScreen();
+      }
+    });
+  }
+
+  // ⭐ Manual check button
   Future<void> _checkVerification() async {
     setState(() => checking = true);
 
-    await FirebaseAuth.instance.currentUser!.reload();
+    await FirebaseAuth.instance.currentUser?.reload();
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null && user.emailVerified) {
-      Navigator.pushReplacementNamed(context, "/login");
+      await GiftPayWalletInitializer.createPrimaryWalletIfMissing();
+      _goToIdentityScreen();
     } else {
       ScaffoldMessenger.of(
         context,
@@ -52,18 +96,20 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     setState(() => checking = false);
   }
 
+  // ⭐ Resend email button
   Future<void> _resendEmail() async {
     if (cooldown > 0) return;
 
     setState(() => sending = true);
 
     try {
-      await FirebaseAuth.instance.currentUser!.sendEmailVerification();
+      await FirebaseAuth.instance.currentUser?.sendEmailVerification();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Verification email sent again")),
       );
 
-      startCooldown();
+      cooldown = 60;
+      _startCooldown();
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -73,15 +119,32 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     setState(() => sending = false);
   }
 
+  // ⭐ Change email
   Future<void> _changeEmail() async {
-    // Clear local device trust so OTP is required next login
     await DeviceTrust.clearDeviceTrust();
-
-    // Sign out user
     await FirebaseAuth.instance.signOut();
 
-    // Navigate to signup screen cleanly
     Navigator.pushNamedAndRemoveUntil(context, "/signup", (route) => false);
+  }
+
+  // ⭐ Route to NIN/BVN screen with full parameters
+  void _goToIdentityScreen() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SignupIdentityScreen(
+          userId: widget.userId,
+          firstName: widget.firstName,
+          lastName: widget.lastName,
+          email: widget.email,
+          phone: widget.phone,
+          country: widget.country,
+          password: widget.password,
+          ninCtrl: TextEditingController(),
+          bvnCtrl: TextEditingController(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -95,19 +158,22 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           children: [
             const Icon(Icons.email_outlined, size: 80, color: Colors.blue),
             const SizedBox(height: 20),
+
             const Text(
               "Verify Your Email",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+
             const SizedBox(height: 12),
             const Text(
               "A verification link has been sent to your email.\nPlease verify to continue.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15),
             ),
+
             const SizedBox(height: 30),
 
-            // Check verification button
+            // ⭐ I have verified button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -117,9 +183,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     : const Text("I have verified"),
               ),
             ),
+
             const SizedBox(height: 12),
 
-            // Resend email button with cooldown
+            // ⭐ Resend email button with cooldown
             TextButton(
               onPressed: (sending || cooldown > 0) ? null : _resendEmail,
               child: sending
@@ -133,7 +200,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
             const SizedBox(height: 20),
 
-            // ⭐ CHANGE EMAIL BUTTON
+            // ⭐ Change email button
             TextButton(
               onPressed: _changeEmail,
               child: const Text(

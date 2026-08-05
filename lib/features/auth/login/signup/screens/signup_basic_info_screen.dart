@@ -1,12 +1,14 @@
+import 'package:audioplayers/audioplayers.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:country_picker/country_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/features/auth/login/signup/controllers/signup_basic_controller.dart';
 import 'package:utilityhub/features/auth/login/signup/screens/signup_identity_screen.dart';
 import 'package:utilityhub/features/auth/login/signup/widgets/name_fields.dart';
 import 'package:utilityhub/features/auth/login/signup/widgets/password_section.dart';
 import 'package:utilityhub/features/auth/login/signup/widgets/phone_country_field.dart';
+import 'package:utilityhub/features/auth/login/signup/widgets/signup_success_dialog.dart';
 
 class SignupBasicInfoScreen extends StatefulWidget {
   const SignupBasicInfoScreen({super.key});
@@ -87,24 +89,24 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
       );
 
       final uid = await controller.createBasicAccount(context);
-
       if (uid == null) return;
 
-      Navigator.push(
+      // ⭐ DO NOT show success dialog here
+      // ⭐ DO NOT wait for email verification here
+
+      // ⭐ Immediately route to VerifyEmailScreen
+      Navigator.pushReplacementNamed(
         context,
-        MaterialPageRoute(
-          builder: (_) => SignupIdentityScreen(
-            userId: uid,
-            firstName: firstNameCtrl.text.trim(),
-            lastName: lastNameCtrl.text.trim(),
-            email: emailCtrl.text.trim(),
-            phone: phoneCtrl.text.trim(),
-            country: selectedCountry!,
-            password: passwordCtrl.text.trim(),
-            ninCtrl: TextEditingController(),
-            bvnCtrl: TextEditingController(),
-          ),
-        ),
+        "/verify-email",
+        arguments: {
+          "userId": uid,
+          "firstName": firstNameCtrl.text.trim(),
+          "lastName": lastNameCtrl.text.trim(),
+          "email": emailCtrl.text.trim(),
+          "phone": phoneCtrl.text.trim(),
+          "country": selectedCountry!,
+          "password": passwordCtrl.text.trim(),
+        },
       );
     } catch (e) {
       ScaffoldMessenger.of(
