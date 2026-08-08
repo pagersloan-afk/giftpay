@@ -8,7 +8,7 @@ class AppResponsiveLayout extends StatelessWidget {
   const AppResponsiveLayout({
     super.key,
     required this.child,
-    this.desktopMaxWidth = 640,
+    this.desktopMaxWidth = 550,
   });
 
   bool _isAuthOrLanding(BuildContext context) {

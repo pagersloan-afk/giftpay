@@ -19,10 +19,10 @@ class _RecommendedSectionState extends State<RecommendedSection>
   late AnimationController _controller;
   late Animation<Offset> _slide;
 
-  // ⭐ Get logged‑in user ID
+  // ⭐ Logged‑in user ID
   String get userId => FirebaseAuth.instance.currentUser!.uid;
 
-  // ⭐ Fallback recommended services WITH COLORS
+  // ⭐ Expanded fallback list (12 items)
   final List<Map<String, dynamic>> fallback = const [
     {
       "title": "Electricity",
@@ -48,6 +48,62 @@ class _RecommendedSectionState extends State<RecommendedSection>
       "route": "/data",
       "color": Color(0xFF81C784),
     },
+
+    {
+      "title": "Flights",
+      "icon": Icons.flight_takeoff,
+      "route": "/aviation",
+      "color": Color(0xFF40C4FF),
+    },
+
+    {
+      "title": "Gift Cards",
+      "icon": Icons.card_giftcard,
+      "route": "/giftcards",
+      "color": Color(0xFFFF8A65),
+    },
+    {
+      "title": "Education",
+      "icon": Icons.school,
+      "route": "/education",
+      "color": Color(0xFF4DD0E1),
+    },
+    {
+      "title": "Betting",
+      "icon": Icons.sports_soccer,
+      "route": "/betting",
+      "color": Color(0xFFA1887F),
+    },
+    {
+      "title": "Gaming",
+      "icon": Icons.sports_esports,
+      "route": "/psgames",
+      "color": Color(0xFF9575CD),
+    },
+    {
+      "title": "Health",
+      "icon": Icons.health_and_safety,
+      "route": "/settings",
+      "color": Color(0xFFE57373),
+    },
+    {
+      "title": "Government",
+      "icon": Icons.account_balance,
+      "route": "/settings",
+      "color": Color(0xFF64B5F6),
+    },
+    {
+      "title": "Taxes",
+      "icon": Icons.receipt_long,
+      "route": "/settings",
+      "color": Color(0xFF90A4AE),
+    },
+    {
+      "title": "Utilities",
+      "icon": Icons.lightbulb,
+      "route": "/electricity",
+      "color": Color(0xFFFFF176),
+    },
   ];
 
   List<Map<String, dynamic>> items = [];
@@ -71,10 +127,10 @@ class _RecommendedSectionState extends State<RecommendedSection>
 
     _controller.forward();
 
-    // TODO: Replace with Firestore user‑recommended logic
+    // TODO: Replace with Firestore recommended logic
     items = fallback;
 
-    // ⭐ Start auto‑scroll
+    // ⭐ Auto‑scroll
     _startAutoScroll();
   }
 
@@ -147,7 +203,7 @@ class _RecommendedSectionState extends State<RecommendedSection>
                     icon: s["icon"],
                     route: s["route"],
                     iconColor: s["color"],
-                    userId: userId, // ⭐ REQUIRED FIX
+                    userId: userId,
                   ),
                 ),
               );

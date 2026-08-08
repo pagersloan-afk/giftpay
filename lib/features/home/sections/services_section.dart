@@ -123,7 +123,7 @@ class _ServicesSectionState extends State<ServicesSection> {
             crossAxisCount: 4,
             mainAxisSpacing: 14,
             crossAxisSpacing: 14,
-            childAspectRatio: 1.05, // ⭐ PERFECT UNIFORM CARD SIZE
+            mainAxisExtent: 78, // ⭐ PERFECT UNIFORM CARD SIZE
           ),
           itemBuilder: (context, index) {
             // Add button slot
@@ -147,6 +147,7 @@ class _ServicesSectionState extends State<ServicesSection> {
                 icon: moreCard.icon,
                 route: moreCard.route,
                 userId: userId,
+                fixedHeight: 78,
               );
             }
 

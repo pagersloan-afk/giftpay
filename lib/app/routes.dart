@@ -10,6 +10,12 @@ import 'package:utilityhub/features/auth/login/signup/screens/signup_pin_screen.
 import 'package:utilityhub/features/auth/login/signup/screens/signup_wallet_creation_screen.dart';
 import 'package:utilityhub/features/auth/pin/authorization_pin_screen.dart';
 import 'package:utilityhub/features/auth/verify_email_screen.dart';
+import 'package:utilityhub/features/aviation/aviation_booking.dart';
+import 'package:utilityhub/features/aviation/aviation_checkout.dart';
+import 'package:utilityhub/features/aviation/aviation_landing.dart';
+import 'package:utilityhub/features/aviation/aviation_results.dart';
+import 'package:utilityhub/features/aviation/aviation_search.dart';
+import 'package:utilityhub/features/aviation/aviation_ticket_view.dart';
 
 // Home
 import 'package:utilityhub/features/home/home_screen.dart';
@@ -250,4 +256,12 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/signup': (_) => (const SignupBasicInfoScreen()),
 
   '/login-success': (_) => const LoginSuccessScreen(),
+
+  // Aviation
+  '/aviation': (_) => const AviationLanding(),
+  '/aviation/search': (_) => const AviationSearchScreen(),
+  '/aviation/results': (_) => const AviationResultsScreen(),
+  '/aviation/booking': (_) => const AviationBookingScreen(),
+  '/aviation/checkout': (_) => const AviationCheckoutScreen(),
+  '/aviation/ticket': (_) => const AviationTicketScreen(),
 };

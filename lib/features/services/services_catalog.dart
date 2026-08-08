@@ -31,6 +31,13 @@ class ServicesCatalog {
       route: "/giftcards",
     ),
     ServiceItem(title: "TV", icon: Icons.tv, route: "/cable"),
+
+    ServiceItem(
+      title: "Flights",
+      icon: Icons.flight_takeoff,
+      route: "/aviation",
+    ),
+
     ServiceItem(
       title: "Government",
       icon: Icons.account_balance,

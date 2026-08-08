@@ -9,6 +9,7 @@ class HomeServiceCard extends StatefulWidget {
   final String route;
   final Color? iconColor;
   final String userId;
+  final double? fixedHeight;
 
   const HomeServiceCard({
     super.key,
@@ -17,6 +18,7 @@ class HomeServiceCard extends StatefulWidget {
     required this.route,
     required this.userId,
     this.iconColor,
+    this.fixedHeight,
   });
 
   @override
@@ -85,7 +87,7 @@ class _HomeServiceCardState extends State<HomeServiceCard>
 
           child: Container(
             width: double.infinity,
-            height: 78,
+            height: widget.fixedHeight ?? 78,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
 
             decoration: BoxDecoration(

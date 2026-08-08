@@ -40,6 +40,11 @@ class ServicesScreen extends StatelessWidget {
       ],
 
       "Lifestyle": [
+        {
+          "title": "Flights",
+          "icon": Icons.flight_takeoff,
+          "route": "/aviation",
+        },
         {"title": "Betting", "icon": Icons.sports_soccer, "route": "/betting"},
         {"title": "Gaming", "icon": Icons.sports_esports, "route": "/psgames"},
         {
@@ -71,7 +76,6 @@ class ServicesScreen extends StatelessWidget {
         },
         {"title": "Limits", "icon": Icons.lock, "route": "/settings"},
         {"title": "Settings", "icon": Icons.settings, "route": "/settings"},
-
         {
           "title": "Logout",
           "icon": Icons.logout,
@@ -96,61 +100,68 @@ class ServicesScreen extends StatelessWidget {
         ),
       ),
 
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        itemCount: grouped.length,
-        itemBuilder: (context, index) {
-          final sectionName = grouped.keys.elementAt(index);
-          final items = grouped[sectionName]!;
+      // ⭐ FIX: Center content + maxWidth 550 (desktop only)
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 550),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            itemCount: grouped.length,
+            itemBuilder: (context, index) {
+              final sectionName = grouped.keys.elementAt(index);
+              final items = grouped[sectionName]!;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 18, bottom: 10),
-                child: Text(
-                  sectionName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFE5E7EB),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 18, bottom: 10),
+                    child: Text(
+                      sectionName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFE5E7EB),
+                      ),
+                    ),
                   ),
-                ),
-              ),
 
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: items.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.92,
-                ),
-                itemBuilder: (context, i) {
-                  final s = items[i];
-                  return HomeServiceCard(
-                    title: s["title"],
-                    icon: s["icon"],
-                    route: s["route"],
-                    iconColor: s["iconColor"],
-                    userId: userId, // ⭐ REQUIRED
-                  );
-                },
-              ),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 0.92,
+                        ),
+                    itemBuilder: (context, i) {
+                      final s = items[i];
+                      return HomeServiceCard(
+                        title: s["title"],
+                        icon: s["icon"],
+                        route: s["route"],
+                        iconColor: s["iconColor"],
+                        userId: userId,
+                      );
+                    },
+                  ),
 
-              const SizedBox(height: 18),
+                  const SizedBox(height: 18),
 
-              if (index != grouped.length - 1)
-                Container(
-                  height: 1,
-                  margin: const EdgeInsets.only(top: 6, bottom: 6),
-                  color: Colors.white.withOpacity(0.08),
-                ),
-            ],
-          );
-        },
+                  if (index != grouped.length - 1)
+                    Container(
+                      height: 1,
+                      margin: const EdgeInsets.only(top: 6, bottom: 6),
+                      color: Colors.white.withOpacity(0.08),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
