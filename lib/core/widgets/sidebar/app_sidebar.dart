@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/core/utils/logout_handler.dart';
 import 'sidebar_user_header.dart';
 import 'sidebar_item.dart';
 
@@ -128,7 +129,7 @@ class AppSidebar extends StatelessWidget {
             SidebarItem(
               icon: Icons.logout,
               label: "Logout",
-              route: "/logout",
+              onTap: () => showLogoutDialog(context),
               activeRoute: activeRoute,
               isDestructive: true,
             ),

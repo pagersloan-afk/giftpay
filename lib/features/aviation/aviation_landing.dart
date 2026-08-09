@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/core/theme/giftpay_theme.dart';
+import 'package:utilityhub/core/widgets/giftpay_background.dart';
+
+import 'landing/landing_header.dart';
+import 'landing/landing_sky.dart';
+import 'landing/landing_trip_selector.dart';
+import 'landing/landing_cta_button.dart';
 
 class AviationLanding extends StatefulWidget {
   const AviationLanding({super.key});
@@ -35,167 +42,53 @@ class _AviationLandingState extends State<AviationLanding>
     super.dispose();
   }
 
-  Widget _tripSelector(String label, bool active) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: active
-            ? Colors.white.withOpacity(0.15)
-            : Colors.white.withOpacity(0.06),
-        border: Border.all(
-          color: active
-              ? Colors.white.withOpacity(0.35)
-              : Colors.white.withOpacity(0.12),
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: Colors.white.withOpacity(active ? 0.95 : 0.70),
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1115),
+    return GiftPayBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
 
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 550),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ⭐ Luxury Sky Gradient
-                Container(
-                  height: 220,
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(26),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF4FC3F7), Color(0xFF0F1115)],
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      // ⭐ Parallax Clouds
-                      Positioned(
-                        top: 40,
-                        left: 20,
-                        child: Opacity(
-                          opacity: 0.35,
-                          child: Icon(
-                            Icons.cloud,
-                            size: 60,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 70,
-                        right: 40,
-                        child: Opacity(
-                          opacity: 0.30,
-                          child: Icon(
-                            Icons.cloud,
-                            size: 50,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
+        // ⭐ Your premium header with “rr”
+        appBar: AppHeaderr(
+          title: "Flights",
+          onBack: () {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              "/home",
+              (route) => false,
+            );
+          },
+        ),
 
-                      // ⭐ Animated Plane Takeoff
-                      SlideTransition(
-                        position: _planeSlide,
-                        child: Align(
-                          alignment: Alignment.center,
-                          child: Icon(
-                            Icons.flight_takeoff,
-                            size: 90,
-                            color: Colors.white.withOpacity(0.95),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 550),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ⭐ Sky + animated plane
+                  LandingSky(planeSlide: _planeSlide),
 
-                const SizedBox(height: 26),
+                  const SizedBox(height: 26),
 
-                // ⭐ Title
-                Text(
-                  "Book Flights",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.95),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                  // ⭐ Title + subtitle
+                  const LandingHeader(),
 
-                const SizedBox(height: 6),
+                  const SizedBox(height: 26),
 
-                Text(
-                  "Search and book flights across Nigeria and international routes.",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.65),
-                    fontSize: 13.5,
-                    height: 1.4,
-                  ),
-                ),
+                  // ⭐ Trip selector
+                  const LandingTripSelector(),
 
-                const SizedBox(height: 26),
+                  const SizedBox(height: 26),
 
-                // ⭐ Trip Type Selector
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _tripSelector("One‑way", true),
-                    _tripSelector("Round‑trip", false),
-                    _tripSelector("Multi‑city", false),
-                  ],
-                ),
+                  // ⭐ CTA
+                  const LandingCtaButton(),
 
-                const SizedBox(height: 26),
-
-                // ⭐ CTA Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4FC3F7),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      elevation: 6,
-                      shadowColor: const Color(0xFF4FC3F7).withOpacity(0.45),
-                    ),
-                    onPressed: () {
-                      Navigator.pushNamed(context, "/aviation/search");
-                    },
-                    child: const Text(
-                      "Search Flights",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-              ],
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),

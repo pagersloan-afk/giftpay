@@ -17,32 +17,28 @@ class SignupIdentityController {
 
   Future<bool> verifyIdentity(BuildContext context) async {
     try {
-      final isValid = await _verifyWithBackend();
+      final backendResult = await _verifyWithBackend();
 
-      if (!isValid) {
+      if (!backendResult["success"]) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Identity verification failed")),
         );
         return false;
       }
 
+      // ⭐ Tier1 after NIN or BVN verification
       final Map<String, dynamic> updateData = {
-        "kycStatus": "verified",
+        "kycStatus": "tier1",
         "onboardingStatus": "identity_verified",
       };
 
-      if (nin.isNotEmpty) {
-        updateData["nin"] = nin;
-      }
-
-      if (bvn.isNotEmpty) {
-        updateData["bvn"] = bvn;
-      }
+      if (nin.isNotEmpty) updateData["nin"] = nin;
+      if (bvn.isNotEmpty) updateData["bvn"] = bvn;
 
       await FirebaseFirestore.instance
           .collection("users")
           .doc(userId)
-          .set(updateData, SetOptions(merge: true)); // ⭐ merge, no overwrite
+          .set(updateData, SetOptions(merge: true)); // merge safely
 
       return true;
     } catch (e) {
@@ -53,7 +49,7 @@ class SignupIdentityController {
     }
   }
 
-  Future<bool> _verifyWithBackend() async {
+  Future<Map<String, dynamic>> _verifyWithBackend() async {
     final url = Uri.parse(ApiConfig.api("/api/verify-identity"));
 
     final response = await http.post(
@@ -66,9 +62,15 @@ class SignupIdentityController {
       }),
     );
 
-    if (response.statusCode != 200) return false;
+    if (response.statusCode != 200) {
+      return {"success": false};
+    }
 
     final data = jsonDecode(response.body);
-    return data["status"] == "success";
+
+    return {
+      "success": data["status"] == "success",
+      "tier": data["kycStatus"] ?? "tier1",
+    };
   }
 }

@@ -8,7 +8,7 @@ class SidebarUserHeader extends StatelessWidget {
   Future<Map<String, dynamic>> _fetchUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return {"firstName": "GiftPay User", "kycStatus": "pending"};
+      return {"firstName": "GiftPay User", "kycStatus": "unverified"};
     }
 
     final doc = await FirebaseFirestore.instance
@@ -17,9 +17,10 @@ class SidebarUserHeader extends StatelessWidget {
         .get();
 
     final data = doc.data() ?? {};
+
     return {
       "firstName": data["firstName"] ?? "GiftPay User",
-      "kycStatus": data["kycStatus"] ?? "pending",
+      "kycStatus": data["kycStatus"] ?? "unverified",
     };
   }
 
@@ -28,47 +29,103 @@ class SidebarUserHeader extends StatelessWidget {
     return FutureBuilder<Map<String, dynamic>>(
       future: _fetchUserData(),
       builder: (context, snapshot) {
-        final firstName = snapshot.data?["firstName"] ?? "GiftPay User";
-        final kycStatus = snapshot.data?["kycStatus"] ?? "pending";
+        // ⭐ Prevent overflow flash
+        if (!snapshot.hasData) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Row(
+              children: [
+                // Avatar shimmer
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
 
-        // ⭐ Badge styling
-        final bool isVerified = kycStatus.toLowerCase() == "verified";
-        final Color badgeColor = isVerified
-            ? Colors.greenAccent
-            : Colors.orangeAccent;
-        final String badgeText = isVerified ? "Verified" : "Pending";
+                // Text shimmer
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 14,
+                      color: Colors.white.withOpacity(0.15),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 60,
+                      height: 12,
+                      color: Colors.white.withOpacity(0.10),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        final firstName = snapshot.data!["firstName"];
+        final kycStatus = snapshot.data!["kycStatus"];
+
+        // ⭐ KYC Tier Logic
+        late final String badgeText;
+        late final Color badgeColor;
+
+        if (kycStatus == "tier1") {
+          badgeText = "Tier 1";
+          badgeColor = Colors.blueAccent;
+        } else if (kycStatus == "tier2") {
+          badgeText = "Tier 2";
+          badgeColor = Colors.purpleAccent;
+        } else if (kycStatus == "verified") {
+          badgeText = "Verified";
+          badgeColor = Colors.greenAccent;
+        } else if (kycStatus == "pending") {
+          badgeText = "Pending";
+          badgeColor = Colors.orangeAccent;
+        } else {
+          badgeText = "Unverified";
+          badgeColor = Colors.redAccent;
+        }
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
           child: Row(
             children: [
-              // ⭐ Avatar ring with soft border + glow
-              Container(
-                padding: const EdgeInsets.all(2.2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.20),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF4FC3F7).withOpacity(0.20),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+              // ⭐ Avatar (click → profile)
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, "/profile"),
+                child: Container(
+                  padding: const EdgeInsets.all(2.2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.20),
+                      width: 2,
                     ),
-                  ],
-                ),
-                child: const CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Colors.white24,
-                  child: Icon(Icons.person, color: Colors.white),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF4FC3F7).withOpacity(0.20),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.person, color: Colors.white),
+                  ),
                 ),
               ),
 
               const SizedBox(width: 12),
 
-              // ⭐ Premium typography + KYC badge
+              // ⭐ Name + KYC Badge
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

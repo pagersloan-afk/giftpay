@@ -3,7 +3,13 @@ import 'package:flutter/material.dart';
 class SidebarItem extends StatefulWidget {
   final IconData icon;
   final String label;
-  final String route;
+
+  // ⭐ route is now OPTIONAL
+  final String? route;
+
+  // ⭐ onTap is now OPTIONAL
+  final VoidCallback? onTap;
+
   final String activeRoute;
   final bool isDestructive;
 
@@ -11,8 +17,9 @@ class SidebarItem extends StatefulWidget {
     super.key,
     required this.icon,
     required this.label,
-    required this.route,
     required this.activeRoute,
+    this.route,
+    this.onTap,
     this.isDestructive = false,
   });
 
@@ -25,7 +32,8 @@ class _SidebarItemState extends State<SidebarItem> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isActive = widget.route == widget.activeRoute;
+    final bool isActive =
+        widget.route != null && widget.route == widget.activeRoute;
 
     // GP‑1 color system
     final Color cyan = const Color(0xFF4FC3F7);
@@ -37,7 +45,13 @@ class _SidebarItemState extends State<SidebarItem> {
       onEnter: (_) => setState(() => hovering = true),
       onExit: (_) => setState(() => hovering = false),
       child: GestureDetector(
-        onTap: () => Navigator.pushNamed(context, widget.route),
+        onTap: () {
+          if (widget.onTap != null) {
+            widget.onTap!(); // ⭐ custom action (logout)
+          } else if (widget.route != null) {
+            Navigator.pushNamed(context, widget.route!); // ⭐ normal navigation
+          }
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,

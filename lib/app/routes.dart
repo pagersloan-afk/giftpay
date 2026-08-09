@@ -52,6 +52,7 @@ import 'package:utilityhub/features/landing/public_screens/security/security.dar
 import 'package:utilityhub/features/limits/edit_daily_airtime_limit_screen.dart';
 import 'package:utilityhub/features/limits/edit_daily_transfer_limit_screen.dart';
 import 'package:utilityhub/features/limits/limits_screen.dart';
+import 'package:utilityhub/features/profile/management/management_screen.dart';
 import 'package:utilityhub/features/services/services_screen.dart';
 import 'package:utilityhub/features/statement/statement_download_screen.dart';
 import 'package:utilityhub/features/statement/statement_pdf_screen.dart';
@@ -115,7 +116,6 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/login': (_) => wrap(const LoginScreen()),
   '/home': (_) => wrap(const HomeScreen()),
   '/landing': (context) => const LandingPage(),
-  '/logout': (_) => wrap(const LoginScreen()),
 
   // Electricity
   '/electricity': (_) => wrap(const ElectricityScreen()),
@@ -138,6 +138,7 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // Profile
   '/profile': (_) => wrap(const ProfileScreen()),
+  '/profile/manage': (_) => const ManagementScreen(),
 
   // Paystack callback
   '/payment-complete': (_) => wrap(const PaystackWebCallbackScreen()),

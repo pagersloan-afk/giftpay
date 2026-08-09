@@ -2,20 +2,30 @@
 
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/services/user_services_api.dart';
+import 'package:utilityhub/core/utils/logout_handler.dart';
 
 class HomeServiceCard extends StatefulWidget {
   final String title;
   final IconData icon;
-  final String route;
+
+  // ⭐ optional route
+  final String? route;
+
+  // ⭐ optional action (e.g., logout)
+  final String? action;
+
   final Color? iconColor;
   final String userId;
+
+  // ⭐ FIX: restore fixedHeight
   final double? fixedHeight;
 
   const HomeServiceCard({
     super.key,
     required this.title,
     required this.icon,
-    required this.route,
+    this.route,
+    this.action,
     required this.userId,
     this.iconColor,
     this.fixedHeight,
@@ -56,11 +66,12 @@ class _HomeServiceCardState extends State<HomeServiceCard>
   }
 
   Future<void> _handleTap() async {
+    // ⭐ tap animation
     setState(() => scale = 0.92);
     await Future.delayed(const Duration(milliseconds: 120));
     setState(() => scale = 1.0);
 
-    // ⭐ FIX: Remove Platform.operatingSystem (breaks on web)
+    // ⭐ log usage
     final device = Theme.of(context).platform.name;
 
     await UserServicesApi.logUsage(
@@ -69,8 +80,17 @@ class _HomeServiceCardState extends State<HomeServiceCard>
       device: device,
     );
 
-    if (mounted) {
-      Navigator.pushNamed(context, widget.route);
+    if (!mounted) return;
+
+    // ⭐ handle logout action
+    if (widget.action == "logout") {
+      await showLogoutDialog(context);
+      return;
+    }
+
+    // ⭐ handle navigation
+    if (widget.route != null) {
+      Navigator.pushNamed(context, widget.route!);
     }
   }
 
@@ -87,7 +107,10 @@ class _HomeServiceCardState extends State<HomeServiceCard>
 
           child: Container(
             width: double.infinity,
+
+            // ⭐ fixedHeight restored
             height: widget.fixedHeight ?? 78,
+
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
 
             decoration: BoxDecoration(

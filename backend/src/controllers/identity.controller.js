@@ -16,9 +16,7 @@ exports.verifyIdentity = async (req, res) => {
     // ⭐ Auto-switch between LIVE and SANDBOX
     const isSandbox = process.env.PREMBLY_ENV === "sandbox";
 
-    const baseUrl = isSandbox
-      ? "https://api.prembly.com" // sandbox uses same base URL
-      : "https://api.prembly.com";
+    const baseUrl = "https://api.prembly.com";
 
     const apiKey = isSandbox
       ? process.env.PREMBLY_SANDBOX_KEY
@@ -27,7 +25,7 @@ exports.verifyIdentity = async (req, res) => {
     console.log("🌍 Environment:", isSandbox ? "SANDBOX" : "LIVE");
     console.log("🔐 Using Key:", apiKey);
 
-    // ⭐ Correct v1 endpoints (NO /v2/)
+    // ⭐ Correct v1 endpoints
     const endpoint = nin
       ? `${baseUrl}/identitypass/verification/nin`
       : `${baseUrl}/identitypass/verification/bvn`;
@@ -36,8 +34,8 @@ exports.verifyIdentity = async (req, res) => {
 
     // ⭐ Correct v1 request body
     const payload = nin
-  ? { number_nin: nin }
-  : { number_bvn: bvn };
+      ? { number_nin: nin }
+      : { number_bvn: bvn };
 
     const response = await axios.post(endpoint, payload, {
       headers: {
@@ -58,9 +56,18 @@ exports.verifyIdentity = async (req, res) => {
       });
     }
 
+    // ⭐ KYC TIER LOGIC
+    // NIN or BVN verification = Tier 1
+    // Face + BVN match (handled in another endpoint) = Tier 2
+    // Full KYC upload (address, ID, selfie) = Tier 3 (Verified)
+
+    const kycStatus = "tier1"; // ⭐ This endpoint ONLY handles Tier1
+
     return res.json({
       status: "success",
-      message: "Identity verified",
+      message: "Tier1 identity verified",
+      kycStatus,
+      tier: 1,
       data,
     });
 
