@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:utilityhub/app/gifttech_routes.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
@@ -24,22 +25,18 @@ import 'package:utilityhub/features/splash/giftpay_splash.dart';
 import 'package:utilityhub/features/auth/login/login_screen.dart';
 import 'package:utilityhub/features/home/home_shell.dart';
 
-// ⭐ LANDING PAGE (WEB)
-import 'package:utilityhub/features/landing/landing_page.dart';
+// ⭐ NEW PARENT LANDING PAGE (WEB)
+import 'package:utilityhub/features/gift_techlanding/gift_techlanding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // ⭐ INITIALIZE FIREBASE
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // ⭐ INITIALIZE SUPABASE
   await supa.Supabase.initialize(
     url: "https://mzvwtxozwnprsiipoxkx.supabase.co",
-    anonKey:
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16dnd0eG96d25wcnNpaXBveGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMjEyOTksImV4cCI6MjA5MDU5NzI5OX0.wchked2h0b5OMvu8qKi9pkYIPJs4_PX5Mqx7HNEpmto",
+    anonKey: "YOUR_KEY",
   );
 
-  // ⭐ ATTACH NOTIFICATION CENTER
   FirebaseAuth.instance.authStateChanges().listen((user) {
     if (user != null) {
       NotificationCenter.I.setUser(user.uid);
@@ -61,15 +58,21 @@ class UtilityHubApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: GiftPayTheme.theme,
       builder: (context, child) {
-        // Splash and web landing must NOT be wrapped
-        if (child is GiftPaySplash || child is LandingPage) {
+        // Splash and parent landing must NOT be wrapped
+        if (child is GiftPaySplash || child is GiftTechLandingPage) {
           return child!;
         }
         return GiftPayBackground(child: child!);
       },
-      // ⭐ MOBILE → Splash → Login, WEB → Landing
-      home: kIsWeb ? const LandingPage() : const GiftPaySplash(),
-      routes: appRoutes,
+
+      // ⭐ MOBILE → Splash → Login
+      // ⭐ WEB → Parent Landing
+      home: kIsWeb ? const GiftTechLandingPage() : const GiftPaySplash(),
+
+      routes: {
+        ...appRoutes, // GiftPay app routes
+        ...giftTechRoutes, // GiftTech parent landing routes
+      },
     );
   }
 }

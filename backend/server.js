@@ -45,8 +45,7 @@ const giftcardRoutes = require("./src/routes/giftcard.routes");
 const monnifyRoutes = require("./src/routes/monnify.routes");
 const { monnifyWebhook } = require("./src/webhooks/monnify.webhook");
 const identityRoutes = require("./src/routes/identity.routes");
-const amadeusRoutes = require("./src/routes/aviation/amadeus.routes");
-const wakanowRoutes = require("./src/routes/aviation/wakanow.routes");
+const contactRoutes = require("./src/routes/contact.js");
 
 
 
@@ -108,8 +107,7 @@ app.use("/api/giftcard", giftcardRoutes);
 app.use("/api/monnify", monnifyRoutes);
 app.post("/api/monnify/webhook", monnifyWebhook);
 app.use("/api", identityRoutes);
-app.use("/api/aviation", amadeusRoutes);
-app.use("/api/aviation", wakanowRoutes);
+app.use("/api", contactRoutes);
 
 
 

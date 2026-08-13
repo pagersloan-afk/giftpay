@@ -117,6 +117,15 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/home': (_) => wrap(const HomeScreen()),
   '/landing': (context) => const LandingPage(),
 
+  // GiftTech Landing (Product Section)
+  '/giftpay': (context) => const LandingPage(),
+  '/wallets': (context) => const LandingPage(),
+  '/giftcardss': (context) => const LandingPage(),
+  '/utilities': (context) => const LandingPage(),
+  '/bulk-electricityy': (context) => const LandingPage(),
+  '/airtime-distributions': (context) => const LandingPage(),
+  '/corporate-datas': (context) => const LandingPage(),
+
   // Electricity
   '/electricity': (_) => wrap(const ElectricityScreen()),
 
