@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/features/gift_techlanding/screens/about.dart';
+import 'package:utilityhub/features/gift_techlanding/screens/community.dart';
+import 'package:utilityhub/features/gift_techlanding/screens/contact.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/about_gift_technology.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/accessibility.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/airtime_distribution.dart';
@@ -19,6 +22,7 @@ import 'package:utilityhub/features/gift_techlanding/screens/footer/find_store.d
 import 'package:utilityhub/features/gift_techlanding/screens/footer/gift_pos.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/giftcard_market_place.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/giftpay_wallet.dart';
+import 'package:utilityhub/features/gift_techlanding/screens/footer/help_center.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/investors.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/legal.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/media_gallery.dart';
@@ -31,15 +35,13 @@ import 'package:utilityhub/features/gift_techlanding/screens/footer/responsible_
 import 'package:utilityhub/features/gift_techlanding/screens/footer/returns.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/safety_center.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/tech_for_good.dart';
+import 'package:utilityhub/features/gift_techlanding/screens/footer/terms.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/terms_of_sale.dart';
 import 'package:utilityhub/features/gift_techlanding/screens/footer/utilities_hub.dart';
 
-// ⭐ MASTER TEMPLATE FOR ALL GIFTTECH PAGES
-import 'package:utilityhub/features/gift_techlanding/screens/gifttech_page_template.dart';
-
 // ⭐ PARENT LANDING
 import 'package:utilityhub/features/gift_techlanding/gift_techlanding_page.dart';
-import 'package:utilityhub/settings/sections/help_center_section.dart';
+import 'package:utilityhub/features/gift_techlanding/screens/products.dart';
 import 'package:utilityhub/settings/sections/terms_of_service.dart';
 
 final Map<String, WidgetBuilder> giftTechRoutes = {
@@ -56,7 +58,7 @@ final Map<String, WidgetBuilder> giftTechRoutes = {
   '/airtime-distribution': (_) => const AirtimeDistributionScreen(),
 
   // ⭐ SUPPORT & LEGAL
-  '/help-center': (_) => const HelpCenterScreen(),
+  '/gift-tech-help-center': (_) => const GiftTechHelpCenterScreen(),
   '/order-status': (_) => const OrderStatusScreen(),
   '/returns': (_) => const ReturnsScreen(),
   '/find-store': (_) => const FindStoreScreen(),
@@ -67,7 +69,7 @@ final Map<String, WidgetBuilder> giftTechRoutes = {
   // ⭐ COMMUNITY
   '/creators': (_) => const CreatorsScreen(),
   '/developers': (_) => const DevelopersScreen(),
-  '/businesses': (_) => const BusinessesScreen(),
+  '/business': (_) => const GiftTechBusinessesScreen(),
   '/nonprofits': (_) => const NonProfitsScreen(),
   '/download-sdks': (_) => const DownloadSDKsScreen(),
   '/partner-program': (_) => const PartnerProgramScreen(),
@@ -75,15 +77,15 @@ final Map<String, WidgetBuilder> giftTechRoutes = {
 
   // ⭐ OUR ACTIONS
   '/data-privacy': (_) => const DataPrivacyScreen(),
-  '/responsible-practices': (_) => const ResponsiblePracticesScreen(),
+  '/responsibility': (_) => const ResponsiblePracticesScreen(),
   '/accessibility': (_) => const AccessibilityScreen(),
   '/elections': (_) => const ElectionsScreen(),
 
   // ⭐ ABOUT US
-  '/about-gifttech': (_) => const AboutGiftTechScreen(),
+  '/about': (_) => const AboutGiftTechScreen(),
   '/company-info': (_) => const CompanyInfoScreen(),
   '/careers': (_) => const CareersScreen(),
-  '/media-gallery': (_) => const MediaGalleryScreen(),
+  '/media': (_) => const MediaGalleryScreen(),
   '/brand-resources': (_) => const BrandResourcesScreen(),
   '/investors': (_) => const InvestorsScreen(),
   '/newsroom': (_) => const NewsroomScreen(),
@@ -91,6 +93,12 @@ final Map<String, WidgetBuilder> giftTechRoutes = {
   // ⭐ POLICIES
   '/community-standards': (_) => const CommunityStandardsScreen(),
   '/privacy-policy': (_) => const PrivacyPolicyScreen(),
-  '/terms': (_) => const TermsScreen(),
+  '/terms': (_) => const GiftTechTermsScreen(),
   '/cookie-policy': (_) => const CookiePolicyScreen(),
+
+  // ⭐ PRIMARY SITE NAVIGATION
+  '/about-gifttech': (_) => const GiftTechAboutScreen(),
+  '/products': (_) => const GiftTechProductsScreen(),
+  '/community': (_) => const GiftTechCommunityScreen(),
+  '/contact': (_) => const GiftTechContactScreen(),
 };

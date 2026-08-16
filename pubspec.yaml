@@ -172,6 +172,7 @@ flutter:
     - assets/icons/reward-bonus.png
     - assets/images/careers-life.png
     - assets/logo/gift_tech_logo.png
+    - assets/images/gift_technology_logo.png
 
   fonts:
     - family: SegoeUI

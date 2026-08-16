@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:utilityhub/features/gift_techlanding/sections/about/about_header.dart';
+import 'package:utilityhub/features/gift_techlanding/sections/about/about_main_card.dart';
+import 'package:utilityhub/features/gift_techlanding/sections/about/about_principles.dart';
 
-import 'community_header.dart';
-import 'community_grid.dart';
-
-/// Community section orchestrator.
-///
-/// This file intentionally stays small.
-/// It owns the section layout and delegates the actual UI to:
-///
-/// - CommunityHeader
-/// - CommunityGrid
-///
-/// The landing page only needs to import CommunitySection.
-class CommunitySection extends StatelessWidget {
-  const CommunitySection({super.key});
+class AboutSection extends StatelessWidget {
+  const AboutSection({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +20,7 @@ class CommunitySection extends StatelessWidget {
             : isTablet
             ? 34
             : 64,
-        vertical: isMobile ? 75 : 110,
+        vertical: isMobile ? 80 : 120,
       ),
       child: Center(
         child: ConstrainedBox(
@@ -37,11 +28,15 @@ class CommunitySection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CommunityHeader(isMobile: isMobile),
+              const AboutHeader(),
 
-              SizedBox(height: isMobile ? 34 : 48),
+              SizedBox(height: isMobile ? 42 : 64),
 
-              const CommunityGrid(),
+              const AboutMainCard(),
+
+              SizedBox(height: isMobile ? 16 : 24),
+
+              const AboutPrinciples(),
             ],
           ),
         ),

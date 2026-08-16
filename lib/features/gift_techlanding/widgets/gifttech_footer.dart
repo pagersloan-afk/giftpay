@@ -146,10 +146,10 @@ class GiftTechFooter extends StatelessWidget {
       children: [
         // ⭐ Column 1 — Store (Meta Store equivalent)
         _column("Gift Technology Store", [
-          _item(context, "GiftPay Wallet", "/giftpay"),
-          _item(context, "GiftPOS", "/pos"),
-          _item(context, "GiftCard Marketplace", "/giftcards"),
-          _item(context, "Utilities Hub", "/utilities"),
+          _item(context, "GiftPay Wallet", "/giftpay-wallet"),
+          _item(context, "GiftPOS", "/giftpos"),
+          _item(context, "GiftCard Marketplace", "/giftcard-marketplace"),
+          _item(context, "Utilities Hub", "/utilities-hub"),
           _item(context, "Bulk Electricity Tokens", "/bulk-electricity"),
           _item(context, "Corporate Data Plans", "/corporate-data"),
           _item(context, "Airtime Distribution", "/airtime-distribution"),
@@ -157,13 +157,13 @@ class GiftTechFooter extends StatelessWidget {
 
         // ⭐ Column 2 — Support & Legal
         _column("Support & Legal", [
-          _item(context, "Help Center", "/help-center"),
-          _item(context, "Order Status", "/orders"),
+          _item(context, "Help Center", "/gift-tech-help-center"),
+          _item(context, "Order Status", "/order-status"),
           _item(context, "Returns", "/returns"),
           _item(context, "Find a Store", "/stores"),
           _item(context, "Legal", "/legal"),
-          _item(context, "Terms of Sale", "/terms-sale"),
-          _item(context, "Safety Center", "/safety"),
+          _item(context, "Terms of Sale", "/terms-of-sale"),
+          _item(context, "Safety Center", "/safety-center"),
         ]),
 
         // ⭐ Column 3 — Community
@@ -173,13 +173,13 @@ class GiftTechFooter extends StatelessWidget {
           _item(context, "Businesses", "/business"),
           _item(context, "Non-profits", "/nonprofits"),
           _item(context, "Download SDKs", "/sdks"),
-          _item(context, "Partner Program", "/partners"),
+          _item(context, "Partner Program", "/partner-program"),
           _item(context, "Tech for Good", "/tech-for-good"),
         ]),
 
         // ⭐ Column 4 — Our Actions
         _column("Our Actions", [
-          _item(context, "Data & Privacy", "/privacy"),
+          _item(context, "Data & Privacy", "/data-privacy"),
           _item(context, "Responsible Practices", "/responsibility"),
           _item(context, "Accessibility", "/accessibility"),
           _item(context, "Elections", "/elections"),
@@ -191,7 +191,7 @@ class GiftTechFooter extends StatelessWidget {
           _item(context, "Company Info", "/company-info"),
           _item(context, "Careers", "/careers"),
           _item(context, "Media Gallery", "/media"),
-          _item(context, "Brand Resources", "/brand"),
+          _item(context, "Brand Resources", "/brand-resources"),
           _item(context, "Investors", "/investors"),
           _item(context, "Newsroom", "/newsroom"),
         ]),
@@ -201,7 +201,7 @@ class GiftTechFooter extends StatelessWidget {
           _item(context, "Community Standards", "/community-standards"),
           _item(context, "Privacy Policy", "/privacy-policy"),
           _item(context, "Terms", "/terms"),
-          _item(context, "Cookie Policy", "/cookies"),
+          _item(context, "Cookie Policy", "/cookie-policy"),
         ]),
       ],
     );

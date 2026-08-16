@@ -1,68 +1,57 @@
 import 'package:flutter/material.dart';
 
-/// Luxury navigation header for the main Gift Technology landing page.
-///
-/// Navigation is callback-based because this header belongs to the landing
-/// page. About / Products / Community / Contact therefore scroll to sections
-/// instead of navigating to the dedicated footer-screen routes.
-///
-/// Dedicated footer/corporate screens should continue using
-/// GiftTechFooterHeader.
-class GiftTechHeader extends StatefulWidget implements PreferredSizeWidget {
-  const GiftTechHeader({
+class GiftTechFooterHeader extends StatefulWidget
+    implements PreferredSizeWidget {
+  const GiftTechFooterHeader({
     super.key,
-    required this.onAboutTap,
-    required this.onProductsTap,
-    required this.onCommunityTap,
-    required this.onContactTap,
-    this.logoAssetPath = 'assets/images/gift_technology_logo.png',
+    this.aboutRoute = '/about-gifttech',
+    this.productsRoute = '/products',
+    this.communityRoute = '/community',
+    this.contactRoute = '/contact',
   });
 
-  final VoidCallback onAboutTap;
-  final VoidCallback onProductsTap;
-  final VoidCallback onCommunityTap;
-  final VoidCallback onContactTap;
+  /// Dedicated About page route.
+  final String aboutRoute;
 
-  /// Official Gift Technology logo asset.
-  final String logoAssetPath;
+  /// Dedicated Products page route.
+  final String productsRoute;
 
-  static const double headerHeight = 78;
+  /// Dedicated Community page route.
+  final String communityRoute;
 
-  @override
-  Size get preferredSize => const Size.fromHeight(headerHeight);
-
-  /// Public drawer builder.
-  ///
-  /// This method intentionally lives on [GiftTechHeader] itself rather than
-  /// its private State class so the landing page can safely use:
-  ///
-  ///   drawer: header.buildDrawer(context),
-  ///
-  /// without trying to access a State-only method.
-  Widget buildDrawer(BuildContext context) {
-    return _GiftTechLandingDrawer(
-      logoAssetPath: logoAssetPath,
-      onAboutTap: onAboutTap,
-      onProductsTap: onProductsTap,
-      onCommunityTap: onCommunityTap,
-      onContactTap: onContactTap,
-    );
-  }
+  /// Dedicated Contact page route.
+  final String contactRoute;
 
   @override
-  State<GiftTechHeader> createState() => _GiftTechHeaderState();
+  Size get preferredSize => const Size.fromHeight(78);
+
+  @override
+  State<GiftTechFooterHeader> createState() => _GiftTechFooterHeaderState();
 }
 
-class _GiftTechHeaderState extends State<GiftTechHeader> {
+class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
   static const Color _navy = Color(0xFF273D68);
   static const Color _softBlue = Color(0xFF4A6BB8);
   static const Color _highlight = Color(0xFF7EA4FF);
 
   String? _hoveredItem;
 
+  void _navigate(BuildContext context, String route) {
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+
+    // Prevent unnecessary navigation if the visitor is already
+    // on the requested dedicated page.
+    if (currentRoute == route) {
+      return;
+    }
+
+    Navigator.of(context).pushNamed(route);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.sizeOf(context).width < 760;
+    final width = MediaQuery.sizeOf(context).width;
+    final isMobile = width < 760;
 
     return Material(
       color: Colors.transparent,
@@ -100,75 +89,62 @@ class _GiftTechHeaderState extends State<GiftTechHeader> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // DESKTOP
+  // ---------------------------------------------------------------------------
+
   Widget _buildDesktopHeader(BuildContext context) {
     return Row(
       children: [
         _buildBrand(context),
         const Spacer(),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildNavItem(
-              label: 'About',
-              icon: Icons.business_outlined,
-              onTap: widget.onAboutTap,
-            ),
-            _buildNavItem(
-              label: 'Products',
-              icon: Icons.grid_view_rounded,
-              onTap: widget.onProductsTap,
-            ),
-            _buildNavItem(
-              label: 'Community',
-              icon: Icons.groups_outlined,
-              onTap: widget.onCommunityTap,
-            ),
-            _buildNavItem(
-              label: 'Contact',
-              icon: Icons.mail_outline_rounded,
-              onTap: widget.onContactTap,
-            ),
-            const SizedBox(width: 8),
-            _buildSearchButton(context),
-          ],
-        ),
+        _buildDesktopNavigation(context),
       ],
     );
   }
 
+  Widget _buildDesktopNavigation(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildNavItem(
+          context,
+          label: 'About',
+          icon: Icons.business_outlined,
+          route: widget.aboutRoute,
+        ),
+        _buildNavItem(
+          context,
+          label: 'Products',
+          icon: Icons.grid_view_rounded,
+          route: widget.productsRoute,
+        ),
+        _buildNavItem(
+          context,
+          label: 'Community',
+          icon: Icons.groups_outlined,
+          route: widget.communityRoute,
+        ),
+        _buildNavItem(
+          context,
+          label: 'Contact',
+          icon: Icons.mail_outline_rounded,
+          route: widget.contactRoute,
+        ),
+        const SizedBox(width: 8),
+        _buildSearchButton(context),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // MOBILE
+  // ---------------------------------------------------------------------------
+
   Widget _buildMobileHeader(BuildContext context) {
     return Row(
       children: [
-        Builder(
-          builder: (buttonContext) {
-            return Tooltip(
-              message: 'Menu',
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => Scaffold.of(buttonContext).openDrawer(),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Colors.white.withOpacity(0.045),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.075),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.menu_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+        _buildMobileMenuButton(context),
         const SizedBox(width: 12),
         Expanded(child: _buildBrand(context)),
         const SizedBox(width: 8),
@@ -177,61 +153,90 @@ class _GiftTechHeaderState extends State<GiftTechHeader> {
     );
   }
 
+  Widget _buildMobileMenuButton(BuildContext context) {
+    return Builder(
+      builder: (buttonContext) {
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () {
+              Scaffold.of(buttonContext).openDrawer();
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: Colors.white.withOpacity(0.045),
+                border: Border.all(color: Colors.white.withOpacity(0.075)),
+              ),
+              child: const Icon(
+                Icons.menu_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // BRAND
+  // ---------------------------------------------------------------------------
+
   Widget _buildBrand(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < 760;
 
-    return Semantics(
-      button: true,
-      label: 'Gift Technology home',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil('/gifttech', (route) => false);
-        },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildBrandMark(),
-            const SizedBox(width: 11),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/gifttech', (route) => false);
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildBrandMark(),
+          const SizedBox(width: 11),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'GIFT TECHNOLOGY',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'SegoeUI',
+                    fontSize: isMobile ? 13 : 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: isMobile ? 1.05 : 1.35,
+                    color: Colors.white,
+                  ),
+                ),
+                if (!isMobile) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    'GIFT TECHNOLOGY',
+                    'DIGITAL INFRASTRUCTURE FOR AFRICA',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontFamily: 'SegoeUI',
-                      fontSize: isMobile ? 13 : 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: isMobile ? 1.05 : 1.35,
-                      color: Colors.white,
+                      fontSize: 7,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.35,
+                      color: Colors.white.withOpacity(0.35),
                     ),
                   ),
-                  if (!isMobile) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'DIGITAL INFRASTRUCTURE FOR AFRICA',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'SegoeUI',
-                        fontSize: 7,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.35,
-                        color: Colors.white.withOpacity(0.35),
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -240,61 +245,52 @@ class _GiftTechHeaderState extends State<GiftTechHeader> {
     return Container(
       width: 42,
       height: 42,
-      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(13),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_softBlue.withOpacity(0.20), _navy.withOpacity(0.55)],
+          colors: [_softBlue.withOpacity(0.95), _navy],
         ),
-        border: Border.all(color: _highlight.withOpacity(0.20)),
+        border: Border.all(color: _highlight.withOpacity(0.22)),
         boxShadow: [
           BoxShadow(
-            color: _softBlue.withOpacity(0.20),
+            color: _softBlue.withOpacity(0.18),
             blurRadius: 18,
             spreadRadius: 1,
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(9),
-        child: Image.asset(
-          widget.logoAssetPath,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(
-              Icons.business_rounded,
-              color: _highlight.withOpacity(0.85),
-              size: 21,
-            );
-          },
-        ),
-      ),
+      child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
     );
   }
 
-  Widget _buildNavItem({
+  // ---------------------------------------------------------------------------
+  // NAVIGATION ITEM
+  // ---------------------------------------------------------------------------
+
+  Widget _buildNavItem(
+    BuildContext context, {
     required String label,
     required IconData icon,
-    required VoidCallback onTap,
+    required String route,
   }) {
     final isHovered = _hoveredItem == label;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
-        if (mounted) {
-          setState(() => _hoveredItem = label);
-        }
+        setState(() {
+          _hoveredItem = label;
+        });
       },
       onExit: (_) {
-        if (mounted) {
-          setState(() => _hoveredItem = null);
-        }
+        setState(() {
+          _hoveredItem = null;
+        });
       },
       child: GestureDetector(
-        onTap: onTap,
+        onTap: () => _navigate(context, route),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
@@ -339,6 +335,10 @@ class _GiftTechHeaderState extends State<GiftTechHeader> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // SEARCH
+  // ---------------------------------------------------------------------------
+
   Widget _buildSearchButton(BuildContext context) {
     return Tooltip(
       message: 'Search',
@@ -346,7 +346,9 @@ class _GiftTechHeaderState extends State<GiftTechHeader> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(13),
-          onTap: () => _showSearchNotice(context),
+          onTap: () {
+            _showSearchNotice(context);
+          },
           child: Container(
             width: 44,
             height: 44,
@@ -396,37 +398,14 @@ class _GiftTechHeaderState extends State<GiftTechHeader> {
         ),
       );
   }
-}
 
-/// Mobile drawer used by the main landing-page header.
-///
-/// It is a separate widget so the drawer can be constructed from the
-/// public [GiftTechHeader.buildDrawer] method without depending on the
-/// private State object.
-class _GiftTechLandingDrawer extends StatelessWidget {
-  const _GiftTechLandingDrawer({
-    required this.logoAssetPath,
-    required this.onAboutTap,
-    required this.onProductsTap,
-    required this.onCommunityTap,
-    required this.onContactTap,
-  });
+  // ---------------------------------------------------------------------------
+  // MOBILE DRAWER
+  // ---------------------------------------------------------------------------
 
-  static const Color _navy = Color(0xFF273D68);
-  static const Color _softBlue = Color(0xFF4A6BB8);
-  static const Color _highlight = Color(0xFF7EA4FF);
-  static const Color _drawerNavy = Color(0xFF0A1020);
-
-  final String logoAssetPath;
-  final VoidCallback onAboutTap;
-  final VoidCallback onProductsTap;
-  final VoidCallback onCommunityTap;
-  final VoidCallback onContactTap;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget buildDrawer(BuildContext context) {
     return Drawer(
-      backgroundColor: _drawerNavy,
+      backgroundColor: const Color(0xFF0A1020),
       elevation: 20,
       width: 330,
       child: SafeArea(
@@ -437,50 +416,49 @@ class _GiftTechLandingDrawer extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
-                physics: const BouncingScrollPhysics(),
                 children: [
-                  _buildSectionLabel('EXPLORE'),
+                  _buildDrawerSectionLabel('EXPLORE'),
                   const SizedBox(height: 8),
                   _buildDrawerItem(
                     context,
                     icon: Icons.business_outlined,
                     title: 'About',
                     subtitle: 'Our company, mission & vision',
-                    onTap: onAboutTap,
+                    route: widget.aboutRoute,
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.grid_view_rounded,
                     title: 'Products',
                     subtitle: 'Platforms & digital solutions',
-                    onTap: onProductsTap,
+                    route: widget.productsRoute,
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.groups_outlined,
                     title: 'Community',
                     subtitle: 'People, programs & impact',
-                    onTap: onCommunityTap,
+                    route: widget.communityRoute,
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.mail_outline_rounded,
                     title: 'Contact',
                     subtitle: 'Talk to Gift Technology',
-                    onTap: onContactTap,
+                    route: widget.contactRoute,
                   ),
                   const SizedBox(height: 22),
-                  _buildSectionLabel('COMPANY'),
+                  _buildDrawerSectionLabel('COMPANY'),
                   const SizedBox(height: 8),
-                  _buildInfo(
+                  _buildDrawerInfo(
                     icon: Icons.location_on_outlined,
                     text: 'Port Harcourt, Rivers, Nigeria',
                   ),
-                  _buildInfo(
+                  _buildDrawerInfo(
                     icon: Icons.language_rounded,
                     text: 'gifttechnologyltd.com',
                   ),
-                  _buildInfo(
+                  _buildDrawerInfo(
                     icon: Icons.email_outlined,
                     text: 'support@gifttechnologyltd.com',
                   ),
@@ -531,7 +509,9 @@ class _GiftTechLandingDrawer extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Close',
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
             icon: const Icon(Icons.close_rounded, color: Colors.white60),
           ),
         ],
@@ -539,45 +519,7 @@ class _GiftTechLandingDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildBrandMark() {
-    return Container(
-      width: 42,
-      height: 42,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(13),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_softBlue.withOpacity(0.20), _navy.withOpacity(0.55)],
-        ),
-        border: Border.all(color: _highlight.withOpacity(0.20)),
-        boxShadow: [
-          BoxShadow(
-            color: _softBlue.withOpacity(0.20),
-            blurRadius: 18,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(9),
-        child: Image.asset(
-          logoAssetPath,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(
-              Icons.business_rounded,
-              color: _highlight.withOpacity(0.85),
-              size: 21,
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionLabel(String text) {
+  Widget _buildDrawerSectionLabel(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Text(
@@ -598,7 +540,7 @@ class _GiftTechLandingDrawer extends StatelessWidget {
     required IconData icon,
     required String title,
     required String subtitle,
-    required VoidCallback onTap,
+    required String route,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -608,7 +550,7 @@ class _GiftTechLandingDrawer extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: () {
             Navigator.of(context).pop();
-            onTap();
+            _navigate(context, route);
           },
           child: Container(
             padding: const EdgeInsets.all(13),
@@ -625,7 +567,6 @@ class _GiftTechLandingDrawer extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: _softBlue.withOpacity(0.10),
-                    border: Border.all(color: _highlight.withOpacity(0.06)),
                   ),
                   child: Icon(icon, color: _highlight, size: 19),
                 ),
@@ -668,7 +609,7 @@ class _GiftTechLandingDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildInfo({required IconData icon, required String text}) {
+  Widget _buildDrawerInfo({required IconData icon, required String text}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       child: Row(

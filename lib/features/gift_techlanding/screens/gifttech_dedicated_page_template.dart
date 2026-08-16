@@ -6,66 +6,59 @@ import 'package:utilityhub/features/gift_techlanding/widgets/gifttech_footer.dar
 import 'package:utilityhub/features/gift_techlanding/widgets/gifttech_footer_header.dart';
 import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
 
-/// Luxury page shell used by Gift Technology Ltd's dedicated corporate,
-/// legal, product, ecosystem, support, and editorial pages.
+/// Luxury shell for Gift Technology's primary corporate navigation pages.
 ///
-/// This template is intentionally separate from the main landing page.
+/// Used by:
+/// - About
+/// - Products
+/// - Community
+/// - Contact
 ///
-/// Dedicated footer pages use [GiftTechFooterHeader], whose navigation
-/// routes visitors to dedicated:
-///
-///   /about
-///   /products
-///   /community
-///   /contact
-///
-/// Individual screens provide their actual page content through [child].
-class GiftTechPageTemplate extends StatefulWidget {
-  final String title;
-  final String description;
-  final Widget? child;
-
-  /// Small uppercase category displayed above the main title.
-  final String eyebrow;
-
-  /// Optional icon displayed inside the hero glass orb.
-  final IconData? icon;
-
-  /// Metadata displayed beneath the hero description.
-  final String metaLabel;
-  final String metaValue;
-
-  /// Optional second metadata item.
-  final String? secondaryMetaLabel;
-  final String? secondaryMetaValue;
-
-  /// Whether the global Gift Technology footer is displayed.
-  final bool showFooter;
-
-  const GiftTechPageTemplate({
+/// This template is intentionally separate from the footer/legal
+/// GiftTechPageTemplate architecture.
+class GiftTechDedicatedPageTemplate extends StatefulWidget {
+  const GiftTechDedicatedPageTemplate({
     super.key,
     required this.title,
     required this.description,
-    this.child,
+    required this.child,
     this.eyebrow = 'GIFT TECHNOLOGY',
     this.icon = Icons.auto_awesome_rounded,
     this.metaLabel = 'COMPANY',
     this.metaValue = 'Gift Technology Ltd',
-    this.secondaryMetaLabel = 'PLATFORM',
-    this.secondaryMetaValue = 'Digital Infrastructure',
+    this.secondaryMetaLabel = 'LOCATION',
+    this.secondaryMetaValue = 'Port Harcourt, Nigeria',
     this.showFooter = true,
   });
 
+  final String title;
+  final String description;
+  final Widget child;
+
+  final String eyebrow;
+  final IconData icon;
+
+  final String metaLabel;
+  final String metaValue;
+
+  final String? secondaryMetaLabel;
+  final String? secondaryMetaValue;
+
+  final bool showFooter;
+
   @override
-  State<GiftTechPageTemplate> createState() => _GiftTechPageTemplateState();
+  State<GiftTechDedicatedPageTemplate> createState() =>
+      _GiftTechDedicatedPageTemplateState();
 }
 
-class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
+class _GiftTechDedicatedPageTemplateState
+    extends State<GiftTechDedicatedPageTemplate> {
   final ScrollController _scrollController = ScrollController();
 
   static const Color _navy = Color(0xFF273D68);
   static const Color _softBlue = Color(0xFF4A6BB8);
   static const Color _highlight = Color(0xFF75A1FF);
+  static const Color _background = Color(0xFF050B18);
 
   @override
   void dispose() {
@@ -76,25 +69,14 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050B18),
+      backgroundColor: _background,
 
-      // ---------------------------------------------------------------------
-      // MOBILE DRAWER
-      // ---------------------------------------------------------------------
-      //
-      // Do NOT call:
-      //
-      // GiftTechFooterHeader(...).buildDrawer(context)
-      //
-      // The header is a PreferredSizeWidget and should remain responsible
-      // for the visible app bar. The drawer is provided independently here.
-      //
-      drawer: _buildFooterDrawer(context),
+      // The header's mobile menu uses Scaffold.of(context).openDrawer().
+      // Keeping the drawer here means the header remains reusable and
+      // does not need to expose its internal drawer implementation.
+      drawer: _buildNavigationDrawer(context),
 
-      // ---------------------------------------------------------------------
-      // DEDICATED PAGE HEADER
-      // ---------------------------------------------------------------------
-      appBar: const GiftTechFooterHeader(
+      appBar: GiftTechFooterHeader(
         aboutRoute: '/about',
         productsRoute: '/products',
         communityRoute: '/community',
@@ -109,25 +91,20 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
             child: SingleChildScrollView(
               controller: _scrollController,
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 40),
+              padding: const EdgeInsets.only(bottom: 50),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 110),
+                  const SizedBox(height: 36),
 
                   _buildHero(context),
 
-                  const SizedBox(height: 34),
+                  const SizedBox(height: 30),
 
-                  if (widget.child != null)
-                    widget.child!
-                  else
-                    _buildPageIntroduction(context),
-
-                  const SizedBox(height: 70),
+                  widget.child,
 
                   if (widget.showFooter) ...[
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 80),
                     const GiftTechFooter(),
                   ],
                 ],
@@ -139,9 +116,9 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
+  // ---------------------------------------------------------------------------
   // HERO
-  // ===========================================================================
+  // ---------------------------------------------------------------------------
 
   Widget _buildHero(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -150,98 +127,80 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     final isTablet = width >= 720 && width < 1100;
 
     final horizontalPadding = isMobile
-        ? 20.0
+        ? 18.0
         : isTablet
-        ? 34.0
-        : 56.0;
+        ? 30.0
+        : 52.0;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
+        borderRadius: BorderRadius.circular(isMobile ? 26 : 34),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 24 : 52,
-              vertical: isMobile ? 34 : 54,
+              horizontal: isMobile ? 24 : 56,
+              vertical: isMobile ? 32 : 50,
             ),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(isMobile ? 24 : 32),
+              borderRadius: BorderRadius.circular(isMobile ? 26 : 34),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
                   Colors.white.withOpacity(0.105),
                   Colors.white.withOpacity(0.045),
-                  _softBlue.withOpacity(0.045),
+                  _softBlue.withOpacity(0.055),
                 ],
               ),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.13),
-                width: 1,
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
               boxShadow: [
                 BoxShadow(
-                  color: _softBlue.withOpacity(0.10),
-                  blurRadius: 70,
-                  spreadRadius: -12,
-                  offset: const Offset(0, 24),
+                  color: _softBlue.withOpacity(0.11),
+                  blurRadius: 80,
+                  spreadRadius: -15,
+                  offset: const Offset(0, 25),
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
-                  blurRadius: 35,
-                  offset: const Offset(0, 18),
+                  color: Colors.black.withOpacity(0.20),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20),
                 ),
               ],
             ),
-            child: isMobile
-                ? _buildMobileHeroContent()
-                : _buildDesktopHeroContent(),
+            child: isMobile ? _buildMobileHero() : _buildDesktopHero(),
           ),
         ),
       ),
     );
   }
 
-  // ===========================================================================
-  // DESKTOP HERO
-  // ===========================================================================
-
-  Widget _buildDesktopHeroContent() {
+  Widget _buildDesktopHero() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(child: _buildHeroCopy()),
-        const SizedBox(width: 48),
-        _buildHeroOrb(size: 132),
+        const SizedBox(width: 50),
+        _buildHeroOrb(148),
       ],
     );
   }
 
-  // ===========================================================================
-  // MOBILE HERO
-  // ===========================================================================
-
-  Widget _buildMobileHeroContent() {
+  Widget _buildMobileHero() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeroOrb(size: 76),
+        _buildHeroOrb(84),
         const SizedBox(height: 26),
         _buildHeroCopy(),
       ],
     );
   }
 
-  // ===========================================================================
-  // HERO COPY
-  // ===========================================================================
-
   Widget _buildHeroCopy() {
-    final width = MediaQuery.sizeOf(context).width;
-    final isMobile = width < 720;
+    final isMobile = MediaQuery.sizeOf(context).width < 720;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,15 +209,15 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 6,
-              height: 6,
+              width: 7,
+              height: 7,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF5D8FFF),
+                color: _highlight,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF5D8FFF).withOpacity(0.65),
-                    blurRadius: 12,
+                    color: _highlight.withOpacity(0.70),
+                    blurRadius: 14,
                   ),
                 ],
               ),
@@ -268,10 +227,10 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
               widget.eyebrow.toUpperCase(),
               style: const TextStyle(
                 fontFamily: 'SegoeUI',
-                fontSize: 10.5,
+                fontSize: 10,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 2.3,
-                color: Color(0xFF72A0FF),
+                letterSpacing: 2.4,
+                color: _highlight,
               ),
             ),
           ],
@@ -281,13 +240,12 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
 
         Text(
           widget.title,
-          textAlign: TextAlign.left,
           style: TextStyle(
             fontFamily: 'SegoeUI',
-            fontSize: isMobile ? 42 : 64,
+            fontSize: isMobile ? 42 : 66,
             height: 0.98,
             fontWeight: FontWeight.w800,
-            letterSpacing: isMobile ? -1.3 : -2.3,
+            letterSpacing: isMobile ? -1.4 : -2.6,
             color: Colors.white,
           ),
         ),
@@ -295,14 +253,14 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
         const SizedBox(height: 22),
 
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: 760),
           child: Text(
             widget.description,
             style: TextStyle(
               fontFamily: 'SegoeUI',
               fontSize: isMobile ? 14.5 : 17,
-              height: 1.65,
-              color: Colors.white.withOpacity(0.67),
+              height: 1.7,
+              color: Colors.white.withOpacity(0.66),
             ),
           ),
         ),
@@ -310,13 +268,13 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
         const SizedBox(height: 28),
 
         Wrap(
-          spacing: 28,
+          spacing: 30,
           runSpacing: 16,
           children: [
-            _buildHeroMeta(widget.metaLabel, widget.metaValue),
+            _buildMeta(widget.metaLabel, widget.metaValue),
             if (widget.secondaryMetaLabel != null &&
                 widget.secondaryMetaValue != null)
-              _buildHeroMeta(
+              _buildMeta(
                 widget.secondaryMetaLabel!,
                 widget.secondaryMetaValue!,
               ),
@@ -326,11 +284,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
-  // HERO META
-  // ===========================================================================
-
-  Widget _buildHeroMeta(String label, String value) {
+  Widget _buildMeta(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -338,10 +292,10 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
           label,
           style: TextStyle(
             fontFamily: 'SegoeUI',
-            fontSize: 8.5,
+            fontSize: 8,
             fontWeight: FontWeight.w700,
-            letterSpacing: 1.6,
-            color: Colors.white.withOpacity(0.34),
+            letterSpacing: 1.7,
+            color: Colors.white.withOpacity(0.30),
           ),
         ),
         const SizedBox(height: 5),
@@ -358,11 +312,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
-  // HERO ORB
-  // ===========================================================================
-
-  Widget _buildHeroOrb({required double size}) {
+  Widget _buildHeroOrb(double size) {
     return Container(
       width: size,
       height: size,
@@ -370,7 +320,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            const Color(0xFF5D8FFF).withOpacity(0.18),
+            _highlight.withOpacity(0.20),
             _navy.withOpacity(0.10),
             Colors.transparent,
           ],
@@ -378,8 +328,8 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
         border: Border.all(color: Colors.white.withOpacity(0.13)),
         boxShadow: [
           BoxShadow(
-            color: _softBlue.withOpacity(0.16),
-            blurRadius: 45,
+            color: _softBlue.withOpacity(0.18),
+            blurRadius: 50,
             spreadRadius: 4,
           ),
         ],
@@ -391,7 +341,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withOpacity(0.045),
-            border: Border.all(color: Colors.white.withOpacity(0.10)),
+            border: Border.all(color: Colors.white.withOpacity(0.11)),
           ),
           child: Icon(widget.icon, size: size * 0.29, color: _highlight),
         ),
@@ -399,143 +349,28 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
-  // FALLBACK INTRODUCTION
-  // ===========================================================================
+  // ---------------------------------------------------------------------------
+  // MOBILE NAVIGATION DRAWER
+  // ---------------------------------------------------------------------------
 
-  Widget _buildPageIntroduction(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isMobile = width < 720;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 56),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(isMobile ? 22 : 28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: EdgeInsets.all(isMobile ? 24 : 34),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(isMobile ? 22 : 28),
-              color: Colors.white.withOpacity(0.035),
-              border: Border.all(color: Colors.white.withOpacity(0.07)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: isMobile ? 42 : 48,
-                  height: isMobile ? 42 : 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        _softBlue.withOpacity(0.22),
-                        _navy.withOpacity(0.10),
-                      ],
-                    ),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  ),
-                  child: Icon(
-                    widget.icon ?? Icons.auto_awesome_rounded,
-                    size: isMobile ? 19 : 21,
-                    color: _highlight,
-                  ),
-                ),
-
-                const SizedBox(width: 18),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'GIFT TECHNOLOGY',
-                        style: TextStyle(
-                          fontFamily: 'SegoeUI',
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.7,
-                          color: Color(0xFF72A0FF),
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Text(
-                        widget.title,
-                        style: TextStyle(
-                          fontFamily: 'SegoeUI',
-                          fontSize: isMobile ? 20 : 24,
-
-                          // FIXED:
-                          // FontWeight.w750 does not exist in Flutter.
-                          fontWeight: FontWeight.w700,
-
-                          letterSpacing: -0.4,
-                          color: Colors.white,
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      Text(
-                        widget.description,
-                        style: TextStyle(
-                          fontFamily: 'SegoeUI',
-                          fontSize: isMobile ? 13 : 14,
-                          height: 1.65,
-                          color: Colors.white.withOpacity(0.52),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // FOOTER MOBILE DRAWER
-  //
-  // This intentionally lives in the template rather than calling
-  // GiftTechFooterHeader.buildDrawer().
-  //
-  // This removes the compile error:
-  //
-  // "The method 'buildDrawer' isn't defined for the type
-  // 'GiftTechFooterHeader'."
-  //
-  // It also means the header remains a clean PreferredSizeWidget.
-  // ===========================================================================
-
-  Widget _buildFooterDrawer(BuildContext context) {
+  Widget _buildNavigationDrawer(BuildContext context) {
     return Drawer(
       backgroundColor: const Color(0xFF0A1020),
-      elevation: 20,
+      elevation: 24,
       width: 330,
       child: SafeArea(
         child: Column(
           children: [
             _buildDrawerHeader(context),
-
             const SizedBox(height: 8),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
                 children: [
-                  _buildDrawerSectionLabel('EXPLORE'),
+                  _drawerLabel('EXPLORE'),
+                  const SizedBox(height: 9),
 
-                  const SizedBox(height: 8),
-
-                  _buildDrawerItem(
+                  _drawerItem(
                     context,
                     icon: Icons.business_outlined,
                     title: 'About',
@@ -543,7 +378,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
                     route: '/about',
                   ),
 
-                  _buildDrawerItem(
+                  _drawerItem(
                     context,
                     icon: Icons.grid_view_rounded,
                     title: 'Products',
@@ -551,7 +386,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
                     route: '/products',
                   ),
 
-                  _buildDrawerItem(
+                  _drawerItem(
                     context,
                     icon: Icons.groups_outlined,
                     title: 'Community',
@@ -559,7 +394,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
                     route: '/community',
                   ),
 
-                  _buildDrawerItem(
+                  _drawerItem(
                     context,
                     icon: Icons.mail_outline_rounded,
                     title: 'Contact',
@@ -567,36 +402,25 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
                     route: '/contact',
                   ),
 
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
 
-                  _buildDrawerSectionLabel('COMPANY'),
+                  _drawerLabel('COMPANY'),
+                  const SizedBox(height: 9),
 
-                  const SizedBox(height: 8),
-
-                  _buildDrawerInfo(
-                    icon: Icons.location_on_outlined,
-                    text:
-                        'Plot 12, 6th Avenue, Rumuaghaolu Road, SARS Rd, Port Harcourt 500101, Rivers, Nigeria',
+                  _drawerInfo(
+                    Icons.location_on_outlined,
+                    'Port Harcourt, Rivers, Nigeria',
                   ),
 
-                  _buildDrawerInfo(
-                    icon: Icons.phone_outlined,
-                    text: '+234 901 085 3849',
-                  ),
+                  _drawerInfo(Icons.language_rounded, 'gifttechnologyltd.com'),
 
-                  _buildDrawerInfo(
-                    icon: Icons.language_rounded,
-                    text: 'gifttechnologyltd.com',
-                  ),
-
-                  _buildDrawerInfo(
-                    icon: Icons.email_outlined,
-                    text: 'support@gifttechnologyltd.com',
+                  _drawerInfo(
+                    Icons.email_outlined,
+                    'support@gifttechnologyltd.com',
                   ),
                 ],
               ),
             ),
-
             _buildDrawerFooter(),
           ],
         ),
@@ -604,19 +428,13 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
-  // DRAWER HEADER
-  // ===========================================================================
-
   Widget _buildDrawerHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 14, 15),
       child: Row(
         children: [
-          _buildDrawerBrandMark(),
-
+          _drawerBrandMark(),
           const SizedBox(width: 12),
-
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,12 +463,9 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
               ],
             ),
           ),
-
           IconButton(
             tooltip: 'Close',
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+            onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close_rounded, color: Colors.white60),
           ),
         ],
@@ -658,11 +473,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
-  // DRAWER BRAND MARK
-  // ===========================================================================
-
-  Widget _buildDrawerBrandMark() {
+  Widget _drawerBrandMark() {
     return Container(
       width: 42,
       height: 42,
@@ -675,22 +486,14 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
         ),
         border: Border.all(color: _highlight.withOpacity(0.22)),
         boxShadow: [
-          BoxShadow(
-            color: _softBlue.withOpacity(0.18),
-            blurRadius: 18,
-            spreadRadius: 1,
-          ),
+          BoxShadow(color: _softBlue.withOpacity(0.18), blurRadius: 18),
         ],
       ),
       child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
     );
   }
 
-  // ===========================================================================
-  // DRAWER SECTION LABEL
-  // ===========================================================================
-
-  Widget _buildDrawerSectionLabel(String text) {
+  Widget _drawerLabel(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Text(
@@ -706,11 +509,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
-  // DRAWER NAVIGATION ITEM
-  // ===========================================================================
-
-  Widget _buildDrawerItem(
+  Widget _drawerItem(
     BuildContext context, {
     required IconData icon,
     required String title,
@@ -725,13 +524,6 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
           borderRadius: BorderRadius.circular(16),
           onTap: () {
             Navigator.of(context).pop();
-
-            final currentRoute = ModalRoute.of(context)?.settings.name;
-
-            if (currentRoute == route) {
-              return;
-            }
-
             Navigator.of(context).pushNamed(route);
           },
           child: Container(
@@ -752,9 +544,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
                   ),
                   child: Icon(icon, color: _highlight, size: 19),
                 ),
-
                 const SizedBox(width: 12),
-
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,9 +558,7 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
                           color: Colors.white,
                         ),
                       ),
-
                       const SizedBox(height: 3),
-
                       Text(
                         subtitle,
                         style: TextStyle(
@@ -782,7 +570,6 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
                     ],
                   ),
                 ),
-
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 12,
@@ -796,27 +583,19 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
     );
   }
 
-  // ===========================================================================
-  // DRAWER COMPANY INFORMATION
-  // ===========================================================================
-
-  Widget _buildDrawerInfo({required IconData icon, required String text}) {
+  Widget _drawerInfo(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 16, color: Colors.white.withOpacity(0.32)),
-
           const SizedBox(width: 10),
-
           Expanded(
             child: Text(
               text,
               style: TextStyle(
                 fontFamily: 'SegoeUI',
                 fontSize: 9.5,
-                height: 1.45,
                 color: Colors.white.withOpacity(0.38),
               ),
             ),
@@ -825,10 +604,6 @@ class _GiftTechPageTemplateState extends State<GiftTechPageTemplate> {
       ),
     );
   }
-
-  // ===========================================================================
-  // DRAWER FOOTER
-  // ===========================================================================
 
   Widget _buildDrawerFooter() {
     return Container(

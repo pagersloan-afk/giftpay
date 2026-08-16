@@ -1,7 +1,21 @@
 import 'dart:math' as math;
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
+/// Premium animated background used throughout Gift Technology's
+/// landing and dedicated corporate experiences.
+///
+/// Design direction:
+/// - Deep navy / midnight base
+/// - Restrained blue atmospheric lighting
+/// - Slow cinematic movement
+/// - Very subtle particles
+/// - Soft radial depth
+/// - Low-opacity Gift Technology watermark
+///
+/// The background is intentionally atmospheric rather than decorative.
+/// Foreground content should remain the visual priority.
 class GiftTechBackground extends StatefulWidget {
   final Widget child;
 
@@ -13,16 +27,15 @@ class GiftTechBackground extends StatefulWidget {
 
 class _GiftTechBackgroundState extends State<GiftTechBackground>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
 
-    // ⭐ Smooth animated gradient + glow pulses + particles
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 18),
+      duration: const Duration(seconds: 32),
     )..repeat();
   }
 
@@ -34,73 +47,85 @@ class _GiftTechBackgroundState extends State<GiftTechBackground>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final t = _controller.value;
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final t = _controller.value;
 
-        return SizedBox.expand(
-          child: Stack(
+          return Stack(
+            fit: StackFit.expand,
             children: [
-              // ⭐ Deep luxury gradient base
-              _buildGradientLayer(t),
-
-              // ⭐ Glow pulses (Meta-style)
-              _buildGlowLayer(t),
-
-              // ⭐ Floating particles (premium)
+              _buildBaseLayer(),
+              _buildAtmosphereLayer(t),
+              _buildGridLayer(t),
               _buildParticlesLayer(t),
-
-              // ⭐ Faded Gift Technology watermark
               _buildWatermark(),
+              _buildVignette(),
 
-              // ⭐ Foreground content
+              // Foreground application content.
               widget.child,
             ],
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  // ------------------------------------------------------------
-  // ⭐ Animated Gradient Layer
-  // ------------------------------------------------------------
-  Widget _buildGradientLayer(double t) {
-    final shift = (t * 0.6);
+  // ---------------------------------------------------------------------------
+  // BASE
+  // ---------------------------------------------------------------------------
 
-    return Container(
+  Widget _buildBaseLayer() {
+    return const DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment(-1 + shift, -1),
-          end: Alignment(1, 1 - shift),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF0A0F1F), // deep navy
-            const Color(0xFF111827), // blue-gray
-            const Color(0xFF1E293B), // slate
+            Color(0xFF030712),
+            Color(0xFF07101F),
+            Color(0xFF0A1427),
+            Color(0xFF050B18),
           ],
+          stops: [0.0, 0.34, 0.68, 1.0],
         ),
       ),
     );
   }
 
-  // ------------------------------------------------------------
-  // ⭐ Glow Layer (soft blobs)
-  // ------------------------------------------------------------
-  Widget _buildGlowLayer(double t) {
-    final glowShift = (0.5 + 0.5 * math.sin(2 * math.pi * t));
+  // ---------------------------------------------------------------------------
+  // ATMOSPHERIC LIGHT
+  // ---------------------------------------------------------------------------
+
+  Widget _buildAtmosphereLayer(double t) {
+    final slowWave = 0.5 + 0.5 * math.sin(t * math.pi * 2);
 
     return IgnorePointer(
       child: CustomPaint(
-        painter: _GlowPainter(glowShift),
+        painter: _AtmospherePainter(progress: t, wave: slowWave),
         child: const SizedBox.expand(),
       ),
     );
   }
 
-  // ------------------------------------------------------------
-  // ⭐ Particles Layer (floating dots)
-  // ------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // SUBTLE GRID
+  // ---------------------------------------------------------------------------
+
+  Widget _buildGridLayer(double t) {
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _InfrastructureGridPainter(progress: t),
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // PARTICLES
+  // ---------------------------------------------------------------------------
+
   Widget _buildParticlesLayer(double t) {
     return IgnorePointer(
       child: CustomPaint(
@@ -110,19 +135,47 @@ class _GiftTechBackgroundState extends State<GiftTechBackground>
     );
   }
 
-  // ------------------------------------------------------------
-  // ⭐ Watermark Layer
-  // ------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // BRAND WATERMARK
+  // ---------------------------------------------------------------------------
+
   Widget _buildWatermark() {
     return Positioned.fill(
-      child: Center(
-        child: Opacity(
-          opacity: 0.035,
-          child: Image.asset(
-            "assets/logo/gift_tech_logo.png", // parent brand watermark
-            width: 520,
-            height: 520,
-            fit: BoxFit.contain,
+      child: IgnorePointer(
+        child: Center(
+          child: Opacity(
+            opacity: 0.022,
+            child: Image.asset(
+              'assets/logo/gift_tech_logo.png',
+              width: 560,
+              height: 560,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIGNETTE
+  // ---------------------------------------------------------------------------
+
+  Widget _buildVignette() {
+    return IgnorePointer(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.15,
+            colors: [
+              Colors.transparent,
+              Colors.transparent,
+              Colors.black.withOpacity(0.16),
+              Colors.black.withOpacity(0.34),
+            ],
+            stops: const [0.0, 0.52, 0.82, 1.0],
           ),
         ),
       ),
@@ -130,69 +183,185 @@ class _GiftTechBackgroundState extends State<GiftTechBackground>
   }
 }
 
-// ------------------------------------------------------------
-// ⭐ Glow Painter (soft luxury blobs)
-// ------------------------------------------------------------
-class _GlowPainter extends CustomPainter {
-  final double shift;
-  _GlowPainter(this.shift);
+// =============================================================================
+// ATMOSPHERE PAINTER
+// =============================================================================
+
+class _AtmospherePainter extends CustomPainter {
+  final double progress;
+  final double wave;
+
+  _AtmospherePainter({required this.progress, required this.wave});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final height = size.height;
+
+    final pulse = 0.5 + 0.5 * math.sin(progress * math.pi * 2);
+
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 90);
+
+    // -------------------------------------------------------------------------
+    // PRIMARY BLUE ATMOSPHERE
+    // -------------------------------------------------------------------------
+
+    paint.color = const Color(0xFF4A6BB8).withOpacity(0.075 + (pulse * 0.018));
+
+    canvas.drawCircle(
+      Offset(width * (0.08 + (progress * 0.10)), height * 0.12),
+      math.min(width, height) * 0.24,
+      paint,
+    );
+
+    // -------------------------------------------------------------------------
+    // SECONDARY BLUE ATMOSPHERE
+    // -------------------------------------------------------------------------
+
+    paint.color = const Color(0xFF273D68).withOpacity(0.12 + (wave * 0.018));
+
+    canvas.drawCircle(
+      Offset(width * (0.88 - progress * 0.08), height * 0.78),
+      math.min(width, height) * 0.30,
+      paint,
+    );
+
+    // -------------------------------------------------------------------------
+    // CENTRAL LIGHT
+    // -------------------------------------------------------------------------
+
+    paint.color = const Color(0xFF7EA4FF).withOpacity(0.025);
+
+    canvas.drawCircle(
+      Offset(width * 0.52, height * (0.38 + pulse * 0.05)),
+      math.min(width, height) * 0.34,
+      paint,
+    );
+
+    // -------------------------------------------------------------------------
+    // SMALL HORIZON LIGHT
+    // -------------------------------------------------------------------------
+
+    paint.color = const Color(0xFF4A6BB8).withOpacity(0.035);
+
+    canvas.drawCircle(
+      Offset(width * 0.50, height * 0.92),
+      math.min(width, height) * 0.18,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _AtmospherePainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.wave != wave;
+  }
+}
+
+// =============================================================================
+// INFRASTRUCTURE GRID
+// =============================================================================
+
+class _InfrastructureGridPainter extends CustomPainter {
+  final double progress;
+
+  _InfrastructureGridPainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 70);
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.65
+      ..color = Colors.white.withOpacity(0.018);
 
-    // Top-left glow
-    paint.color = const Color(0xFF4A6BB8).withOpacity(0.25);
-    canvas.drawCircle(
-      Offset(size.width * (0.2 + 0.1 * shift), size.height * 0.2),
-      160,
-      paint,
-    );
+    const spacing = 72.0;
 
-    // Bottom-right glow
-    paint.color = const Color(0xFF273D68).withOpacity(0.22);
-    canvas.drawCircle(
-      Offset(size.width * (0.8 - 0.1 * shift), size.height * 0.85),
-      200,
-      paint,
-    );
+    final horizontalOffset = (progress * spacing) % spacing;
+    final verticalOffset = (progress * spacing * 0.55) % spacing;
 
-    // Center glow
-    paint.color = Colors.white.withOpacity(0.05);
-    canvas.drawCircle(
-      Offset(size.width * 0.5, size.height * (0.45 + 0.05 * shift)),
-      240,
-      paint,
+    // Horizontal infrastructure lines.
+    for (
+      double y = -spacing + horizontalOffset;
+      y < size.height + spacing;
+      y += spacing
+    ) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+
+    // Vertical infrastructure lines.
+    for (
+      double x = -spacing + verticalOffset;
+      x < size.width + spacing;
+      x += spacing
+    ) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    // Soft central horizontal axis.
+    final axisPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0xFF4A6BB8).withOpacity(0.025);
+
+    canvas.drawLine(
+      Offset(0, size.height * 0.52),
+      Offset(size.width, size.height * 0.52),
+      axisPaint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _GlowPainter oldDelegate) =>
-      oldDelegate.shift != shift;
+  bool shouldRepaint(covariant _InfrastructureGridPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
 }
 
-// ------------------------------------------------------------
-// ⭐ Particles Painter (floating dots)
-// ------------------------------------------------------------
+// =============================================================================
+// PARTICLES
+// =============================================================================
+
 class _ParticlesPainter extends CustomPainter {
-  final double t;
-  _ParticlesPainter(this.t);
+  final double progress;
+
+  _ParticlesPainter(this.progress);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.30);
+    final shortestSide = math.min(size.width, size.height);
 
-    for (int i = 0; i < 22; i++) {
-      final double progress = (t + i * 0.04) % 1.0;
-      final double x = size.width * (0.1 + 0.8 * (i / 22));
-      final double y = size.height * (0.1 + 0.8 * progress);
+    // Fewer, smaller particles create a more premium appearance.
+    const particleCount = 16;
 
-      canvas.drawCircle(Offset(x, y), 2.4, paint);
+    for (int i = 0; i < particleCount; i++) {
+      final seed = i * 17.731;
+
+      final baseX = 0.08 + ((math.sin(seed) + 1) * 0.5) * 0.84;
+      final baseY = 0.04 + ((math.cos(seed * 1.7) + 1) * 0.5) * 0.92;
+
+      final speed = 0.12 + (i % 4) * 0.035;
+
+      final yProgress = (baseY + progress * speed) % 1.0;
+
+      final xDrift = math.sin((progress * math.pi * 2) + seed) * 0.012;
+
+      final x = (baseX + xDrift) * size.width;
+      final y = yProgress * size.height;
+
+      final opacity = 0.055 + ((math.sin(seed * 2.3) + 1) * 0.5) * 0.065;
+
+      final radius = i % 5 == 0 ? shortestSide * 0.0032 : shortestSide * 0.0020;
+
+      final paint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = const Color(0xFF8AAEFF).withOpacity(opacity);
+
+      canvas.drawCircle(Offset(x, y), radius, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) =>
-      oldDelegate.t != t;
+  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
 }

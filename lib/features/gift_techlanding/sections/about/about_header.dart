@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class CommunityHeader extends StatelessWidget {
-  final bool isMobile;
+import 'about_shared.dart';
 
-  const CommunityHeader({super.key, required this.isMobile});
-
-  static const Color _highlight = Color(0xFF7EA4FF);
+class AboutHeader extends StatelessWidget {
+  const AboutHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.sizeOf(context).width < 700;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -20,24 +20,26 @@ class CommunityHeader extends StatelessWidget {
               height: 6,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _highlight,
+                color: AboutColors.highlight,
                 boxShadow: [
                   BoxShadow(
-                    color: _highlight.withOpacity(0.65),
+                    color: AboutColors.highlight.withOpacity(0.65),
                     blurRadius: 14,
                   ),
                 ],
               ),
             ),
+
             const SizedBox(width: 10),
+
             const Text(
-              'COMMUNITY',
+              'ABOUT GIFT TECHNOLOGY',
               style: TextStyle(
                 fontFamily: 'SegoeUI',
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 2.2,
-                color: _highlight,
+                color: AboutColors.highlight,
               ),
             ),
           ],
@@ -45,29 +47,32 @@ class CommunityHeader extends StatelessWidget {
 
         const SizedBox(height: 18),
 
-        Text(
-          'Built around people, ideas, and opportunity.',
-          style: TextStyle(
-            fontFamily: 'SegoeUI',
-            fontSize: isMobile ? 34 : 52,
-            height: 1.0,
-            fontWeight: FontWeight.w800,
-            letterSpacing: isMobile ? -1.2 : -2.2,
-            color: Colors.white,
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: Text(
+            'Building technology with purpose.',
+            style: TextStyle(
+              fontFamily: 'SegoeUI',
+              fontSize: isMobile ? 38 : 58,
+              height: 1.0,
+              fontWeight: FontWeight.w800,
+              letterSpacing: isMobile ? -1.4 : -2.4,
+              color: Colors.white,
+            ),
           ),
         ),
 
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
 
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
+          constraints: const BoxConstraints(maxWidth: 780),
           child: Text(
-            'Connect with our developer ecosystem, explore community programs, follow our updates, and discover the people helping shape Africa’s digital future.',
+            'Gift Technology Ltd is building a connected technology ecosystem designed to make digital services more accessible, useful, and scalable across Africa.',
             style: TextStyle(
               fontFamily: 'SegoeUI',
               fontSize: isMobile ? 15 : 18,
               height: 1.7,
-              color: Colors.white.withOpacity(0.46),
+              color: Colors.white.withOpacity(0.48),
             ),
           ),
         ),
