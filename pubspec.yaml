@@ -40,6 +40,8 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   device_info_plus: ^12.4.0
   flutter_dotenv: ^6.0.1
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:
@@ -173,6 +175,7 @@ flutter:
     - assets/images/careers-life.png
     - assets/logo/gift_tech_logo.png
     - assets/images/gift_technology_logo.png
+    - assets/images/security-hero-lg.png
 
   fonts:
     - family: SegoeUI

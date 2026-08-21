@@ -7,7 +7,7 @@ class ApiConfig {
   static String get baseUrl {
     // ⭐ PRODUCTION URL
     if (isProduction) {
-      return "https://api.giftpay.com"; // <-- your real production domain
+      return "https://gifttechnologyltd.com"; // <-- your real production domain
     }
 
     // ⭐ WEB (Flutter Web)
@@ -17,7 +17,7 @@ class ApiConfig {
 
     // ⭐ ANDROID (physical device)
     if (Platform.isAndroid) {
-      return "http://192.168.1.13:4000"; // <-- your LAN IP
+      return "http://192.168.1.10:4000"; // <-- your LAN IP
     }
 
     // ⭐ iOS simulator / Windows / macOS / Linux

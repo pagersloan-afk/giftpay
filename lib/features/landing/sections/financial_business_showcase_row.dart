@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/features/landing/sections/business_solutions_section.dart';
 import 'package:utilityhub/features/landing/sections/product_showcase_section.dart';
 import 'package:utilityhub/features/landing/sections/financial_education_section.dart';
 
-// ⭐ Animated + Luxury Showcase Row (Carousel-style like ThreeCardSection)
+/// GiftPay Financial + Business Showcase
+///
+/// Presents:
+/// - Financial education
+/// - Product experience
+/// - Business solutions
+///
+/// IMPORTANT:
+/// The carousel width is the source of truth.
+/// Every child section receives a bounded width and must adapt to it.
 class FinancialBusinessShowcaseRow extends StatefulWidget {
   const FinancialBusinessShowcaseRow({super.key});
 
@@ -16,12 +24,36 @@ class FinancialBusinessShowcaseRow extends StatefulWidget {
 class _FinancialBusinessShowcaseRowState
     extends State<FinancialBusinessShowcaseRow>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> slideUp;
-  late Animation<double> bgShift;
+  // ===========================================================================
+  // ANIMATION
+  // ===========================================================================
+
+  late final AnimationController _controller;
+  late final Animation<double> _slideUp;
+  late final Animation<double> _bgShift;
+
+  // ===========================================================================
+  // SCROLL
+  // ===========================================================================
 
   final ScrollController _scrollController = ScrollController();
+
   int _currentIndex = 0;
+
+  // ===========================================================================
+  // THEME
+  // ===========================================================================
+
+  static const Color _navy = Color(0xFF273D68);
+  static const Color _blue = Color(0xFF4A6BB8);
+  static const Color _highlight = Color(0xFF7EA4FF);
+  static const Color _surface = Color(0xFFF7F9FC);
+
+  static const double _cardSpacing = 20;
+
+  // ===========================================================================
+  // LIFECYCLE
+  // ===========================================================================
 
   @override
   void initState() {
@@ -32,39 +64,94 @@ class _FinancialBusinessShowcaseRowState
       duration: const Duration(milliseconds: 900),
     )..forward();
 
-    slideUp = Tween<double>(
+    _slideUp = Tween<double>(
       begin: 40,
       end: 0,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    bgShift = Tween<double>(
-      begin: -0.6,
-      end: 0.6,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _bgShift = Tween<double>(
+      begin: -.6,
+      end: .6,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _scrollController.addListener(_handleScroll);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  void _scrollTo(int index, double cardWidth) {
-    _scrollController.animateTo(
-      index * (cardWidth + 20),
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutCubic,
-    );
-    setState(() => _currentIndex = index);
+  // ===========================================================================
+  // SCROLL SYNC
+  // ===========================================================================
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final double itemExtent = _currentItemExtent;
+
+    if (itemExtent <= 0) return;
+
+    final double offset = _scrollController.offset;
+
+    int calculatedIndex = (offset / itemExtent).round();
+
+    calculatedIndex = calculatedIndex.clamp(0, 2);
+
+    if (calculatedIndex != _currentIndex && mounted) {
+      setState(() {
+        _currentIndex = calculatedIndex;
+      });
+    }
   }
 
-  Widget _uniformCard(Widget child) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 420),
-      child: child,
-    );
+  double get _currentItemExtent {
+    if (!_scrollController.hasClients) {
+      return 1;
+    }
+
+    final double viewportWidth = _scrollController.position.viewportDimension;
+
+    if (viewportWidth <= 0) {
+      return 1;
+    }
+
+    return viewportWidth + _cardSpacing;
   }
+
+  // ===========================================================================
+  // CAROUSEL NAVIGATION
+  // ===========================================================================
+
+  void _scrollTo(int index, double cardWidth) {
+    if (!_scrollController.hasClients) return;
+
+    final double targetOffset = index * (cardWidth + _cardSpacing);
+
+    final double maxScroll = _scrollController.position.maxScrollExtent;
+
+    final double safeOffset = targetOffset.clamp(0.0, maxScroll);
+
+    _scrollController.animateTo(
+      safeOffset,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+    );
+
+    if (mounted) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
+
+  // ===========================================================================
+  // BUILD
+  // ===========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -72,18 +159,58 @@ class _FinancialBusinessShowcaseRowState
       animation: _controller,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(0, slideUp.value),
+          offset: Offset(0, _slideUp.value),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final double width = constraints.maxWidth;
+
               final bool isMobile = width < 768;
 
-              final double cardWidth = isMobile ? width * 0.90 : width * 0.42;
+              final bool isTablet = width >= 768 && width < 1100;
 
-              final cards = [
-                _uniformCard(const FinancialEducationSection()),
-                _uniformCard(const ProductShowcaseSection()),
-                _uniformCard(const BusinessSolutionsSection()),
+              // ===============================================================
+              // SOURCE OF TRUTH
+              //
+              // The carousel card width is deliberately bounded.
+              // Children must render inside this exact width.
+              // ===============================================================
+
+              final double horizontalPadding = isMobile
+                  ? 12
+                  : isTablet
+                  ? 22
+                  : 28;
+
+              final double availableCarouselWidth =
+                  width - (horizontalPadding * 2);
+
+              final double cardWidth = isMobile
+                  ? availableCarouselWidth * .92
+                  : isTablet
+                  ? availableCarouselWidth * .68
+                  : availableCarouselWidth * .43;
+
+              // Never allow the card to become absurdly wide.
+              final double safeCardWidth = cardWidth.clamp(300.0, 620.0);
+
+              // ===============================================================
+              // HEIGHT
+              // ===============================================================
+
+              final double carouselHeight = isMobile
+                  ? 650
+                  : isTablet
+                  ? 690
+                  : 700;
+
+              // ===============================================================
+              // CHILD CARDS
+              // ===============================================================
+
+              final List<Widget> cards = [
+                const FinancialEducationSection(),
+                const ProductShowcaseSection(),
+                const BusinessSolutionsSection(),
               ];
 
               return Center(
@@ -91,118 +218,218 @@ class _FinancialBusinessShowcaseRowState
                   width: double.infinity,
                   constraints: const BoxConstraints(maxWidth: 1400),
                   padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 12.0 : 16.0,
-                    vertical: isMobile ? 24.0 : 40.0,
+                    horizontal: horizontalPadding,
+                    vertical: isMobile ? 24 : 40,
                   ),
-
-                  // ⭐ Animated luxury gradient background
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment(bgShift.value, -1),
-                      end: Alignment(1, bgShift.value),
+                      begin: Alignment(_bgShift.value, -1),
+                      end: Alignment(1, _bgShift.value),
                       colors: [
-                        Colors.white.withOpacity(0.90),
-                        const Color(0xFF273D68).withOpacity(0.85),
-                        const Color(0xFF4A6BB8).withOpacity(0.75),
-                        const Color(0xFFE8E8E8).withOpacity(0.70),
+                        Colors.white.withOpacity(.97),
+                        _surface,
+                        _blue.withOpacity(.075),
+                        _navy.withOpacity(.035),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(isMobile ? 22 : 30),
+                    border: Border.all(color: _navy.withOpacity(.07)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
+                        color: _navy.withOpacity(.055),
+                        blurRadius: 40,
+                        offset: const Offset(0, 18),
                       ),
                     ],
                   ),
-
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Learn, Compare, and Automate — All in One Platform",
-                        style: TextStyle(
-                          fontFamily: 'SegoeUI',
-                          fontWeight: FontWeight.w700,
-                          fontSize: isMobile ? 22.0 : 28.0,
-                          color: Colors.black87,
-                          height: 1.3,
+                      // =======================================================
+                      // HEADER
+                      // =======================================================
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isMobile ? 4 : 8,
                         ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      SizedBox(
-                        height: isMobile ? 520 : 660,
-                        child: Stack(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ListView.separated(
-                              controller: _scrollController,
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: cards.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 20),
-                              itemBuilder: (_, index) {
-                                return SizedBox(
-                                  width: cardWidth,
-                                  child: cards[index],
-                                );
-                              },
+                            Row(
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _highlight,
+                                  ),
+                                ),
+                                const SizedBox(width: 9),
+                                Text(
+                                  'GIFTPAY ECOSYSTEM',
+                                  style: TextStyle(
+                                    fontFamily: 'SegoeUI',
+                                    fontSize: isMobile ? 8 : 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 2,
+                                    color: _blue,
+                                  ),
+                                ),
+                              ],
                             ),
 
-                            if (!isMobile) ...[
-                              Positioned(
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                child: _ArrowButton(
-                                  icon: Icons.arrow_back_ios_new,
-                                  onTap: () {
-                                    if (_currentIndex > 0) {
-                                      _scrollTo(_currentIndex - 1, cardWidth);
-                                    }
-                                  },
+                            const SizedBox(height: 12),
+
+                            Text(
+                              'Learn, Compare, and Automate — '
+                              'All in One Platform',
+                              style: TextStyle(
+                                fontFamily: 'SegoeUI',
+                                fontWeight: FontWeight.w800,
+                                fontSize: isMobile ? 22 : 30,
+                                letterSpacing: isMobile ? -.5 : -1,
+                                height: 1.15,
+                                color: _navy,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 760),
+                              child: Text(
+                                'Explore the tools, insights, '
+                                'and experiences that make '
+                                'GiftPay more useful across '
+                                'everyday life, business, '
+                                'and financial decisions.',
+                                style: TextStyle(
+                                  fontFamily: 'SegoeUI',
+                                  fontSize: isMobile ? 13 : 15,
+                                  height: 1.55,
+                                  color: _navy.withOpacity(.48),
                                 ),
                               ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                child: _ArrowButton(
-                                  icon: Icons.arrow_forward_ios,
-                                  onTap: () {
-                                    if (_currentIndex < cards.length - 1) {
-                                      _scrollTo(_currentIndex + 1, cardWidth);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
+                            ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      SizedBox(height: isMobile ? 24 : 30),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          cards.length,
-                          (i) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 6),
-                            width: _currentIndex == i ? 14 : 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: _currentIndex == i
-                                  ? const Color(0xFF0033CC)
-                                  : Colors.black26,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                      // =======================================================
+                      // CAROUSEL
+                      // =======================================================
+                      SizedBox(
+                        height: carouselHeight,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            isMobile ? 18 : 24,
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.hardEdge,
+                            children: [
+                              ListView.separated(
+                                controller: _scrollController,
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMobile ? 2 : 8,
+                                  vertical: 2,
+                                ),
+                                itemCount: cards.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: _cardSpacing),
+                                itemBuilder: (context, index) {
+                                  return SizedBox(
+                                    width: safeCardWidth,
+                                    child: cards[index],
+                                  );
+                                },
+                              ),
+
+                              // =================================================
+                              // LEFT ARROW
+                              // =================================================
+                              if (!isMobile && _currentIndex > 0)
+                                Positioned(
+                                  left: 8,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Center(
+                                    child: _ArrowButton(
+                                      icon: Icons.arrow_back_rounded,
+                                      onTap: () {
+                                        _scrollTo(
+                                          _currentIndex - 1,
+                                          safeCardWidth,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+
+                              // =================================================
+                              // RIGHT ARROW
+                              // =================================================
+                              if (!isMobile && _currentIndex < cards.length - 1)
+                                Positioned(
+                                  right: 8,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Center(
+                                    child: _ArrowButton(
+                                      icon: Icons.arrow_forward_rounded,
+                                      onTap: () {
+                                        _scrollTo(
+                                          _currentIndex + 1,
+                                          safeCardWidth,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // =======================================================
+                      // PAGINATION
+                      // =======================================================
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(cards.length, (index) {
+                          final bool active = _currentIndex == index;
+
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              _scrollTo(index, safeCardWidth);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 6,
+                              ),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 280),
+                                curve: Curves.easeOutCubic,
+                                width: active ? 26 : 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? _blue
+                                      : _navy.withOpacity(.14),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -216,9 +443,10 @@ class _FinancialBusinessShowcaseRowState
   }
 }
 
-// You already have _ArrowButton defined in your ThreeCardSection file.
-// Reuse the same implementation here.
-// ⭐ Arrow Button Widget
+// ==============================================================================
+// FLOATING ARROW BUTTON
+// ==============================================================================
+
 class _ArrowButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -227,26 +455,36 @@ class _ArrowButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.94),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF4A6BB8).withOpacity(.12)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF273D68).withOpacity(.10),
+                blurRadius: 16,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Icon(icon, size: 19, color: const Color(0xFF273D68)),
         ),
-        child: Icon(icon, size: 20, color: Colors.black87),
       ),
     );
   }
 }
+
+// ==============================================================================
+// ANIMATED INFORMATION CARD
+// ==============================================================================
 
 class AnimatedInfoCard extends StatefulWidget {
   final String imagePath;
@@ -269,118 +507,151 @@ class AnimatedInfoCard extends StatefulWidget {
 }
 
 class _AnimatedInfoCardState extends State<AnimatedInfoCard> {
-  double hoverScale = 1.0;
-  double parallaxOffset = 0.0;
+  double _hoverScale = 1.0;
+  double _parallaxOffset = 0.0;
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isCompact = constraints.maxWidth < 600;
 
-    return MouseRegion(
-      onEnter: (_) {
-        if (!isMobile) {
-          setState(() => hoverScale = 1.03);
-        }
-      },
-      onExit: (_) {
-        if (!isMobile) {
-          setState(() => hoverScale = 1.0);
-        }
-      },
-      onHover: (event) {
-        if (!isMobile) {
-          setState(() => parallaxOffset = (event.localPosition.dx - 150) / 40);
-        }
-      },
-      child: AnimatedScale(
-        scale: hoverScale,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        child: Container(
-          padding: EdgeInsets.all(isMobile ? 14 : 18),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9F9F9),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+        return MouseRegion(
+          onEnter: (_) {
+            if (!isCompact) {
+              setState(() {
+                _hoverScale = 1.025;
+              });
+            }
+          },
+          onExit: (_) {
+            if (!isCompact) {
+              setState(() {
+                _hoverScale = 1.0;
+                _parallaxOffset = 0.0;
+              });
+            }
+          },
+          onHover: (event) {
+            if (!isCompact) {
+              setState(() {
+                _parallaxOffset = (event.localPosition.dx - 150) / 45;
+              });
+            }
+          },
+          child: AnimatedScale(
+            scale: _hoverScale,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(isCompact ? 14 : 18),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFC),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: const Color(0xFF273D68).withOpacity(.055),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF273D68).withOpacity(.07),
+                    blurRadius: 18,
+                    offset: const Offset(0, 7),
+                  ),
+                ],
               ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Transform.translate(
+                    offset: Offset(_parallaxOffset, 0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: isCompact ? 180 : 240,
+                      child: Image.asset(
+                        widget.imagePath,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.image_outlined,
+                            size: 42,
+                            color: const Color(0xFF4A6BB8).withOpacity(.35),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'SegoeUI',
+                      fontWeight: FontWeight.w800,
+                      fontSize: isCompact ? 15 : 17,
+                      color: const Color(0xFF273D68),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    widget.description,
+                    textAlign: TextAlign.center,
+                    maxLines: isCompact ? 5 : 7,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'SegoeUI',
+                      fontSize: isCompact ? 13 : 14,
+                      color: const Color(0xFF273D68).withOpacity(.52),
+                      height: 1.45,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, widget.linkRoute);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A6BB8),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 17 : 21,
+                        vertical: isCompact ? 9 : 11,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.linkText,
+                          style: TextStyle(
+                            fontFamily: 'SegoeUI',
+                            fontWeight: FontWeight.w700,
+                            fontSize: isCompact ? 12.5 : 13.5,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        const Icon(Icons.arrow_forward_rounded, size: 16),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          child: Column(
-            children: [
-              // ⭐ Parallax icon
-              Transform.translate(
-                offset: Offset(parallaxOffset, 0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double iconSize = constraints.maxWidth * 0.80;
-                    return SizedBox(
-                      width: iconSize,
-                      height: iconSize,
-                      child: Image.asset(widget.imagePath, fit: BoxFit.contain),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Text(
-                widget.title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 15 : 17,
-                  color: Colors.black,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Text(
-                widget.description,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: isMobile ? 13 : 14,
-                  color: Colors.black54,
-                  height: 1.4,
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, widget.linkRoute);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: GiftPayTheme.primaryBlue,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 16 : 20,
-                    vertical: isMobile ? 8 : 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: Text(
-                  widget.linkText,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -150,9 +150,17 @@ class GiftTechFooter extends StatelessWidget {
           _item(context, "GiftPOS", "/giftpos"),
           _item(context, "GiftCard Marketplace", "/giftcard-marketplace"),
           _item(context, "Utilities Hub", "/utilities-hub"),
-          _item(context, "Bulk Electricity Tokens", "/bulk-electricity"),
+          _item(
+            context,
+            "Bulk Electricity Tokens",
+            "/gifttech-bulk-electricity",
+          ),
           _item(context, "Corporate Data Plans", "/corporate-data"),
-          _item(context, "Airtime Distribution", "/airtime-distribution"),
+          _item(
+            context,
+            "Airtime Distribution",
+            "/gifttech-airtime-distribution",
+          ),
         ]),
 
         // ⭐ Column 2 — Support & Legal

@@ -14,18 +14,21 @@ class AppResponsiveLayout extends StatelessWidget {
   bool _isAuthOrLanding(BuildContext context) {
     final route = ModalRoute.of(context)?.settings.name ?? "";
 
-    // ⭐ NO SIDEBAR ON AUTH SCREENS OR LANDING PAGE
+    // No sidebar on authentication / landing screens.
     return route == "/login" ||
         route == "/signup" ||
         route == "/reset" ||
-        route == "/verify"; // ⭐ landing page must NOT show sidebar
+        route == "/verify";
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
-    // ⭐ AUTH + LANDING → NO SIDEBAR
+    // ==============================================================
+    // AUTH / LANDING
+    // ==============================================================
+
     if (_isAuthOrLanding(context)) {
       return Center(
         child: ConstrainedBox(
@@ -35,11 +38,21 @@ class AppResponsiveLayout extends StatelessWidget {
       );
     }
 
-    // ⭐ DESKTOP MODE → SIDEBAR + CONTENT
+    // ==============================================================
+    // DESKTOP WEB / LARGE SCREEN
+    //
+    // Existing desktop navigation remains exactly the same:
+    //
+    // AppSidebar → content
+    // ==============================================================
+
     if (width >= desktopMaxWidth + 200) {
+      final activeRoute = ModalRoute.of(context)?.settings.name ?? "";
+
       return Row(
         children: [
-          AppSidebar(activeRoute: ModalRoute.of(context)!.settings.name ?? ""),
+          AppSidebar(activeRoute: activeRoute),
+
           Expanded(
             child: SingleChildScrollView(
               child: Align(
@@ -58,7 +71,17 @@ class AppResponsiveLayout extends StatelessWidget {
       );
     }
 
-    // ⭐ MOBILE MODE → FULL WIDTH
+    // ==============================================================
+    // MOBILE WEB + MOBILE APP
+    //
+    // Navigation is NOT handled here.
+    //
+    // The mobile-web Drawer is supplied by HomeScreen using the SAME
+    // AppSidebar.
+    //
+    // Android/iOS continues using the existing HomeShell navigation.
+    // ==============================================================
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),

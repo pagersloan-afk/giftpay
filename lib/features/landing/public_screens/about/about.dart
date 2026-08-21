@@ -1,15 +1,11 @@
 import 'dart:math' as math;
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
-// ⭐ Shared Landing Header + Footer
 import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 import 'package:utilityhub/features/landing/sections/landing_footer.dart';
-
-// ⭐ Landing Responsive Layout
 import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
 
-// ⭐ GiftPay About Sections
 import 'package:utilityhub/features/landing/public_screens/about/section/section_1.dart';
 import 'package:utilityhub/features/landing/public_screens/about/section/section_2.dart';
 
@@ -23,178 +19,313 @@ class AboutPage extends StatefulWidget {
 class _AboutPageState extends State<AboutPage>
     with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
-  double _scrollOffset = 0;
 
-  late AnimationController _animController;
+  late final AnimationController _ambientController;
+
+  double _scrollOffset = 0;
 
   @override
   void initState() {
     super.initState();
 
-    _scrollController.addListener(() {
-      setState(() {
-        _scrollOffset = _scrollController.offset;
-      });
-    });
+    _scrollController.addListener(_handleScroll);
 
-    _animController = AnimationController(
+    _ambientController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 18),
     )..repeat();
   }
 
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final offset = _scrollController.offset;
+
+    if ((offset - _scrollOffset).abs() > 1) {
+      setState(() {
+        _scrollOffset = offset;
+      });
+    }
+  }
+
   @override
   void dispose() {
-    _scrollController.dispose();
-    _animController.dispose();
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+
+    _ambientController.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final double parallaxShift = (_scrollOffset / 800).clamp(0, 1);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+
+    final parallax = (_scrollOffset / 1000).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const LandingHeader(),
-
       body: AnimatedBuilder(
-        animation: _animController,
+        animation: _ambientController,
         builder: (context, child) {
-          final t = _animController.value;
+          final t = _ambientController.value;
 
-          return Container(
-            // ⭐ Multi-layer animated gradient + glow + particles
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment(-1 + parallaxShift, -1),
-                end: Alignment(1, 1 - parallaxShift),
-                colors: [
-                  const Color(0xFF273D68).withOpacity(0.95), // GiftPay navy
-                  const Color(0xFF4A6BB8).withOpacity(0.85), // soft blue
-                  const Color(0xFFF9F9F9).withOpacity(0.95), // light gray
-                ],
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: _AboutBackground(animationValue: t, parallax: parallax),
               ),
-            ),
 
-            child: Stack(
-              children: [
-                // ⭐ Soft glow pulses
-                _buildGlowLayer(t),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: _AmbientParticles(animationValue: t),
+                ),
+              ),
 
-                // ⭐ Floating particles
-                _buildParticlesLayer(t),
+              LandingResponsiveLayout(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      SizedBox(height: isMobile ? 20 : 34),
 
-                // ⭐ Main content (unchanged)
-                LandingResponsiveLayout(
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    child: Column(
-                      children: const [
-                        SizedBox(height: 40),
+                      const HeroMarqueeSection(),
 
-                        HeroMarqueeSection(),
-                        SizedBox(height: 40),
+                      SizedBox(height: isMobile ? 30 : 56),
 
-                        ThreeCardSection(),
-                        SizedBox(height: 40),
+                      const _SectionIntro(
+                        eyebrow: 'WHO WE ARE',
+                        title: 'Building technology around everyday life',
+                        description:
+                            'GiftPay combines secure digital payments, practical financial tools, and technology designed to make everyday transactions simpler for people and businesses.',
+                      ),
 
-                        CareerPromoSection(),
-                        SizedBox(height: 40),
+                      SizedBox(height: isMobile ? 20 : 30),
 
-                        AdditionalCardsSection(),
-                        SizedBox(height: 40),
+                      const ThreeCardSection(),
 
-                        HistorySection(),
-                        SizedBox(height: 40),
+                      SizedBox(height: isMobile ? 34 : 60),
 
-                        LandingFooter(),
-                      ],
-                    ),
+                      const CareerPromoSection(),
+
+                      SizedBox(height: isMobile ? 34 : 60),
+
+                      const _SectionIntro(
+                        eyebrow: 'THE GIFT EXPERIENCE',
+                        title: 'More than a payment platform',
+                        description:
+                            'From security and customer stories to product news and responsible practices, explore the ideas and people shaping the GiftPay experience.',
+                      ),
+
+                      SizedBox(height: isMobile ? 20 : 30),
+
+                      const AdditionalCardsSection(),
+
+                      SizedBox(height: isMobile ? 34 : 60),
+
+                      const HistorySection(),
+
+                      SizedBox(height: isMobile ? 34 : 60),
+
+                      const LandingFooter(),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),
     );
   }
+}
 
-  // ⭐ Soft glow pulses layer
-  Widget _buildGlowLayer(double t) {
-    final double glowShift = (0.5 + 0.5 * math.sin(2 * math.pi * t));
+class _SectionIntro extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String description;
 
-    return IgnorePointer(
-      child: CustomPaint(
-        painter: _GlowPainter(glowShift),
-        child: const SizedBox.expand(),
+  const _SectionIntro({
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 768;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 20 : 40),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: Column(
+          children: [
+            Text(
+              eyebrow,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: isMobile ? 11 : 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 2.2,
+                color: const Color(0xFF4A6BB8),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: isMobile ? 25 : 34,
+                fontWeight: FontWeight.w800,
+                height: 1.12,
+                color: const Color(0xFF17243D),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: isMobile ? 14 : 16,
+                height: 1.65,
+                color: const Color(0xFF536174),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
 
-  // ⭐ Floating particles layer
-  Widget _buildParticlesLayer(double t) {
-    return IgnorePointer(
+class _AboutBackground extends StatelessWidget {
+  final double animationValue;
+  final double parallax;
+
+  const _AboutBackground({
+    required this.animationValue,
+    required this.parallax,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final shift = math.sin(animationValue * math.pi * 2);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment(-1 + (parallax * 0.35), -1),
+          end: Alignment(1, 1 - (parallax * 0.25)),
+          colors: const [
+            Color(0xFFF7F9FD),
+            Color(0xFFEFF3FA),
+            Color(0xFFF9FAFC),
+          ],
+        ),
+      ),
       child: CustomPaint(
-        painter: _ParticlesPainter(t),
+        painter: _AboutGlowPainter(shift: shift, parallax: parallax),
         child: const SizedBox.expand(),
       ),
     );
   }
 }
 
-// ⭐ Glow painter (soft luxury blobs)
-class _GlowPainter extends CustomPainter {
+class _AboutGlowPainter extends CustomPainter {
   final double shift;
-  _GlowPainter(this.shift);
+  final double parallax;
+
+  const _AboutGlowPainter({required this.shift, required this.parallax});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 75);
 
-    // Top-left glow
-    paint.color = const Color(0xFF4A6BB8).withOpacity(0.25);
+    paint.color = const Color(0xFF4A6BB8).withOpacity(0.12);
+
     canvas.drawCircle(
-      Offset(size.width * (0.2 + 0.1 * shift), size.height * 0.2),
-      140,
+      Offset(
+        size.width * (0.15 + (shift * 0.025)),
+        size.height * (0.15 + parallax * 0.08),
+      ),
+      170,
       paint,
     );
 
-    // Bottom-right glow
-    paint.color = const Color(0xFF273D68).withOpacity(0.22);
+    paint.color = const Color(0xFF273D68).withOpacity(0.08);
+
     canvas.drawCircle(
-      Offset(size.width * (0.8 - 0.1 * shift), size.height * 0.85),
-      180,
+      Offset(size.width * (0.88 - (shift * 0.025)), size.height * 0.72),
+      210,
+      paint,
+    );
+
+    paint.color = const Color(0xFF4A6BB8).withOpacity(0.06);
+
+    canvas.drawCircle(
+      Offset(size.width * 0.50, size.height * 0.48),
+      250,
       paint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _GlowPainter oldDelegate) =>
-      oldDelegate.shift != shift;
+  bool shouldRepaint(covariant _AboutGlowPainter oldDelegate) {
+    return oldDelegate.shift != shift || oldDelegate.parallax != parallax;
+  }
 }
 
-// ⭐ Particles painter (floating dots)
-class _ParticlesPainter extends CustomPainter {
+class _AmbientParticles extends StatelessWidget {
+  final double animationValue;
+
+  const _AmbientParticles({required this.animationValue});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _ParticlePainter(animationValue),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _ParticlePainter extends CustomPainter {
   final double t;
-  _ParticlesPainter(this.t);
+
+  const _ParticlePainter(this.t);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.35);
+    final paint = Paint();
 
-    for (int i = 0; i < 18; i++) {
-      final double progress = (t + i * 0.05) % 1.0;
-      final double x = size.width * (0.1 + 0.8 * (i / 18));
-      final double y = size.height * (0.1 + 0.8 * progress);
+    for (int i = 0; i < 22; i++) {
+      final progress = (t + i * 0.047) % 1.0;
 
-      canvas.drawCircle(Offset(x, y), 2.2, paint);
+      final x = size.width * (0.04 + ((i * 0.137) % 0.92));
+
+      final y = size.height * ((progress * 0.9) + 0.05);
+
+      final opacity = 0.08 + ((math.sin(progress * math.pi * 2) + 1) * 0.06);
+
+      paint.color = const Color(0xFF4A6BB8).withOpacity(opacity);
+
+      canvas.drawCircle(Offset(x, y), i.isEven ? 1.5 : 2.1, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) =>
-      oldDelegate.t != t;
+  bool shouldRepaint(covariant _ParticlePainter oldDelegate) {
+    return oldDelegate.t != t;
+  }
 }

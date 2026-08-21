@@ -4,14 +4,18 @@ class SidebarItem extends StatefulWidget {
   final IconData icon;
   final String label;
 
-  // ⭐ route is now OPTIONAL
+  // Route is optional for custom actions such as Logout.
   final String? route;
 
-  // ⭐ onTap is now OPTIONAL
+  // Custom action is optional.
   final VoidCallback? onTap;
 
   final String activeRoute;
   final bool isDestructive;
+
+  // ⭐ MOBILE WEB
+  // When true, the drawer is closed before navigating.
+  final bool closeDrawerOnNavigate;
 
   const SidebarItem({
     super.key,
@@ -21,6 +25,7 @@ class SidebarItem extends StatefulWidget {
     this.route,
     this.onTap,
     this.isDestructive = false,
+    this.closeDrawerOnNavigate = false,
   });
 
   @override
@@ -30,28 +35,77 @@ class SidebarItem extends StatefulWidget {
 class _SidebarItemState extends State<SidebarItem> {
   bool hovering = false;
 
+  void _handleTap() {
+    // ------------------------------------------------------------
+    // CUSTOM ACTION
+    // ------------------------------------------------------------
+
+    if (widget.onTap != null) {
+      widget.onTap!();
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // NORMAL ROUTE
+    // ------------------------------------------------------------
+
+    if (widget.route == null) {
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+
+    // ⭐ MOBILE WEB DRAWER
+    //
+    // The SidebarItem is inside the Drawer.
+    // Close the drawer first, then push the route.
+    //
+    // On desktop/tablet this remains false, so the existing
+    // sidebar navigation behavior is preserved.
+    if (widget.closeDrawerOnNavigate) {
+      navigator.pop();
+
+      // Schedule navigation after the drawer has closed.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        Navigator.of(context).pushNamed(widget.route!);
+      });
+
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // EXISTING DESKTOP / TABLET NAVIGATION
+    // ------------------------------------------------------------
+
+    navigator.pushNamed(widget.route!);
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isActive =
         widget.route != null && widget.route == widget.activeRoute;
 
-    // GP‑1 color system
-    final Color cyan = const Color(0xFF4FC3F7);
+    // GP-1 color system
+    const Color cyan = Color(0xFF4FC3F7);
+
     final Color baseText = Colors.white.withOpacity(0.85);
     final Color hoverBg = Colors.white.withOpacity(0.05);
     final Color activeBg = Colors.white.withOpacity(0.10);
 
     return MouseRegion(
-      onEnter: (_) => setState(() => hovering = true),
-      onExit: (_) => setState(() => hovering = false),
+      onEnter: (_) {
+        if (!mounted) return;
+        setState(() => hovering = true);
+      },
+      onExit: (_) {
+        if (!mounted) return;
+        setState(() => hovering = false);
+      },
       child: GestureDetector(
-        onTap: () {
-          if (widget.onTap != null) {
-            widget.onTap!(); // ⭐ custom action (logout)
-          } else if (widget.route != null) {
-            Navigator.pushNamed(context, widget.route!); // ⭐ normal navigation
-          }
-        },
+        behavior: HitTestBehavior.opaque,
+        onTap: _handleTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
@@ -64,7 +118,6 @@ class _SidebarItemState extends State<SidebarItem> {
                 ? hoverBg
                 : Colors.transparent,
 
-            // ⭐ GP‑1 border
             border: Border.all(
               color: isActive
                   ? cyan.withOpacity(0.35)
@@ -72,10 +125,8 @@ class _SidebarItemState extends State<SidebarItem> {
               width: 1.1,
             ),
 
-            // ⭐ GP‑1 rounded corners
             borderRadius: BorderRadius.circular(14),
 
-            // ⭐ Active glow
             boxShadow: isActive
                 ? [
                     BoxShadow(
@@ -88,7 +139,7 @@ class _SidebarItemState extends State<SidebarItem> {
           ),
           child: Row(
             children: [
-              // ⭐ Cyan active indicator bar
+              // Active indicator
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 3,
@@ -101,7 +152,7 @@ class _SidebarItemState extends State<SidebarItem> {
 
               const SizedBox(width: 14),
 
-              // ⭐ Icon
+              // Icon
               Icon(
                 widget.icon,
                 size: 20,
@@ -114,7 +165,7 @@ class _SidebarItemState extends State<SidebarItem> {
 
               const SizedBox(width: 14),
 
-              // ⭐ Label
+              // Label
               Expanded(
                 child: Text(
                   widget.label,

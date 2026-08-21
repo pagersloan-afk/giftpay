@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/aviation_fare_utils.dart';
 
 class TicketPaymentDetails extends StatelessWidget {
   final Map<String, dynamic> ticket;
@@ -7,8 +8,8 @@ class TicketPaymentDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = ticket["total"];
-    final paymentMethod = ticket["paymentMethod"];
+    final total = AviationFareUtils.toDouble(ticket["total"]);
+    final paymentMethod = "${ticket["paymentMethod"] ?? "wallet"}";
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -28,7 +29,7 @@ class TicketPaymentDetails extends StatelessWidget {
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           Text(
-            "₦$total",
+            AviationFareUtils.formatNaira(total),
             style: const TextStyle(
               color: Color(0xFF4FC3F7),
               fontSize: 18,

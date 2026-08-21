@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
-// ⭐ Shared Landing Header + Footer
+// Shared GiftPay public-site components.
 import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 import 'package:utilityhub/features/landing/sections/landing_footer.dart';
-
-// ⭐ Landing Responsive Layout
 import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
 
-// ⭐ Modular Sections
+// Bulk electricity sections.
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/bulk_electricity/bulk_hero_section.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/bulk_electricity/bulk_features_section.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/bulk_electricity/bulk_cta_section.dart';
@@ -15,30 +13,31 @@ import 'package:utilityhub/features/landing/public_screens/products/screens/sect
 class BulkElectricityPage extends StatelessWidget {
   const BulkElectricityPage({super.key});
 
+  static const Color navy = Color(0xFF273D68);
+  static const Color pageBackground = Color(0xFFF7F9FC);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: pageBackground,
       appBar: const LandingHeader(),
-
-      // ⭐ Luxury Animated Wrapper
       body: LandingResponsiveLayout(
         child: Column(
-          children: [
-            // ⭐ Hero Section with Fade + Parallax
-            const AnimatedSection(child: BulkHeroSection()),
-            const SizedBox(height: 40),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: const [
+            BulkElectricityAnimatedSection(child: BulkHeroSection()),
 
-            // ⭐ Features Section with Glow Pulse
-            const AnimatedSection(child: BulkFeaturesSection()),
-            const SizedBox(height: 40),
+            SizedBox(height: 28),
 
-            // ⭐ CTA Section with Slide-Up Animation
-            const AnimatedSection(child: BulkCTASection()),
-            const SizedBox(height: 40),
+            BulkElectricityAnimatedSection(child: BulkFeaturesSection()),
 
-            // ⭐ Footer (no animation)
-            const LandingFooter(),
+            SizedBox(height: 28),
+
+            BulkElectricityAnimatedSection(child: BulkCTASection()),
+
+            SizedBox(height: 48),
+
+            LandingFooter(),
           ],
         ),
       ),
@@ -46,44 +45,51 @@ class BulkElectricityPage extends StatelessWidget {
   }
 }
 
-// ⭐ Reusable Animated Wrapper (Luxury Feel)
-class AnimatedSection extends StatefulWidget {
+/// Lightweight entrance animation used only by this page.
+///
+/// This is deliberately page-specific instead of being called
+/// `AnimatedSection`, preventing duplicate class-name conflicts when
+/// several public product pages are imported together.
+class BulkElectricityAnimatedSection extends StatefulWidget {
   final Widget child;
-  const AnimatedSection({super.key, required this.child});
+
+  const BulkElectricityAnimatedSection({super.key, required this.child});
 
   @override
-  State<AnimatedSection> createState() => _AnimatedSectionState();
+  State<BulkElectricityAnimatedSection> createState() =>
+      _BulkElectricityAnimatedSectionState();
 }
 
-class _AnimatedSectionState extends State<AnimatedSection>
+class _BulkElectricityAnimatedSectionState
+    extends State<BulkElectricityAnimatedSection>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // ⭐ Smooth fade + slide animation
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 650),
     );
 
-    _fade = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
 
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.035),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    // ⭐ Trigger animation when widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.forward();
+      if (mounted) {
+        _controller.forward();
+      }
     });
   }
 
@@ -96,24 +102,8 @@ class _AnimatedSectionState extends State<AnimatedSection>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: Container(
-          // ⭐ Luxury Glow Pulse Background
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.withOpacity(0.06),
-                blurRadius: 40,
-                spreadRadius: 4,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: widget.child,
-        ),
-      ),
+      opacity: _fadeAnimation,
+      child: SlideTransition(position: _slideAnimation, child: widget.child),
     );
   }
 }

@@ -32,26 +32,36 @@ class CheckoutPaymentMethod extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-
-          RadioListTile(
-            value: "wallet",
-            groupValue: paymentMethod,
-            onChanged: onChanged,
-            activeColor: const Color(0xFF4FC3F7),
-            title: const Text(
-              "GiftPay Wallet",
-              style: TextStyle(color: Colors.white),
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: RadioListTile<String>(
+              value: "wallet",
+              groupValue: paymentMethod,
+              onChanged: onChanged,
+              activeColor: const Color(0xFF4FC3F7),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              title: const Text(
+                "GiftPay Wallet",
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ),
-
-          RadioListTile(
-            value: "card",
-            groupValue: paymentMethod,
-            onChanged: onChanged,
-            activeColor: const Color(0xFF4FC3F7),
-            title: const Text(
-              "Debit / Credit Card",
-              style: TextStyle(color: Colors.white),
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: RadioListTile<String>(
+              value: "card",
+              groupValue: paymentMethod,
+              onChanged: onChanged,
+              activeColor: const Color(0xFF4FC3F7),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              title: const Text(
+                "Debit / Credit Card",
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ),
         ],

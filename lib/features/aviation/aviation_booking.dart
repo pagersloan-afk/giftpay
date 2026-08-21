@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/widgets/giftpay_background.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
+
 import 'booking/booking_flight_summary.dart';
 import 'booking/booking_input_fullname.dart';
 import 'booking/booking_input_dob.dart';
@@ -41,8 +42,18 @@ class _AviationBookingScreenState extends State<AviationBookingScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    flight =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) flight = args;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    fullName.dispose();
+    dob.dispose();
+    passport.dispose();
+    nationality.dispose();
+    super.dispose();
   }
 
   @override
@@ -75,10 +86,10 @@ class _AviationBookingScreenState extends State<AviationBookingScreen>
                     const SizedBox(height: 30),
                     BookingApiButton(
                       flight: flight,
-                      fullName: fullName.text,
-                      dob: dob.text,
-                      passport: passport.text,
-                      nationality: nationality.text,
+                      fullNameController: fullName,
+                      dobController: dob,
+                      passportController: passport,
+                      nationalityController: nationality,
                     ),
                     const SizedBox(height: 40),
                   ],

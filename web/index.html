@@ -10,52 +10,335 @@
   <!-- Base path for Flutter Web -->
   <base href="$FLUTTER_BASE_HREF">
 
-  <!-- App Title -->
-  <title>GiftPay – Smart Payments</title>
+  <!-- ============================================================
+       DEFAULT / FALLBACK BRAND METADATA
+       JavaScript below updates these values according to hostname.
+       ============================================================ -->
 
-  <!-- Description (SEO) -->
-  <meta name="description" content="GiftPay – Fast, secure payments for electricity, airtime, data, and wallet services.">
+  <title>Gift Technology — Technology That Powers What's Next</title>
 
-  <!-- Keywords (SEO) -->
-  <meta name="keywords" content="GiftPay, payments, electricity, airtime, data, wallet, fintech">
+  <meta
+    name="description"
+    content="Gift Technology builds and powers intelligent digital products across payments, mobility, travel, business, and more."
+  >
 
-  <!-- Social Preview -->
-  <meta property="og:title" content="GiftPay – Smart Payments">
-  <meta property="og:description" content="Fast, secure payments for electricity, airtime, data, and wallet services.">
-  <meta property="og:image" content="icons/Icon-512.png">
+  <meta
+    name="keywords"
+    content="Gift Technology, Gift Technology LTD, technology company, digital products, fintech, payments, mobility, travel, business technology"
+  >
+
+  <!-- Theme -->
+  <meta name="theme-color" content="#273D68">
+
+  <!-- ============================================================
+       OPEN GRAPH / SOCIAL PREVIEW
+       ============================================================ -->
+
+  <meta
+    property="og:title"
+    content="Gift Technology — Technology That Powers What's Next"
+  >
+
+  <meta
+    property="og:description"
+    content="Technology that powers intelligent digital products across payments, mobility, travel, business, and more."
+  >
+
+  <meta
+    property="og:image"
+    content="icons/Icon-512.png"
+  >
+
   <meta property="og:type" content="website">
+  <meta property="og:url" content="">
 
-  <!-- Force HTML Renderer -->
+  <!-- ============================================================
+       TWITTER / X PREVIEW
+       ============================================================ -->
+
+  <meta name="twitter:card" content="summary_large_image">
+
+  <meta
+    name="twitter:title"
+    content="Gift Technology — Technology That Powers What's Next"
+  >
+
+  <meta
+    name="twitter:description"
+    content="Technology that powers intelligent digital products across payments, mobility, travel, business, and more."
+  >
+
+  <meta
+    name="twitter:image"
+    content="icons/Icon-512.png"
+  >
+
+  <!-- ============================================================
+       FLUTTER WEB
+       ============================================================ -->
+
   <meta name="flutter-web-renderer" content="html">
 
-  <!-- iOS PWA -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="GiftPay">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <!-- ============================================================
+       iOS PWA
+       ============================================================ -->
 
-  <!-- Android PWA -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black"
+  >
+
+  <meta
+    name="apple-mobile-web-app-title"
+    content="Gift Technology"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="icons/Icon-192.png"
+  >
+
+  <!-- ============================================================
+       Android PWA
+       ============================================================ -->
+
   <link rel="manifest" href="manifest.json">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
+  <!-- ============================================================
+       Favicon
+       ============================================================ -->
 
-  <!-- Paystack Web Popup -->
+  <link
+    rel="icon"
+    type="image/png"
+    href="favicon.png"
+  >
+
+  <!-- ============================================================
+       PAYSTACK WEB POPUP
+       ============================================================ -->
+
   <script src="https://js.paystack.co/v1/inline.js"></script>
 
-  <!-- Disable caching -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <!-- ============================================================
+       DISABLE CACHING
+       ============================================================ -->
+
+  <meta
+    http-equiv="Cache-Control"
+    content="no-cache, no-store, must-revalidate"
+  >
+
+  <meta
+    http-equiv="Pragma"
+    content="no-cache"
+  >
+
+  <meta
+    http-equiv="Expires"
+    content="0"
+  >
+
+  <!-- ============================================================
+       BRAND DETECTION
+       ============================================================ -->
+
+  <script>
+    (function () {
+      const hostname = window.location.hostname.toLowerCase();
+
+      /*
+       * GiftPay domains.
+       *
+       * Add future GiftPay domains here if necessary.
+       */
+      const giftPayHosts = [
+        "giftpayhq.com",
+        "www.giftpayhq.com"
+      ];
+
+      const isGiftPay = giftPayHosts.includes(hostname);
+
+      const brand = isGiftPay
+        ? {
+            name: "GiftPay",
+
+            title: "GiftPay — Smart Payments, Made Simple",
+
+            description:
+              "Fast, secure payments for electricity, airtime, data, wallet services, and more.",
+
+            keywords:
+              "GiftPay, payments, electricity, airtime, data, wallet, fintech",
+
+            ogTitle:
+              "GiftPay — Smart Payments, Made Simple",
+
+            ogDescription:
+              "Fast, secure payments for electricity, airtime, data, wallet services, and more.",
+
+            twitterTitle:
+              "GiftPay — Smart Payments, Made Simple",
+
+            twitterDescription:
+              "Fast, secure payments for electricity, airtime, data, wallet services, and more.",
+
+            themeColor: "#273D68"
+          }
+        : {
+            name: "Gift Technology",
+
+            title:
+              "Gift Technology — Technology That Powers What's Next",
+
+            description:
+              "Gift Technology builds and powers intelligent digital products across payments, mobility, travel, business, and more.",
+
+            keywords:
+              "Gift Technology, Gift Technology LTD, technology company, digital products, fintech, payments, mobility, travel, business technology",
+
+            ogTitle:
+              "Gift Technology — Technology That Powers What's Next",
+
+            ogDescription:
+              "Technology that powers intelligent digital products across payments, mobility, travel, business, and more.",
+
+            twitterTitle:
+              "Gift Technology — Technology That Powers What's Next",
+
+            twitterDescription:
+              "Technology that powers intelligent digital products across payments, mobility, travel, business, and more.",
+
+            themeColor: "#273D68"
+          };
+
+      /*
+       * ----------------------------------------------------------
+       * Update browser title
+       * ----------------------------------------------------------
+       */
+      document.title = brand.title;
+
+      /*
+       * ----------------------------------------------------------
+       * Update meta helper
+       * ----------------------------------------------------------
+       */
+      function setMeta(selector, attribute, value) {
+        const element = document.querySelector(selector);
+
+        if (element) {
+          element.setAttribute(attribute, value);
+        }
+      }
+
+      /*
+       * Standard description
+       */
+      setMeta(
+        'meta[name="description"]',
+        "content",
+        brand.description
+      );
+
+      /*
+       * Keywords
+       */
+      setMeta(
+        'meta[name="keywords"]',
+        "content",
+        brand.keywords
+      );
+
+      /*
+       * Theme color
+       */
+      setMeta(
+        'meta[name="theme-color"]',
+        "content",
+        brand.themeColor
+      );
+
+      /*
+       * Apple app title
+       */
+      setMeta(
+        'meta[name="apple-mobile-web-app-title"]',
+        "content",
+        brand.name
+      );
+
+      /*
+       * Open Graph
+       */
+      setMeta(
+        'meta[property="og:title"]',
+        "content",
+        brand.ogTitle
+      );
+
+      setMeta(
+        'meta[property="og:description"]',
+        "content",
+        brand.ogDescription
+      );
+
+      setMeta(
+        'meta[property="og:url"]',
+        "content",
+        window.location.href
+      );
+
+      /*
+       * Twitter / X
+       */
+      setMeta(
+        'meta[name="twitter:title"]',
+        "content",
+        brand.twitterTitle
+      );
+
+      setMeta(
+        'meta[name="twitter:description"]',
+        "content",
+        brand.twitterDescription
+      );
+
+      /*
+       * Expose the active brand to Flutter / JavaScript.
+       *
+       * Flutter can access:
+       *
+       * window.giftPayBrand
+       *
+       * through JS interop if needed.
+       */
+      window.giftPayBrand = {
+        name: brand.name,
+        isGiftPay: isGiftPay,
+        isGiftTechnology: !isGiftPay,
+        hostname: hostname
+      };
+    })();
+  </script>
+
+  <!-- ============================================================
+       SPLASH SCREEN
+       ============================================================ -->
 
   <style id="splash-screen-style">
-    html { height: 100% }
+    html {
+      height: 100%;
+    }
+
     body {
       margin: 0;
       min-height: 100%;
       background-color: #000000;
       background-size: 100% 100%;
     }
+
     .center {
       margin: 0;
       position: absolute;
@@ -75,12 +358,50 @@
 </head>
 
 <body>
+
+  <!-- ============================================================
+       SPLASH
+       ============================================================ -->
+
   <picture id="splash">
-    <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
-    <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
-    <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+
+    <source
+      srcset="
+        splash/img/light-1x.png 1x,
+        splash/img/light-2x.png 2x,
+        splash/img/light-3x.png 3x,
+        splash/img/light-4x.png 4x
+      "
+      media="(prefers-color-scheme: light)"
+    >
+
+    <source
+      srcset="
+        splash/img/dark-1x.png 1x,
+        splash/img/dark-2x.png 2x,
+        splash/img/dark-3x.png 3x,
+        splash/img/dark-4x.png 4x
+      "
+      media="(prefers-color-scheme: dark)"
+    >
+
+    <img
+      class="center"
+      aria-hidden="true"
+      src="splash/img/light-1x.png"
+      alt=""
+    >
+
   </picture>
 
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- ============================================================
+       FLUTTER BOOTSTRAP
+       ============================================================ -->
+
+  <script
+    src="flutter_bootstrap.js"
+    async
+  ></script>
+
 </body>
 </html>

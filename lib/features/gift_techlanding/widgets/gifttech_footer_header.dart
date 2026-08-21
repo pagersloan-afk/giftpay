@@ -36,17 +36,219 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
 
   String? _hoveredItem;
 
+  // ===========================================================================
+  // ROUTE / PAGE HELPERS
+  // ===========================================================================
+
+  String _currentRoute(BuildContext context) {
+    return ModalRoute.of(context)?.settings.name ?? '/gifttech';
+  }
+
+  bool _isGiftTechHome(BuildContext context) {
+    final route = _currentRoute(context);
+
+    return route == '/gifttech' || route == '/' || route.isEmpty;
+  }
+
+  String _pageTitle(BuildContext context) {
+    final route = _currentRoute(context);
+
+    switch (route) {
+      case '/about-gifttech':
+        return 'About Gift Technology';
+
+      case '/products':
+        return 'Products';
+
+      case '/community':
+        return 'Community';
+
+      case '/contact':
+        return 'Contact';
+
+      case '/giftpay-wallet':
+        return 'GiftPay Wallet';
+
+      case '/giftpos':
+        return 'GiftPOS';
+
+      case '/giftcard-marketplace':
+        return 'Gift Card Marketplace';
+
+      case '/utilities-hub':
+        return 'Utilities Hub';
+
+      case '/gifttech-bulk-electricity':
+        return 'Bulk Electricity';
+
+      case '/corporate-data':
+        return 'Corporate Data';
+
+      case '/gifttech-airtime-distribution':
+        return 'Airtime Distribution';
+
+      case '/gift-tech-help-center':
+        return 'Help Center';
+
+      case '/order-status':
+        return 'Order Status';
+
+      case '/returns':
+        return 'Returns';
+
+      case '/find-store':
+        return 'Find a Store';
+
+      case '/legal':
+        return 'Legal';
+
+      case '/terms-of-sale':
+        return 'Terms of Sale';
+
+      case '/safety-center':
+        return 'Safety Center';
+
+      case '/creators':
+        return 'Creators';
+
+      case '/developers':
+        return 'Developers';
+
+      case '/business':
+        return 'Business';
+
+      case '/nonprofits':
+        return 'Nonprofits';
+
+      case '/download-sdks':
+        return 'Download SDKs';
+
+      case '/partner-program':
+        return 'Partner Program';
+
+      case '/tech-for-good':
+        return 'Tech for Good';
+
+      case '/data-privacy':
+        return 'Data Privacy';
+
+      case '/responsibility':
+        return 'Responsible Practices';
+
+      case '/accessibility':
+        return 'Accessibility';
+
+      case '/elections':
+        return 'Elections';
+
+      case '/company-info':
+        return 'Company Information';
+
+      case '/careers':
+        return 'Careers';
+
+      case '/media':
+        return 'Media Gallery';
+
+      case '/brand-resources':
+        return 'Brand Resources';
+
+      case '/investors':
+        return 'Investors';
+
+      case '/newsroom':
+        return 'Newsroom';
+
+      case '/community-standards':
+        return 'Community Standards';
+
+      case '/privacy-policy':
+        return 'Privacy Policy';
+
+      case '/terms':
+        return 'Terms';
+
+      case '/cookie-policy':
+        return 'Cookie Policy';
+
+      default:
+        return _formatRouteTitle(route);
+    }
+  }
+
+  String _formatRouteTitle(String route) {
+    if (route.isEmpty || route == '/') {
+      return 'Gift Technology';
+    }
+
+    final cleaned = route
+        .replaceFirst('/', '')
+        .replaceAll('-', ' ')
+        .replaceAll('_', ' ');
+
+    if (cleaned.isEmpty) {
+      return 'Gift Technology';
+    }
+
+    return cleaned
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map((word) => word.substring(0, 1).toUpperCase() + word.substring(1))
+        .join(' ');
+  }
+
+  // ===========================================================================
+  // NAVIGATION
+  // ===========================================================================
+
   void _navigate(BuildContext context, String route) {
     final currentRoute = ModalRoute.of(context)?.settings.name;
 
-    // Prevent unnecessary navigation if the visitor is already
-    // on the requested dedicated page.
+    // Prevent unnecessary navigation when already on the requested page.
     if (currentRoute == route) {
       return;
     }
 
     Navigator.of(context).pushNamed(route);
   }
+
+  // ===========================================================================
+  // MOBILE BACK
+  //
+  // Important:
+  //
+  // When a visitor navigates:
+  //
+  // /gifttech
+  //     ↓
+  // /products
+  //
+  // the browser receives a Flutter navigation history entry.
+  //
+  // Pressing the mobile browser BACK button therefore returns to /gifttech.
+  //
+  // The visible in-app back button also uses Navigator.pop(), keeping both
+  // navigation systems synchronized.
+  // ===========================================================================
+
+  void _handleMobileBack(BuildContext context) {
+    final navigator = Navigator.of(context);
+
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+
+    // If the visitor opened an inner page directly from a URL, there may be
+    // no Flutter route underneath it. In that case return to the Gift
+    // Technology landing page instead of allowing the back button to appear
+    // useless.
+    navigator.pushReplacementNamed('/gifttech');
+  }
+
+  // ===========================================================================
+  // BUILD
+  // ===========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +291,11 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // DESKTOP
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // DESKTOP HEADER
+  //
+  // Desktop keeps the original Gift Technology navigation.
+  // ===========================================================================
 
   Widget _buildDesktopHeader(BuildContext context) {
     return Row(
@@ -137,11 +341,35 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // MOBILE
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // MOBILE HEADER
+  //
+  // LANDING PAGE:
+  //
+  //     [ MENU ] [ GIFT TECHNOLOGY ] [ SEARCH ]
+  //
+  // INNER PAGE:
+  //
+  //     [ ← ] [ PAGE TITLE                  ] [ SEARCH ]
+  //
+  // This is the important behavioral change.
+  // ===========================================================================
 
   Widget _buildMobileHeader(BuildContext context) {
+    final bool isHome = _isGiftTechHome(context);
+
+    if (isHome) {
+      return _buildMobileHomeHeader(context);
+    }
+
+    return _buildMobileInnerPageHeader(context);
+  }
+
+  // ===========================================================================
+  // MOBILE HOME HEADER
+  // ===========================================================================
+
+  Widget _buildMobileHomeHeader(BuildContext context) {
     return Row(
       children: [
         _buildMobileMenuButton(context),
@@ -152,6 +380,76 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
       ],
     );
   }
+
+  // ===========================================================================
+  // MOBILE INNER PAGE HEADER
+  // ===========================================================================
+
+  Widget _buildMobileInnerPageHeader(BuildContext context) {
+    final title = _pageTitle(context);
+
+    return SizedBox(
+      height: 48,
+      child: Row(
+        children: [
+          _buildMobileBackButton(context),
+
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'SegoeUI',
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 0.05,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          _buildSearchButton(context),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // MOBILE BACK BUTTON
+  // ===========================================================================
+
+  Widget _buildMobileBackButton(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _handleMobileBack(context),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: Colors.white.withOpacity(0.045),
+            border: Border.all(color: Colors.white.withOpacity(0.075)),
+          ),
+          child: const Icon(
+            Icons.arrow_back_rounded,
+            color: Colors.white,
+            size: 22,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // MOBILE MENU BUTTON
+  // ===========================================================================
 
   Widget _buildMobileMenuButton(BuildContext context) {
     return Builder(
@@ -183,9 +481,9 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // BRAND
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   Widget _buildBrand(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < 760;
@@ -265,9 +563,9 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // NAVIGATION ITEM
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // DESKTOP NAVIGATION ITEM
+  // ===========================================================================
 
   Widget _buildNavItem(
     BuildContext context, {
@@ -335,9 +633,9 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // SEARCH
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   Widget _buildSearchButton(BuildContext context) {
     return Tooltip(
@@ -399,9 +697,23 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
       );
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // MOBILE DRAWER
-  // ---------------------------------------------------------------------------
+  //
+  // This drawer is ONLY shown from the Gift Technology landing page header.
+  //
+  // When a drawer item is selected:
+  //
+  //     drawer
+  //       ↓
+  //     Navigator.pop()
+  //       ↓
+  //     Navigator.pushNamed()
+  //       ↓
+  //     new page
+  //
+  // Therefore the drawer does not remain over the new page.
+  // ===========================================================================
 
   Widget buildDrawer(BuildContext context) {
     return Drawer(
@@ -412,13 +724,17 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
         child: Column(
           children: [
             _buildDrawerHeader(context),
+
             const SizedBox(height: 8),
+
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
                 children: [
                   _buildDrawerSectionLabel('EXPLORE'),
+
                   const SizedBox(height: 8),
+
                   _buildDrawerItem(
                     context,
                     icon: Icons.business_outlined,
@@ -426,6 +742,7 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                     subtitle: 'Our company, mission & vision',
                     route: widget.aboutRoute,
                   ),
+
                   _buildDrawerItem(
                     context,
                     icon: Icons.grid_view_rounded,
@@ -433,6 +750,7 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                     subtitle: 'Platforms & digital solutions',
                     route: widget.productsRoute,
                   ),
+
                   _buildDrawerItem(
                     context,
                     icon: Icons.groups_outlined,
@@ -440,6 +758,7 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                     subtitle: 'People, programs & impact',
                     route: widget.communityRoute,
                   ),
+
                   _buildDrawerItem(
                     context,
                     icon: Icons.mail_outline_rounded,
@@ -447,17 +766,23 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                     subtitle: 'Talk to Gift Technology',
                     route: widget.contactRoute,
                   ),
+
                   const SizedBox(height: 22),
+
                   _buildDrawerSectionLabel('COMPANY'),
+
                   const SizedBox(height: 8),
+
                   _buildDrawerInfo(
                     icon: Icons.location_on_outlined,
                     text: 'Port Harcourt, Rivers, Nigeria',
                   ),
+
                   _buildDrawerInfo(
                     icon: Icons.language_rounded,
                     text: 'gifttechnologyltd.com',
                   ),
+
                   _buildDrawerInfo(
                     icon: Icons.email_outlined,
                     text: 'support@gifttechnologyltd.com',
@@ -465,6 +790,7 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                 ],
               ),
             ),
+
             _buildDrawerFooter(),
           ],
         ),
@@ -478,7 +804,9 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
       child: Row(
         children: [
           _buildBrandMark(),
+
           const SizedBox(width: 12),
+
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,6 +835,7 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
               ],
             ),
           ),
+
           IconButton(
             tooltip: 'Close',
             onPressed: () {
@@ -549,7 +878,10 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
+            // Close the drawer FIRST.
             Navigator.of(context).pop();
+
+            // Then create a new route in Flutter's navigation stack.
             _navigate(context, route);
           },
           child: Container(
@@ -570,7 +902,9 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                   ),
                   child: Icon(icon, color: _highlight, size: 19),
                 ),
+
                 const SizedBox(width: 12),
+
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,7 +918,9 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                           color: Colors.white,
                         ),
                       ),
+
                       const SizedBox(height: 3),
+
                       Text(
                         subtitle,
                         style: TextStyle(
@@ -596,6 +932,7 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
                     ],
                   ),
                 ),
+
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 12,
@@ -615,7 +952,9 @@ class _GiftTechFooterHeaderState extends State<GiftTechFooterHeader> {
       child: Row(
         children: [
           Icon(icon, size: 16, color: Colors.white.withOpacity(0.32)),
+
           const SizedBox(width: 10),
+
           Expanded(
             child: Text(
               text,

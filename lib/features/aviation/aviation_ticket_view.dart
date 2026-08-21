@@ -1,10 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
-
 import 'package:utilityhub/core/widgets/giftpay_background.dart';
 
+import 'data/aviation_api_service.dart';
+import 'data/aviation_fare_utils.dart';
 import 'ticket/ticket_header.dart';
 import 'ticket/ticket_qr.dart';
 import 'ticket/ticket_flight_details.dart';
@@ -26,6 +25,8 @@ class _AviationTicketScreenState extends State<AviationTicketScreen>
 
   Map<String, dynamic>? booking;
   Map<String, dynamic>? ticket;
+  bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -41,31 +42,73 @@ class _AviationTicketScreenState extends State<AviationTicketScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    booking =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (booking != null || ticket != null || error != null) return;
 
-    if (booking != null) {
-      _fetchTicket();
+    final args = ModalRoute.of(context)?.settings.arguments;
+
+    if (args is Map) {
+      final rawBooking = args["booking"];
+      booking = rawBooking is Map
+          ? Map<String, dynamic>.from(rawBooking)
+          : null;
+
+      if (booking != null) {
+        _generateTicket(Map<String, dynamic>.from(args));
+      } else {
+        setState(() {
+          loading = false;
+          error = "Booking information is missing.";
+        });
+      }
+    } else {
+      setState(() {
+        loading = false;
+        error = "Ticket information is missing.";
+      });
     }
   }
 
-  Future<void> _fetchTicket() async {
-    final bookingId = booking!["booking"]["id"];
+  Future<void> _generateTicket(Map<String, dynamic> args) async {
+    try {
+      final total = AviationFareUtils.toDouble(args["total"]);
+      final paymentMethod = "${args["paymentMethod"] ?? "wallet"}";
+      final service = AviationApiService();
 
-    final res = await http.post(
-      Uri.parse("https://your-backend-url.com/api/aviation/ticket"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"bookingId": bookingId}),
-    );
+      final result = service.useMockData
+          ? service.generateMockTicket(
+              booking: booking!,
+              total: total,
+              paymentMethod: paymentMethod,
+            )
+          : await service.generateTicket(
+              bookingId: "${booking!["id"]}",
+              total: total,
+              paymentMethod: paymentMethod,
+            );
 
-    setState(() {
-      ticket = jsonDecode(res.body);
-    });
+      if (!mounted) return;
+      setState(() {
+        ticket = result;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+        error = "Unable to generate ticket: $e";
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (ticket == null) {
+    if (loading) {
       return const Scaffold(
         backgroundColor: Color(0xFF0F1115),
         body: Center(
@@ -73,6 +116,26 @@ class _AviationTicketScreenState extends State<AviationTicketScreen>
         ),
       );
     }
+
+    if (error != null || ticket == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0F1115),
+        appBar: const AppHeaderr(title: "Ticket"),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              error ?? "Ticket could not be generated.",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final rawQr = ticket!["qr"];
+    final qr = rawQr is List ? List<int>.from(rawQr) : null;
 
     return GiftPayBackground(
       child: Scaffold(
@@ -93,7 +156,7 @@ class _AviationTicketScreenState extends State<AviationTicketScreen>
                   children: [
                     const TicketHeader(),
                     const SizedBox(height: 26),
-                    TicketQr(qr: ticket!["qr"]),
+                    TicketQr(qr: qr),
                     TicketFlightDetails(ticket: ticket!),
                     TicketPassengerDetails(ticket: ticket!),
                     TicketPaymentDetails(ticket: ticket!),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/aviation_fare_utils.dart';
 
 class CheckoutFareBreakdown extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -7,10 +8,9 @@ class CheckoutFareBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final price = double.parse(booking["offer"]["price"]["total"]);
-    final tax = (price * 0.075).round();
-    final serviceFee = 2500;
-    final total = price + tax + serviceFee;
+    final price = AviationFareUtils.extractBaseFare(booking);
+    final tax = AviationFareUtils.calculateTax(price);
+    final total = AviationFareUtils.calculateTotal(price);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -32,17 +32,16 @@ class CheckoutFareBreakdown extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-
-          _row("Base Fare", "₦${price.round()}"),
+          _row("Base Fare", AviationFareUtils.formatNaira(price)),
           const SizedBox(height: 8),
-
-          _row("Tax (7.5%)", "₦$tax"),
+          _row("Tax (7.5%)", AviationFareUtils.formatNaira(tax)),
           const SizedBox(height: 8),
-
-          _row("Service Fee", "₦$serviceFee"),
+          _row(
+            "Service Fee",
+            AviationFareUtils.formatNaira(AviationFareUtils.serviceFee),
+          ),
           const SizedBox(height: 14),
-
-          _row("Total", "₦$total", highlight: true),
+          _row("Total", AviationFareUtils.formatNaira(total), highlight: true),
         ],
       ),
     );

@@ -16,9 +16,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
 
   @override
   void initState() {
@@ -47,64 +47,99 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    // ⭐ APP USERS → show LoginCard only (no landing page)
+    // =========================================================================
+    // NATIVE MOBILE APP
+    //
+    // Keep the mobile app focused on the login card.
+    // =========================================================================
+
     if (!kIsWeb) {
       return const GiftPayBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
-          body: LoginMobileLayout(),
+          resizeToAvoidBottomInset: true,
+          body: SafeArea(child: LoginMobileLayout()),
         ),
       );
     }
 
-    // ⭐ WEB USERS → luxury animated login screen
+    // =========================================================================
+    // WEB
+    //
+    // The header remains on the web.
+    //
+    // Mobile/tablet:
+    //   LoginMobileLayout manages its own scrolling.
+    //
+    // Desktop:
+    //   Desktop login is placed inside a SingleChildScrollView.
+    //
+    // This avoids the previous nested-scroll arrangement that could cause
+    // mobile-web login viewport/keyboard issues.
+    // =========================================================================
+
     return GiftPayBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: true,
+
         appBar: const LandingHeader(),
 
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final isDesktop = constraints.maxWidth > 900;
+            final bool isDesktop = constraints.maxWidth > 900;
 
-            return SingleChildScrollView(
-              child: FadeTransition(
+            // =================================================================
+            // MOBILE / TABLET WEB
+            // =================================================================
+
+            if (!isDesktop) {
+              return FadeTransition(
                 opacity: _fade,
                 child: SlideTransition(
                   position: _slide,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 40),
+                  child: const LoginMobileLayout(),
+                ),
+              );
+            }
 
-                      // ⭐ Soft luxury glow wrapper
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.08),
-                              blurRadius: 40,
-                              spreadRadius: 4,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            if (isDesktop)
-                              const LoginDesktopLayout()
-                            else
-                              const LoginMobileLayout(),
-                          ],
-                        ),
+            // =================================================================
+            // DESKTOP WEB
+            // =================================================================
+
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+
+              child: FadeTransition(
+                opacity: _fade,
+
+                child: SlideTransition(
+                  position: _slide,
+
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
                       ),
 
-                      const SizedBox(height: 60),
-                    ],
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.08),
+                            blurRadius: 40,
+                            spreadRadius: 4,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+
+                      child: const LoginDesktopLayout(),
+                    ),
                   ),
                 ),
               ),

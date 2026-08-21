@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
-// ⭐ Shared Landing Header + Footer
+// Shared GiftPay public-site components
 import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 import 'package:utilityhub/features/landing/sections/landing_footer.dart';
-
-// ⭐ Landing Responsive Layout
 import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
 
-// ⭐ Modular Sections
+// GiftPay Wallet sections
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/giftpay_wallet/giftpay_wallet_hero_section.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/giftpay_wallet/giftpay_wallet_features_section.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/giftpay_wallet/giftpay_wallet_cta_section.dart';
@@ -15,23 +13,25 @@ import 'package:utilityhub/features/landing/public_screens/products/screens/sect
 class GiftPayWalletPage extends StatelessWidget {
   const GiftPayWalletPage({super.key});
 
+  static const Color _background = Color(0xFFF7F9FD);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: _background,
       appBar: const LandingHeader(),
-
       body: LandingResponsiveLayout(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const AnimatedSection(child: GiftPayWalletHeroSection()),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
 
             const AnimatedSection(child: GiftPayWalletFeaturesSection()),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
 
             const AnimatedSection(child: GiftPayWalletCTASection()),
-            const SizedBox(height: 40),
+            const SizedBox(height: 48),
 
             const LandingFooter(),
           ],
@@ -41,9 +41,14 @@ class GiftPayWalletPage extends StatelessWidget {
   }
 }
 
-// ⭐ Reusable Luxury Animation Wrapper
+/// Lightweight entrance animation used by GiftPay public product pages.
+///
+/// This widget intentionally does not depend on viewport visibility or
+/// nested scroll controllers, making it safe inside the existing
+/// LandingResponsiveLayout.
 class AnimatedSection extends StatefulWidget {
   final Widget child;
+
   const AnimatedSection({super.key, required this.child});
 
   @override
@@ -52,9 +57,9 @@ class AnimatedSection extends StatefulWidget {
 
 class _AnimatedSectionState extends State<AnimatedSection>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
 
   @override
   void initState() {
@@ -62,21 +67,25 @@ class _AnimatedSectionState extends State<AnimatedSection>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 650),
     );
 
-    _fade = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    final curvedAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+
+    _fade = Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation);
 
     _slide = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+      begin: const Offset(0.0, 0.035),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    ).animate(curvedAnimation);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.forward();
+      if (mounted) {
+        _controller.forward();
+      }
     });
   }
 
@@ -90,22 +99,7 @@ class _AnimatedSectionState extends State<AnimatedSection>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: Container(
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.withOpacity(0.06),
-                blurRadius: 40,
-                spreadRadius: 4,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: widget.child,
-        ),
-      ),
+      child: SlideTransition(position: _slide, child: widget.child),
     );
   }
 }

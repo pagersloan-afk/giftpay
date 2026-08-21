@@ -1,14 +1,14 @@
-import 'package:audioplayers/audioplayers.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:country_picker/country_picker.dart';
+
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/features/auth/login/signup/controllers/signup_basic_controller.dart';
-import 'package:utilityhub/features/auth/login/signup/screens/signup_identity_screen.dart';
 import 'package:utilityhub/features/auth/login/signup/widgets/name_fields.dart';
 import 'package:utilityhub/features/auth/login/signup/widgets/password_section.dart';
 import 'package:utilityhub/features/auth/login/signup/widgets/phone_country_field.dart';
-import 'package:utilityhub/features/auth/login/signup/widgets/signup_success_dialog.dart';
+
+import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 
 class SignupBasicInfoScreen extends StatefulWidget {
   const SignupBasicInfoScreen({super.key});
@@ -39,6 +39,7 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
   @override
   void initState() {
     super.initState();
+
     selectedCountry = Country(
       phoneCode: '234',
       countryCode: 'NG',
@@ -89,12 +90,13 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
       );
 
       final uid = await controller.createBasicAccount(context);
+
       if (uid == null) return;
 
-      // ⭐ DO NOT show success dialog here
-      // ⭐ DO NOT wait for email verification here
+      // DO NOT show success dialog here.
+      // DO NOT wait for email verification here.
 
-      // ⭐ Immediately route to VerifyEmailScreen
+      // Immediately route to VerifyEmailScreen.
       Navigator.pushReplacementNamed(
         context,
         "/verify-email",
@@ -116,8 +118,28 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
   }
 
   @override
+  void dispose() {
+    firstNameCtrl.dispose();
+    lastNameCtrl.dispose();
+    phoneCtrl.dispose();
+    emailCtrl.dispose();
+    passwordCtrl.dispose();
+    confirmPasswordCtrl.dispose();
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // =========================================================================
+      // WEB
+      //
+      // Match LoginScreen:
+      // /signup uses LandingHeader.
+      // =========================================================================
+      appBar: kIsWeb ? const LandingHeader() : null,
+
       body: AppResponsiveLayout(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -125,22 +147,33 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 40),
+
                 const Text(
                   "Create Account",
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
+
                 const SizedBox(height: 32),
+
                 NameFields(
                   firstNameCtrl: firstNameCtrl,
                   lastNameCtrl: lastNameCtrl,
                 ),
+
                 const SizedBox(height: 16),
+
                 PhoneCountryField(
                   selectedCountry: selectedCountry,
                   phoneCtrl: phoneCtrl,
-                  onSelect: (c) => setState(() => selectedCountry = c),
+                  onSelect: (c) {
+                    setState(() {
+                      selectedCountry = c;
+                    });
+                  },
                 ),
+
                 const SizedBox(height: 16),
+
                 TextField(
                   controller: emailCtrl,
                   decoration: const InputDecoration(
@@ -148,17 +181,24 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+
                 const SizedBox(height: 16),
+
                 PasswordSection(
                   passwordCtrl: passwordCtrl,
                   confirmPasswordCtrl: confirmPasswordCtrl,
                   showPassword: showPassword,
                   showConfirmPassword: showConfirmPassword,
-                  togglePassword: () =>
-                      setState(() => showPassword = !showPassword),
-                  toggleConfirmPassword: () => setState(
-                    () => showConfirmPassword = !showConfirmPassword,
-                  ),
+                  togglePassword: () {
+                    setState(() {
+                      showPassword = !showPassword;
+                    });
+                  },
+                  toggleConfirmPassword: () {
+                    setState(() {
+                      showConfirmPassword = !showConfirmPassword;
+                    });
+                  },
                   onStrengthChange: _checkStrength,
                   strength: strength,
                   ruleMin: ruleMin,
@@ -166,7 +206,9 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
                   ruleNum: ruleNum,
                   ruleSpecial: ruleSpecial,
                 ),
+
                 const SizedBox(height: 24),
+
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

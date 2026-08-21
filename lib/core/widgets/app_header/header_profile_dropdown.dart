@@ -5,7 +5,18 @@ import 'package:utilityhub/core/security/device_trust.dart';
 class HeaderProfileDropdown extends StatefulWidget {
   final String? photoUrl;
 
-  const HeaderProfileDropdown({super.key, required this.photoUrl});
+  /// When true, the dropdown opens aligned to the right edge
+  /// of the profile avatar.
+  ///
+  /// This is used by mobile web where the profile avatar lives
+  /// on the right side of the header.
+  final bool alignRight;
+
+  const HeaderProfileDropdown({
+    super.key,
+    required this.photoUrl,
+    this.alignRight = false,
+  });
 
   @override
   State<HeaderProfileDropdown> createState() => _HeaderProfileDropdownState();
@@ -26,18 +37,53 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
 
   OverlayEntry _createOverlay() {
     final renderBox = context.findRenderObject() as RenderBox;
+
     final size = renderBox.size;
     final offset = renderBox.localToGlobal(Offset.zero);
 
     return OverlayEntry(
       builder: (context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+
+        const menuWidth = 190.0;
+
+        // ------------------------------------------------------------
+        // DEFAULT POSITION
+        // ------------------------------------------------------------
+        double left = offset.dx;
+
+        // ------------------------------------------------------------
+        // RIGHT-ALIGNED POSITION
+        //
+        // Avatar:
+        //       [avatar]
+        //
+        // Dropdown:
+        //                  [--------------]
+        //
+        // The right edge of the menu lines up with the right edge
+        // of the avatar.
+        // ------------------------------------------------------------
+        if (widget.alignRight) {
+          left = offset.dx + size.width - menuWidth;
+
+          // Keep the menu inside the viewport.
+          if (left < 8) {
+            left = 8;
+          }
+
+          if (left + menuWidth > screenWidth - 8) {
+            left = screenWidth - menuWidth - 8;
+          }
+        }
+
         return Positioned(
-          left: offset.dx,
-          top: offset.dy + size.height,
+          left: left,
+          top: offset.dy + size.height + 8,
           child: Material(
             color: Colors.transparent,
             child: Container(
-              width: 190,
+              width: menuWidth,
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF1A1C20),
@@ -74,9 +120,13 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
     return InkWell(
       onTap: () async {
         _toggle();
+
         if (logout) {
           await DeviceTrust.clearDeviceTrust();
           await FirebaseAuth.instance.signOut();
+
+          if (!mounted) return;
+
           Navigator.of(
             context,
             rootNavigator: true,
@@ -108,6 +158,7 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
   @override
   void dispose() {
     _entry?.remove();
+    _entry = null;
     super.dispose();
   }
 
@@ -115,6 +166,7 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _toggle,
+      behavior: HitTestBehavior.opaque,
       child: CircleAvatar(
         radius: 20,
         backgroundColor: Colors.white.withOpacity(0.25),

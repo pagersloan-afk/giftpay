@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/aviation_fare_utils.dart';
 
 class CheckoutPayButton extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -12,11 +13,8 @@ class CheckoutPayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final offer = booking["offer"];
-    final price = double.parse(offer["price"]["total"]);
-    final tax = (price * 0.075).round();
-    final serviceFee = 2500;
-    final total = price + tax + serviceFee;
+    final price = AviationFareUtils.extractBaseFare(booking);
+    final total = AviationFareUtils.calculateTotal(price);
 
     return SizedBox(
       width: double.infinity,

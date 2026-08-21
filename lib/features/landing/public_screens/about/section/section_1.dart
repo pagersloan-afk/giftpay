@@ -1,45 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 
-// ⚫ Hero Marquee
 class HeroMarqueeSection extends StatelessWidget {
   const HeroMarqueeSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 768;
 
-    return SizedBox(
-      height: isMobile ? 220 : 400,
+    return Container(
       width: double.infinity,
+      height: isMobile ? 300 : 500,
+      margin: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(isMobile ? 18 : 28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF17243D).withOpacity(0.14),
+            blurRadius: 30,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
       child: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset("assets/images/about-hero-lg.png", fit: BoxFit.cover),
-          Align(
-            alignment: isMobile ? Alignment.bottomCenter : Alignment.bottomLeft,
-            child: Container(
-              margin: EdgeInsets.all(isMobile ? 12 : 16),
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 12 : 16,
-                vertical: isMobile ? 8 : 12,
+
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  const Color(0xFF071120).withOpacity(0.78),
+                ],
               ),
-              decoration: BoxDecoration(
-                color: isMobile
-                    ? Colors.transparent
-                    : Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                "Empowering payments for people and businesses",
-                textAlign: isMobile ? TextAlign.center : TextAlign.start,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 15 : 20,
-                  color: Colors.black,
+            ),
+          ),
+
+          Positioned(
+            left: isMobile ? 20 : 42,
+            right: isMobile ? 20 : 42,
+            bottom: isMobile ? 20 : 36,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(color: Colors.white.withOpacity(0.25)),
+                  ),
+                  child: const Text(
+                    "ABOUT GIFTPAY",
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.8,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Text(
+                  "Empowering payments for people and businesses",
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w800,
+                    fontSize: isMobile ? 25 : 40,
+                    height: 1.08,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Secure digital tools designed around the way people live, work, and transact.",
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: isMobile ? 13 : 16,
+                    height: 1.5,
+                    color: Colors.white.withOpacity(0.84),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -48,7 +100,6 @@ class HeroMarqueeSection extends StatelessWidget {
   }
 }
 
-// 🟣 Three-Card Section (Fully Responsive + Animated)
 class ThreeCardSection extends StatefulWidget {
   const ThreeCardSection({super.key});
 
@@ -58,79 +109,100 @@ class ThreeCardSection extends StatefulWidget {
 
 class _ThreeCardSectionState extends State<ThreeCardSection> {
   final ScrollController _controller = ScrollController();
+
   int _currentIndex = 0;
 
+  final List<_InfoCardData> _cards = const [
+    _InfoCardData(
+      imagePath: "assets/icons/card-investor-relations.png",
+      title: "GiftPay for Partners",
+      description:
+          "Helping businesses scale with secure payments, APIs, and enterprise tools.",
+      linkText: "Learn more",
+      linkRoute: "/about/partners",
+    ),
+    _InfoCardData(
+      imagePath: "assets/icons/card-leadership.png",
+      title: "Leadership & Vision",
+      description:
+          "Guided by innovation, transparency, and a mission to simplify digital payments.",
+      linkText: "Learn more",
+      linkRoute: "/about/leadership",
+    ),
+    _InfoCardData(
+      imagePath: "assets/icons/card-accessibility.png",
+      title: "Accessibility & Inclusion",
+      description:
+          "Building financial tools that work for everyone, everywhere.",
+      linkText: "Learn more",
+      linkRoute: "/about/accessibility",
+    ),
+  ];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _scrollTo(int index, double cardWidth) {
+    final target = index * (cardWidth + 20);
+
     _controller.animateTo(
-      index * (cardWidth + 20),
+      target.clamp(0.0, _controller.position.maxScrollExtent),
       duration: const Duration(milliseconds: 450),
       curve: Curves.easeOutCubic,
     );
-    setState(() => _currentIndex = index);
+
+    setState(() {
+      _currentIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // ⭐ TRUE responsive width (1400 max on desktop)
-        final double maxWidth = constraints.maxWidth;
+        final width = constraints.maxWidth;
+        final isMobile = width < 768;
 
-        final bool isMobile = maxWidth < 768;
-
-        // ⭐ Card width now based on actual layout width
-        final double cardWidth = isMobile
-            ? maxWidth * 0.85
-            : maxWidth * 0.40; // two cards visible on desktop
-
-        final cards = [
-          AnimatedInfoCard(
-            imagePath: "assets/icons/card-investor-relations.png",
-            title: "GiftPay for Partners",
-            description:
-                "Helping businesses scale with secure payments, APIs, and enterprise tools.",
-            linkText: "Learn more",
-            linkRoute: "/about/partners",
-          ),
-          AnimatedInfoCard(
-            imagePath: "assets/icons/card-leadership.png",
-            title: "Leadership & Vision",
-            description:
-                "Guided by innovation, transparency, and a mission to simplify digital payments.",
-            linkText: "Learn more",
-            linkRoute: "/about/leadership",
-          ),
-          AnimatedInfoCard(
-            imagePath: "assets/icons/card-accessibility.png",
-            title: "Accessibility & Inclusion",
-            description:
-                "Building financial tools that work for everyone, everywhere.",
-            linkText: "Learn more",
-            linkRoute: "/about/accessibility",
-          ),
-        ];
+        final cardWidth = isMobile ? width * 0.84 : width * 0.43;
 
         return Padding(
-          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24),
           child: Column(
             children: [
               SizedBox(
-                height: isMobile ? 420 : (maxWidth * 0.42).clamp(550, 600),
-
+                height: isMobile ? 465 : 560,
                 child: Stack(
                   children: [
                     ListView.separated(
                       controller: _controller,
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
-                      itemCount: cards.length,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 4 : 36,
+                        vertical: 10,
+                      ),
+                      itemCount: _cards.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 20),
                       itemBuilder: (_, index) {
-                        return SizedBox(width: cardWidth, child: cards[index]);
+                        final card = _cards[index];
+
+                        return SizedBox(
+                          width: cardWidth,
+                          child: AnimatedInfoCard(
+                            imagePath: card.imagePath,
+                            title: card.title,
+                            description: card.description,
+                            linkText: card.linkText,
+                            linkRoute: card.linkRoute,
+                          ),
+                        );
                       },
                     ),
 
-                    if (!isMobile) ...[
+                    if (!isMobile)
                       Positioned(
                         left: 0,
                         top: 0,
@@ -144,6 +216,8 @@ class _ThreeCardSectionState extends State<ThreeCardSection> {
                           },
                         ),
                       ),
+
+                    if (!isMobile)
                       Positioned(
                         right: 0,
                         top: 0,
@@ -151,36 +225,21 @@ class _ThreeCardSectionState extends State<ThreeCardSection> {
                         child: _ArrowButton(
                           icon: Icons.arrow_forward_ios,
                           onTap: () {
-                            if (_currentIndex < cards.length - 1) {
+                            if (_currentIndex < _cards.length - 1) {
                               _scrollTo(_currentIndex + 1, cardWidth);
                             }
                           },
                         ),
                       ),
-                    ],
                   ],
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  cards.length,
-                  (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    width: _currentIndex == i ? 14 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _currentIndex == i
-                          ? const Color(0xFF0033CC)
-                          : Colors.black26,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
+              _CarouselIndicator(
+                count: _cards.length,
+                currentIndex: _currentIndex,
               ),
             ],
           ),
@@ -190,34 +249,20 @@ class _ThreeCardSectionState extends State<ThreeCardSection> {
   }
 }
 
-// ⭐ Arrow Button Widget
-class _ArrowButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
+class _InfoCardData {
+  final String imagePath;
+  final String title;
+  final String description;
+  final String linkText;
+  final String linkRoute;
 
-  const _ArrowButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 20, color: Colors.black87),
-      ),
-    );
-  }
+  const _InfoCardData({
+    required this.imagePath,
+    required this.title,
+    required this.description,
+    required this.linkText,
+    required this.linkRoute,
+  });
 }
 
 class AnimatedInfoCard extends StatefulWidget {
@@ -241,8 +286,8 @@ class AnimatedInfoCard extends StatefulWidget {
 }
 
 class _AnimatedInfoCardState extends State<AnimatedInfoCard> {
-  double hoverScale = 1.0;
-  double parallaxOffset = 0.0;
+  bool _hovered = false;
+  double _parallax = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -251,63 +296,66 @@ class _AnimatedInfoCardState extends State<AnimatedInfoCard> {
     return MouseRegion(
       onEnter: (_) {
         if (!isMobile) {
-          setState(() => hoverScale = 1.03);
+          setState(() => _hovered = true);
         }
       },
       onExit: (_) {
         if (!isMobile) {
-          setState(() => hoverScale = 1.0);
+          setState(() {
+            _hovered = false;
+            _parallax = 0;
+          });
         }
       },
       onHover: (event) {
         if (!isMobile) {
-          setState(() => parallaxOffset = (event.localPosition.dx - 150) / 40);
+          setState(() {
+            _parallax = (event.localPosition.dx - 150) / 45;
+          });
         }
       },
       child: AnimatedScale(
-        scale: hoverScale,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
+        scale: _hovered ? 1.025 : 1,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
         child: Container(
-          padding: EdgeInsets.all(isMobile ? 14 : 18),
+          padding: EdgeInsets.all(isMobile ? 16 : 22),
           decoration: BoxDecoration(
-            color: const Color(0xFFF9F9F9),
-            borderRadius: BorderRadius.circular(14),
+            color: Colors.white.withOpacity(0.94),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: const Color(
+                  0xFF17243D,
+                ).withOpacity(_hovered ? 0.14 : 0.08),
+                blurRadius: _hovered ? 28 : 18,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Column(
             children: [
-              // ⭐ Parallax icon
-              Transform.translate(
-                offset: Offset(parallaxOffset, 0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double iconSize = constraints.maxWidth * 0.80;
-                    return SizedBox(
-                      width: iconSize,
-                      height: iconSize,
-                      child: Image.asset(widget.imagePath, fit: BoxFit.contain),
-                    );
-                  },
+              Expanded(
+                child: Transform.translate(
+                  offset: Offset(_parallax, 0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Image.asset(widget.imagePath, fit: BoxFit.contain),
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               Text(
                 widget.title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Inter',
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 15 : 17,
-                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                  fontSize: isMobile ? 17 : 20,
+                  color: const Color(0xFF17243D),
                 ),
               ),
 
@@ -319,12 +367,12 @@ class _AnimatedInfoCardState extends State<AnimatedInfoCard> {
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: isMobile ? 13 : 14,
-                  color: Colors.black54,
-                  height: 1.4,
+                  height: 1.55,
+                  color: const Color(0xFF647084),
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
 
               ElevatedButton(
                 onPressed: () {
@@ -333,19 +381,20 @@ class _AnimatedInfoCardState extends State<AnimatedInfoCard> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: GiftPayTheme.primaryBlue,
                   foregroundColor: Colors.white,
+                  elevation: 0,
                   padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 16 : 20,
-                    vertical: isMobile ? 8 : 10,
+                    horizontal: isMobile ? 18 : 22,
+                    vertical: 11,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(50),
                   ),
                 ),
                 child: Text(
                   widget.linkText,
                   style: const TextStyle(
                     fontFamily: 'Inter',
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -357,7 +406,70 @@ class _AnimatedInfoCardState extends State<AnimatedInfoCard> {
   }
 }
 
-// 🟡 Career Promo (Animated + Luxury Gradient)
+class _ArrowButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _ArrowButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(50),
+          child: Ink(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.94),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 18, color: const Color(0xFF17243D)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CarouselIndicator extends StatelessWidget {
+  final int count;
+  final int currentIndex;
+
+  const _CarouselIndicator({required this.count, required this.currentIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (index) {
+        final active = index == currentIndex;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: active ? 22 : 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: active ? GiftPayTheme.primaryBlue : const Color(0xFFB8C1D0),
+            borderRadius: BorderRadius.circular(50),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class CareerPromoSection extends StatefulWidget {
   const CareerPromoSection({super.key});
 
@@ -367,12 +479,10 @@ class CareerPromoSection extends StatefulWidget {
 
 class _CareerPromoSectionState extends State<CareerPromoSection>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> fadeIn;
-  late Animation<double> slideUp;
+  late final AnimationController _controller;
 
-  double hoverScale = 1.0;
-  double parallaxOffset = 0.0;
+  bool _hovered = false;
+  double _parallax = 0;
 
   @override
   void initState() {
@@ -382,16 +492,6 @@ class _CareerPromoSectionState extends State<CareerPromoSection>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
-
-    fadeIn = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    slideUp = Tween<double>(
-      begin: 40,
-      end: 0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -402,124 +502,123 @@ class _CareerPromoSectionState extends State<CareerPromoSection>
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 768;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Opacity(
-          opacity: fadeIn.value,
-          child: Transform.translate(
-            offset: Offset(0, slideUp.value),
-            child: MouseRegion(
-              onEnter: (_) {
-                if (!isMobile) setState(() => hoverScale = 1.03);
-              },
-              onExit: (_) {
-                if (!isMobile) setState(() => hoverScale = 1.0);
-              },
-              onHover: (event) {
-                if (!isMobile) {
-                  setState(
-                    () => parallaxOffset = (event.localPosition.dx - 150) / 40,
-                  );
-                }
-              },
-              child: AnimatedScale(
-                scale: hoverScale,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOut,
-                child: Container(
-                  padding: EdgeInsets.all(isMobile ? 16 : 24),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final slide =
+              (1 - Curves.easeOutCubic.transform(_controller.value)) * 35;
+
+          return Transform.translate(
+            offset: Offset(0, slide),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24),
+              child: MouseRegion(
+                onEnter: (_) {
+                  if (!isMobile) {
+                    setState(() => _hovered = true);
+                  }
+                },
+                onExit: (_) {
+                  if (!isMobile) {
+                    setState(() {
+                      _hovered = false;
+                      _parallax = 0;
+                    });
+                  }
+                },
+                onHover: (event) {
+                  if (!isMobile) {
+                    setState(() {
+                      _parallax = (event.localPosition.dx - 250) / 50;
+                    });
+                  }
+                },
+                child: AnimatedScale(
+                  scale: _hovered ? 1.015 : 1,
+                  duration: const Duration(milliseconds: 240),
+                  child: Container(
+                    padding: EdgeInsets.all(isMobile ? 20 : 34),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF172A4F),
+                          Color(0xFF273D68),
+                          Color(0xFF4A6BB8),
+                        ],
                       ),
-                    ],
-
-                    // ⭐ Luxury multi-layer gradient background
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(
-                          0xFF273D68,
-                        ).withOpacity(0.95), // GiftPay navy
-                        const Color(0xFF4A6BB8).withOpacity(0.85), // soft blue
-                        const Color(0xFFF9F9F9).withOpacity(0.90), // white glow
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF17243D).withOpacity(0.20),
+                          blurRadius: 30,
+                          offset: const Offset(0, 16),
+                        ),
                       ],
                     ),
+                    child: isMobile
+                        ? Column(
+                            children: [
+                              _promoImage(),
+                              const SizedBox(height: 24),
+                              _promoContent(context, true),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(child: _promoImage()),
+                              const SizedBox(width: 36),
+                              Expanded(child: _promoContent(context, false)),
+                            ],
+                          ),
                   ),
-
-                  child: isMobile
-                      ? Column(
-                          children: [
-                            _promoImage(),
-                            const SizedBox(height: 16),
-                            _promoContent(context, isMobile),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Expanded(flex: 1, child: _promoImage()),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              flex: 1,
-                              child: _promoContent(context, isMobile),
-                            ),
-                          ],
-                        ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  // ⭐ Parallax Image + Glow Pulse (fixed)
   Widget _promoImage() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Glow pulse behind image
-        AnimatedContainer(
-          duration: const Duration(seconds: 2),
-          curve: Curves.easeInOut,
-          width: 220,
-          height: 220,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFF4A6BB8).withOpacity(0.25),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF4A6BB8).withOpacity(0.45),
-                blurRadius: 40,
-                spreadRadius: 10,
-              ),
-            ],
+    return Transform.translate(
+      offset: Offset(_parallax, 0),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 240,
+            height: 240,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.08),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF8AA8EA).withOpacity(0.28),
+                  blurRadius: 50,
+                  spreadRadius: 8,
+                ),
+              ],
+            ),
           ),
-        ),
-
-        // Parallax image
-        Transform.translate(
-          offset: Offset(parallaxOffset, 0),
-          child: Image.asset(
+          Image.asset(
             "assets/icons/career-promo.png",
-            width: double.infinity,
+            width: 300,
+            height: 300,
             fit: BoxFit.contain,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  // ⭐ Content stays same but looks better on gradient
   Widget _promoContent(BuildContext context, bool isMobile) {
     return Column(
       crossAxisAlignment: isMobile
@@ -531,44 +630,44 @@ class _CareerPromoSectionState extends State<CareerPromoSection>
           textAlign: isMobile ? TextAlign.center : TextAlign.start,
           style: TextStyle(
             fontFamily: 'Inter',
-            fontWeight: FontWeight.bold,
-            fontSize: isMobile ? 18 : 22,
+            fontWeight: FontWeight.w800,
+            fontSize: isMobile ? 24 : 32,
+            height: 1.15,
             color: Colors.white,
           ),
         ),
-        const SizedBox(height: 12),
+
+        const SizedBox(height: 14),
+
         Text(
           "Join GiftPay and help create secure, fast, and accessible financial tools for millions.",
           textAlign: isMobile ? TextAlign.center : TextAlign.start,
           style: TextStyle(
             fontFamily: 'Inter',
-            fontSize: isMobile ? 13 : 14,
-            color: Colors.white.withOpacity(0.85),
+            fontSize: isMobile ? 14 : 16,
+            height: 1.55,
+            color: Colors.white.withOpacity(0.82),
           ),
         ),
-        const SizedBox(height: 16),
+
+        const SizedBox(height: 24),
+
         ElevatedButton(
           onPressed: () {
             Navigator.pushNamed(context, '/about/careers');
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: GiftPayTheme.primaryBlue,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 20 : 24,
-              vertical: isMobile ? 10 : 12,
-            ),
+            backgroundColor: Colors.white,
+            foregroundColor: GiftPayTheme.primaryBlue,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              borderRadius: BorderRadius.circular(50),
             ),
           ),
           child: const Text(
             "Join GiftPay",
-            style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w800),
           ),
         ),
       ],

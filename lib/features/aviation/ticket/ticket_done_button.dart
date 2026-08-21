@@ -17,7 +17,9 @@ class TicketDoneButton extends StatelessWidget {
           elevation: 6,
         ),
         onPressed: () {
-          Navigator.popUntil(context, ModalRoute.withName("/home"));
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/home', (route) => false);
         },
         child: const Text(
           "Done",

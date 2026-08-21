@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 // Shared Landing Header + Footer
@@ -25,164 +26,371 @@ class RewardsPage extends StatefulWidget {
 class _RewardsPageState extends State<RewardsPage>
     with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
-  double _scrollOffset = 0;
 
-  late AnimationController _animController;
+  late final AnimationController _animationController;
+
+  double _scrollOffset = 0;
 
   @override
   void initState() {
     super.initState();
 
-    _scrollController.addListener(() {
-      setState(() {
-        _scrollOffset = _scrollController.offset;
-      });
-    });
+    _scrollController.addListener(_handleScroll);
 
-    _animController = AnimationController(
+    _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 18),
+      duration: const Duration(seconds: 20),
     )..repeat();
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final offset = _scrollController.offset;
+
+    // Avoid rebuilding the entire page for insignificant scroll changes.
+    if ((offset - _scrollOffset).abs() < 1) return;
+
+    setState(() {
+      _scrollOffset = offset;
+    });
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
-    _animController.dispose();
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+
+    _animationController.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final double parallaxShift = (_scrollOffset / 800).clamp(0, 1);
+    final size = MediaQuery.sizeOf(context);
+
+    final parallax = (_scrollOffset / 900).clamp(0.0, 1.0);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF273D68),
       appBar: const LandingHeader(),
+      body: SafeArea(
+        top: false,
+        child: AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            final t = _animationController.value;
 
-      body: AnimatedBuilder(
-        animation: _animController,
-        builder: (context, child) {
-          final t = _animController.value;
-
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment(-1 + parallaxShift, -1),
-                end: Alignment(1, 1 - parallaxShift),
-                colors: [
-                  const Color(0xFF273D68).withOpacity(0.95),
-                  const Color(0xFF4A6BB8).withOpacity(0.85),
-                  const Color(0xFFF9F9F9).withOpacity(0.95),
-                ],
-              ),
-            ),
-
-            child: Stack(
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                _buildGlowLayer(t),
-                _buildParticlesLayer(t),
+                // ---------------------------------------------------------
+                // PREMIUM BACKGROUND
+                // ---------------------------------------------------------
+                _buildBackground(size: size, t: t, parallax: parallax),
 
+                // ---------------------------------------------------------
+                // CONTENT
+                // ---------------------------------------------------------
                 LandingResponsiveLayout(
                   child: SingleChildScrollView(
                     controller: _scrollController,
+                    physics: const BouncingScrollPhysics(),
                     child: Column(
                       children: const [
-                        SizedBox(height: 40),
+                        SizedBox(height: 32),
 
                         RewardsHeroSection(),
-                        SizedBox(height: 40),
+
+                        SizedBox(height: 56),
 
                         RewardsBenefitsSection(),
-                        SizedBox(height: 40),
+
+                        SizedBox(height: 56),
 
                         RewardsTiersSection(),
-                        SizedBox(height: 40),
+
+                        SizedBox(height: 56),
 
                         RewardsFAQSection(),
-                        SizedBox(height: 40),
+
+                        SizedBox(height: 56),
 
                         LandingFooter(),
+
+                        SizedBox(height: 20),
                       ],
                     ),
                   ),
                 ),
+
+                // ---------------------------------------------------------
+                // SUBTLE TOP / BOTTOM VIGNETTE
+                // ---------------------------------------------------------
+                IgnorePointer(child: _VignetteOverlay()),
               ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackground({
+    required Size size,
+    required double t,
+    required double parallax,
+  }) {
+    final wave = math.sin(t * math.pi * 2);
+    final wave2 = math.sin((t * math.pi * 2) + 1.8);
+
+    final topGlowX = 0.18 + (wave * 0.08);
+    final topGlowY = 0.16 + (parallax * 0.04);
+
+    final bottomGlowX = 0.82 + (wave2 * 0.07);
+    final bottomGlowY = 0.82 - (parallax * 0.03);
+
+    return RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Base background.
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF172947),
+                  Color(0xFF273D68),
+                  Color(0xFF314C80),
+                  Color(0xFF1A2B4A),
+                ],
+                stops: [0.0, 0.35, 0.68, 1.0],
+              ),
             ),
-          );
-        },
-      ),
-    );
-  }
+          ),
 
-  Widget _buildGlowLayer(double t) {
-    final double glowShift = (0.5 + 0.5 * math.sin(2 * math.pi * t));
+          // Animated ambient glows.
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _RewardsAmbientPainter(
+                topGlow: Offset(size.width * topGlowX, size.height * topGlowY),
+                bottomGlow: Offset(
+                  size.width * bottomGlowX,
+                  size.height * bottomGlowY,
+                ),
+                pulse: 0.5 + (0.5 * wave),
+              ),
+            ),
+          ),
 
-    return IgnorePointer(
-      child: CustomPaint(
-        painter: _GlowPainter(glowShift),
-        child: const SizedBox.expand(),
-      ),
-    );
-  }
+          // Fine glass-like light wash.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 0.2, sigmaY: 0.2),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withOpacity(0.025),
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.08),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
 
-  Widget _buildParticlesLayer(double t) {
-    return IgnorePointer(
-      child: CustomPaint(
-        painter: _ParticlesPainter(t),
-        child: const SizedBox.expand(),
+          // Floating particles.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _RewardsParticlesPainter(t: t, scrollOffset: parallax),
+              ),
+            ),
+          ),
+
+          // Very subtle horizontal light streaks.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(painter: _RewardsStreakPainter(t: t)),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _GlowPainter extends CustomPainter {
-  final double shift;
-  _GlowPainter(this.shift);
+// ===========================================================================
+// AMBIENT GLOW
+// ===========================================================================
+
+class _RewardsAmbientPainter extends CustomPainter {
+  final Offset topGlow;
+  final Offset bottomGlow;
+  final double pulse;
+
+  const _RewardsAmbientPainter({
+    required this.topGlow,
+    required this.bottomGlow,
+    required this.pulse,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60);
+    final topPaint = Paint()
+      ..color = const Color(0xFF4A6BB8).withOpacity(0.20 + (pulse * 0.07))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 90);
 
-    paint.color = const Color(0xFF4A6BB8).withOpacity(0.25);
+    final bottomPaint = Paint()
+      ..color = const Color(0xFF4FC3F7).withOpacity(0.07 + (pulse * 0.035))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 110);
+
     canvas.drawCircle(
-      Offset(size.width * (0.2 + 0.1 * shift), size.height * 0.2),
-      140,
-      paint,
+      topGlow,
+      math.min(size.width, size.height) * 0.25,
+      topPaint,
     );
 
-    paint.color = const Color(0xFF273D68).withOpacity(0.22);
     canvas.drawCircle(
-      Offset(size.width * (0.8 - 0.1 * shift), size.height * 0.85),
-      180,
-      paint,
+      bottomGlow,
+      math.min(size.width, size.height) * 0.32,
+      bottomPaint,
+    );
+
+    // Small central glow gives the page a more premium depth.
+    final centerPaint = Paint()
+      ..color = Colors.white.withOpacity(0.018)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 120);
+
+    canvas.drawCircle(
+      Offset(size.width * 0.52, size.height * 0.48),
+      math.min(size.width, size.height) * 0.28,
+      centerPaint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _GlowPainter oldDelegate) =>
-      oldDelegate.shift != shift;
+  bool shouldRepaint(covariant _RewardsAmbientPainter oldDelegate) {
+    return oldDelegate.topGlow != topGlow ||
+        oldDelegate.bottomGlow != bottomGlow ||
+        oldDelegate.pulse != pulse;
+  }
 }
 
-class _ParticlesPainter extends CustomPainter {
+// ===========================================================================
+// FLOATING PARTICLES
+// ===========================================================================
+
+class _RewardsParticlesPainter extends CustomPainter {
   final double t;
-  _ParticlesPainter(this.t);
+  final double scrollOffset;
+
+  const _RewardsParticlesPainter({required this.t, required this.scrollOffset});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.35);
+    final particlePaint = Paint();
 
-    for (int i = 0; i < 18; i++) {
-      final double progress = (t + i * 0.05) % 1.0;
-      final double x = size.width * (0.1 + 0.8 * (i / 18));
-      final double y = size.height * (0.1 + 0.8 * progress);
+    for (int i = 0; i < 28; i++) {
+      final seed = i * 0.6180339887;
 
-      canvas.drawCircle(Offset(x, y), 2.2, paint);
+      final xFactor = (seed * 1.73) % 1.0;
+
+      final speed = 0.18 + ((i % 5) * 0.035);
+
+      final progress = (t * speed + seed + (scrollOffset * 0.08)) % 1.0;
+
+      final yFactor = (progress + (i * 0.031)) % 1.0;
+
+      final x = size.width * (0.04 + (xFactor * 0.92));
+
+      final y = size.height * (0.04 + (yFactor * 0.92));
+
+      final radius = 0.7 + ((i % 4) * 0.45);
+
+      final opacity = 0.08 + ((i % 6) * 0.025);
+
+      particlePaint.color = Colors.white.withOpacity(opacity);
+
+      canvas.drawCircle(Offset(x, y), radius, particlePaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) =>
-      oldDelegate.t != t;
+  bool shouldRepaint(covariant _RewardsParticlesPainter oldDelegate) {
+    return oldDelegate.t != t || oldDelegate.scrollOffset != scrollOffset;
+  }
+}
+
+// ===========================================================================
+// LIGHT STREAKS
+// ===========================================================================
+
+class _RewardsStreakPainter extends CustomPainter {
+  final double t;
+
+  const _RewardsStreakPainter({required this.t});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    for (int i = 0; i < 3; i++) {
+      final phase = (t + (i * 0.33)) % 1.0;
+
+      final y = size.height * (0.22 + (i * 0.28));
+
+      final startX = size.width * (phase - 0.25);
+
+      final endX = startX + size.width * 0.34;
+
+      paint.color = Colors.white.withOpacity(0.018);
+
+      canvas.drawLine(Offset(startX, y), Offset(endX, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RewardsStreakPainter oldDelegate) {
+    return oldDelegate.t != t;
+  }
+}
+
+// ===========================================================================
+// VIGNETTE
+// ===========================================================================
+
+class _VignetteOverlay extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withOpacity(0.08),
+              Colors.transparent,
+              Colors.transparent,
+              Colors.black.withOpacity(0.10),
+            ],
+            stops: const [0.0, 0.18, 0.78, 1.0],
+          ),
+        ),
+      ),
+    );
+  }
 }

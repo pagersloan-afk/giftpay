@@ -1,37 +1,46 @@
 import 'package:flutter/material.dart';
+
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/airtime/airtime_cta_section.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/airtime/airtime_features_section.dart';
 import 'package:utilityhub/features/landing/public_screens/products/screens/sections/airtime/airtime_hero_section.dart';
 
-// ⭐ Shared Landing Header + Footer
-import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 import 'package:utilityhub/features/landing/sections/landing_footer.dart';
-
-// ⭐ Landing Responsive Layout
+import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 import 'package:utilityhub/features/landing/widgets/landing_responsive_layout.dart';
 
 class AirtimeDistributionPage extends StatelessWidget {
   const AirtimeDistributionPage({super.key});
 
+  static const Color navy = Color(0xFF273D68);
+  static const Color blue = Color(0xFF4A6BB8);
+  static const Color background = Color(0xFFF8FAFD);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: background,
       appBar: const LandingHeader(),
-
       body: LandingResponsiveLayout(
         child: Column(
-          children: [
-            const AnimatedSection(child: AirtimeHeroSection()),
-            const SizedBox(height: 40),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: const [
+            AirtimeHeroSection(),
 
-            const AnimatedSection(child: AirtimeFeaturesSection()),
-            const SizedBox(height: 40),
+            SizedBox(height: 72),
 
-            const AnimatedSection(child: AirtimeCTASection()),
-            const SizedBox(height: 40),
+            AirtimeFeaturesSection(),
 
-            const LandingFooter(),
+            SizedBox(height: 72),
+
+            _AirtimeHighlightSection(),
+
+            SizedBox(height: 72),
+
+            AirtimeCTASection(),
+
+            SizedBox(height: 72),
+
+            LandingFooter(),
           ],
         ),
       ),
@@ -39,70 +48,159 @@ class AirtimeDistributionPage extends StatelessWidget {
   }
 }
 
-// ⭐ Reusable Luxury Animation Wrapper
-class AnimatedSection extends StatefulWidget {
-  final Widget child;
-  const AnimatedSection({super.key, required this.child});
+// ============================================================
+// HIGHLIGHT SECTION
+// ============================================================
 
-  @override
-  State<AnimatedSection> createState() => _AnimatedSectionState();
-}
-
-class _AnimatedSectionState extends State<AnimatedSection>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-
-    _fade = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _AirtimeHighlightSection extends StatelessWidget {
+  const _AirtimeHighlightSection();
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: Container(
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.withOpacity(0.06),
-                blurRadius: 40,
-                spreadRadius: 4,
-                offset: const Offset(0, 12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+
+        if (width < 760) {
+          return const Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _HighlightCard(
+                icon: Icons.speed_rounded,
+                title: 'Instant distribution',
+                description:
+                    'Deliver airtime to employees, agents, customers and teams without manual processing.',
+              ),
+              SizedBox(height: 16),
+              _HighlightCard(
+                icon: Icons.account_balance_wallet_rounded,
+                title: 'GiftPay Wallet powered',
+                description:
+                    'Use your GiftPay business wallet to manage airtime distribution with a simple and secure workflow.',
+              ),
+              SizedBox(height: 16),
+              _HighlightCard(
+                icon: Icons.analytics_rounded,
+                title: 'Built for visibility',
+                description:
+                    'Keep your business organized with clear transaction records and a centralized distribution experience.',
               ),
             ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Expanded(
+              child: _HighlightCard(
+                icon: Icons.speed_rounded,
+                title: 'Instant distribution',
+                description:
+                    'Deliver airtime to employees, agents, customers and teams without manual processing.',
+              ),
+            ),
+            SizedBox(width: width >= 1100 ? 24 : 16),
+            const Expanded(
+              child: _HighlightCard(
+                icon: Icons.account_balance_wallet_rounded,
+                title: 'GiftPay Wallet powered',
+                description:
+                    'Use your GiftPay business wallet to manage airtime distribution with a simple and secure workflow.',
+              ),
+            ),
+            SizedBox(width: width >= 1100 ? 24 : 16),
+            const Expanded(
+              child: _HighlightCard(
+                icon: Icons.analytics_rounded,
+                title: 'Built for visibility',
+                description:
+                    'Keep your business organized with clear transaction records and a centralized distribution experience.',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ============================================================
+// HIGHLIGHT CARD
+// ============================================================
+
+class _HighlightCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _HighlightCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  static const Color navy = Color(0xFF273D68);
+  static const Color blue = Color(0xFF4A6BB8);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE4EAF3)),
+        boxShadow: [
+          BoxShadow(
+            color: navy.withOpacity(0.055),
+            blurRadius: 30,
+            offset: const Offset(0, 12),
           ),
-          child: widget.child,
-        ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: blue.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: blue, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'SegoeUI',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: navy,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontFamily: 'SegoeUI',
+                    fontSize: 14,
+                    height: 1.55,
+                    color: Color(0xFF687386),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

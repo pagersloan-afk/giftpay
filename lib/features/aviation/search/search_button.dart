@@ -1,35 +1,70 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import '../data/aviation_api_service.dart';
+import '../data/aviation_models.dart';
 
-class SearchButton extends StatelessWidget {
+class SearchButton extends StatefulWidget {
   final String from;
   final String to;
   final DateTime? departureDate;
+  final int passengers;
+  final String cabin;
 
   const SearchButton({
     super.key,
     required this.from,
     required this.to,
     required this.departureDate,
+    required this.passengers,
+    required this.cabin,
   });
 
-  Future<void> _search(BuildContext context) async {
-    final fromCode = from.split(" - ").first;
-    final toCode = to.split(" - ").first;
+  @override
+  State<SearchButton> createState() => _SearchButtonState();
+}
 
-    final date =
-        "${departureDate!.year}-${departureDate!.month}-${departureDate!.day}";
+class _SearchButtonState extends State<SearchButton> {
+  bool loading = false;
 
-    final res = await http.post(
-      Uri.parse("https://your-backend-url.com/api/aviation/search"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"from": fromCode, "to": toCode, "date": date}),
-    );
+  Future<void> _search() async {
+    if (widget.departureDate == null || loading) return;
 
-    final flights = jsonDecode(res.body);
+    if (widget.from == widget.to) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("From and To airports must be different."),
+        ),
+      );
+      return;
+    }
 
-    Navigator.pushNamed(context, "/aviation/results", arguments: flights);
+    setState(() => loading = true);
+
+    try {
+      final date =
+          "${widget.departureDate!.year.toString().padLeft(4, "0")}-"
+          "${widget.departureDate!.month.toString().padLeft(2, "0")}-"
+          "${widget.departureDate!.day.toString().padLeft(2, "0")}";
+
+      final request = AviationSearchRequest(
+        from: widget.from.split(" - ").first,
+        to: widget.to.split(" - ").first,
+        date: date,
+        passengers: widget.passengers,
+        cabin: widget.cabin,
+      );
+
+      final flights = await AviationApiService().searchFlights(request);
+      if (!mounted) return;
+
+      Navigator.pushNamed(context, "/aviation/results", arguments: flights);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Flight search failed: $e")));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   @override
@@ -38,15 +73,21 @@ class SearchButton extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: departureDate == null ? null : () => _search(context),
-        child: const Text(
-          "Search Flights",
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-        ),
+        onPressed: widget.departureDate == null || loading ? null : _search,
+        child: loading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                "Search Flights",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
       ),
     );
   }

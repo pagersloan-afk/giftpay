@@ -53,9 +53,9 @@ final Map<String, WidgetBuilder> giftTechRoutes = {
   '/giftpos': (_) => const GiftPOSScreen(),
   '/giftcard-marketplace': (_) => const GiftCardMarketplaceScreen(),
   '/utilities-hub': (_) => const UtilitiesHubScreen(),
-  '/bulk-electricity': (_) => const GiftTechBulkElectricityScreen(),
+  '/gifttech-bulk-electricity': (_) => const GiftTechBulkElectricityScreen(),
   '/corporate-data': (_) => const CorporateDataScreen(),
-  '/airtime-distribution': (_) => const AirtimeDistributionScreen(),
+  '/gifttech-airtime-distribution': (_) => const AirtimeDistributionScreen(),
 
   // ⭐ SUPPORT & LEGAL
   '/gift-tech-help-center': (_) => const GiftTechHelpCenterScreen(),

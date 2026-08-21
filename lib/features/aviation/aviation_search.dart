@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/giftpay_background.dart';
+
 import 'search/search_header.dart';
 import 'search/search_from_field.dart';
 import 'search/search_to_field.dart';
@@ -21,11 +22,9 @@ class _AviationSearchScreenState extends State<AviationSearchScreen>
   late AnimationController _controller;
   late Animation<double> _fade;
 
-  // ⭐ FIXED: Make nullable to match DropdownButton<String?>
   String? from = "LOS - Lagos";
   String? to = "ABV - Abuja";
   String? cabin = "Economy";
-
   DateTime? departureDate;
   int passengers = 1;
 
@@ -48,7 +47,13 @@ class _AviationSearchScreenState extends State<AviationSearchScreen>
       firstDate: now,
       lastDate: DateTime(now.year + 2),
     );
-    if (picked != null) setState(() => departureDate = picked);
+    if (picked != null && mounted) setState(() => departureDate = picked);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -72,55 +77,42 @@ class _AviationSearchScreenState extends State<AviationSearchScreen>
                   children: [
                     const SearchHeader(),
                     const SizedBox(height: 26),
-
-                    // ⭐ FROM
                     SearchFromField(
                       value: from!,
                       onChanged: (v) => setState(() => from = v),
                     ),
                     const SizedBox(height: 16),
-
-                    // ⭐ TO
                     SearchToField(
                       value: to!,
                       onChanged: (v) => setState(() => to = v),
                     ),
                     const SizedBox(height: 16),
-
-                    // ⭐ Departure Date
                     SearchDateField(
                       label: "Departure",
                       date: departureDate,
                       onTap: _pickDate,
                     ),
                     const SizedBox(height: 16),
-
-                    // ⭐ Passengers
                     SearchPassengerField(
                       passengers: passengers,
                       onAdd: () => setState(() => passengers++),
                       onRemove: () {
-                        if (passengers > 1) {
-                          setState(() => passengers--);
-                        }
+                        if (passengers > 1) setState(() => passengers--);
                       },
                     ),
                     const SizedBox(height: 16),
-
-                    // ⭐ Cabin Class
                     SearchCabinField(
                       cabin: cabin!,
                       onChanged: (v) => setState(() => cabin = v),
                     ),
                     const SizedBox(height: 30),
-
-                    // ⭐ CTA
                     SearchButton(
                       from: from!,
                       to: to!,
                       departureDate: departureDate,
+                      passengers: passengers,
+                      cabin: cabin!,
                     ),
-
                     const SizedBox(height: 40),
                   ],
                 ),
