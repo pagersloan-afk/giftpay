@@ -46,6 +46,7 @@ const monnifyRoutes = require("./src/routes/monnify.routes");
 const { monnifyWebhook } = require("./src/webhooks/monnify.webhook");
 const identityRoutes = require("./src/routes/identity.routes");
 const contactRoutes = require("./src/routes/contact.js");
+const profileRoutes = require("./src/routes/profile.routes.js");
 
 
 
@@ -108,7 +109,7 @@ app.use("/api/monnify", monnifyRoutes);
 app.post("/api/monnify/webhook", monnifyWebhook);
 app.use("/api", identityRoutes);
 app.use("/api", contactRoutes);
-
+app.use("/api", profileRoutes);
 
 
 

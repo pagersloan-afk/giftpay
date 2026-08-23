@@ -1,74 +1,109 @@
 import 'package:flutter/material.dart';
 
 class HeaderLogo extends StatelessWidget {
-  const HeaderLogo({super.key});
+  final bool compact;
+  final bool showWordmark;
+
+  const HeaderLogo({super.key, this.compact = false, this.showWordmark = true});
+
+  static const Color navy = Color(0xFF273D68);
+  static const Color blue = Color(0xFF4A6BB8);
+  static const Color lightBlue = Color(0xFF75A1FF);
 
   @override
   Widget build(BuildContext context) {
+    final markSize = compact ? 38.0 : 44.0;
+
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, "/landing"),
+      onTap: () {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/landing',
+          (route) => false,
+        );
+      },
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ShaderMask(
-            shaderCallback: (bounds) {
-              return LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.95),
-                  Colors.white.withOpacity(0.55),
-                  Colors.white.withOpacity(0.95),
-                ],
+          // ============================================================
+          // G MARK
+          // ============================================================
+          Container(
+            width: markSize,
+            height: markSize,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-              ).createShader(bounds);
-            },
-            blendMode: BlendMode.srcATop,
-            child: Text(
-              "GiftPay",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-                color: Colors.white.withOpacity(0.9),
-                shadows: [
-                  Shadow(
-                    blurRadius: 14,
-                    color: Colors.black.withOpacity(0.45),
-                    offset: const Offset(0, 2),
-                  ),
-                  Shadow(
-                    blurRadius: 22,
-                    color: Colors.blue.withOpacity(0.28),
-                    offset: const Offset(0, 4),
-                  ),
+                colors: [
+                  Colors.white.withOpacity(0.16),
+                  blue.withOpacity(0.19),
                 ],
+              ),
+              borderRadius: BorderRadius.circular(compact ? 12 : 14),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+              boxShadow: [
+                BoxShadow(
+                  color: blue.withOpacity(0.22),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Container(
+              width: compact ? 26 : 30,
+              height: compact ? 26 : 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.96),
+              ),
+              child: Text(
+                'G',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: compact ? 15 : 17,
+                  fontWeight: FontWeight.w900,
+                  color: navy,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [Colors.blue.withOpacity(0.35), Colors.transparent],
-                    radius: 0.85,
+
+          if (showWordmark) ...[
+            const SizedBox(width: 11),
+
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'GiftPay',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: compact ? 17 : 19,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.45,
+                    color: Colors.white,
                   ),
                 ),
-              ),
-              Transform.translate(
-                offset: const Offset(0, 4),
-                child: Image.asset(
-                  "assets/logo/giftpay_1.png",
-                  height: 94,
-                  fit: BoxFit.contain,
+
+                const SizedBox(height: 1),
+
+                Text(
+                  'SMARTER EVERYDAY',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 7,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.35,
+                    color: lightBlue.withOpacity(0.84),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );

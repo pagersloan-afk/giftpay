@@ -30,10 +30,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
+      return;
+    }
+
     final doc = await FirebaseFirestore.instance
         .collection("users")
-        .doc(user!.uid)
+        .doc(currentUser.uid)
         .get();
+
+    if (!mounted) return;
 
     setState(() {
       data = doc.data() ?? {};

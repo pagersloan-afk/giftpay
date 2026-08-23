@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utilityhub/features/landing/public_screens/faq/sections/giftpay_faq_content.dart';
 import 'package:utilityhub/features/landing/public_screens/faq/sections/giftpay_faq_navigation.dart';
+import 'package:utilityhub/features/landing/widgets/landing_header.dart';
 
 class GiftPayFaqPublicScreen extends StatefulWidget {
   const GiftPayFaqPublicScreen({super.key});
@@ -75,6 +76,8 @@ class _GiftPayFaqPublicScreenState extends State<GiftPayFaqPublicScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FC),
+      appBar: const LandingHeader(),
+
       body: Stack(
         children: [
           CustomScrollView(
