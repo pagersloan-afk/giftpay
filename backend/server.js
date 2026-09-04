@@ -47,10 +47,12 @@ const { monnifyWebhook } = require("./src/webhooks/monnify.webhook");
 const identityRoutes = require("./src/routes/identity.routes");
 const contactRoutes = require("./src/routes/contact.js");
 const profileRoutes = require("./src/routes/profile.routes.js");
+const securityRoutes = require("./src/routes/security.routes.js");
 
 
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 4000;
 
 // VTPASS base URL
@@ -110,6 +112,7 @@ app.post("/api/monnify/webhook", monnifyWebhook);
 app.use("/api", identityRoutes);
 app.use("/api", contactRoutes);
 app.use("/api", profileRoutes);
+app.use("/api", securityRoutes);
 
 
 

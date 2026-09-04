@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:utilityhub/core/security/device_trust.dart';
+import 'package:utilityhub/core/utils/logout_handler.dart';
 
 class HeaderProfileDropdown extends StatefulWidget {
   final String? photoUrl;
@@ -71,10 +71,16 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
         borderRadius: BorderRadius.circular(widget.compact ? 18 : 20),
         side: BorderSide(color: Colors.white.withOpacity(0.10)),
       ),
+
+      // ============================================================
+      // MENU ACTION HANDLER
+      // ============================================================
       onSelected: (value) {
         _handleAction(context, value);
       },
+
       itemBuilder: (context) => _menuItems(),
+
       child: widget.compact
           ? avatar
           : Container(
@@ -111,6 +117,10 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
     );
   }
 
+  // ==============================================================
+  // PROFILE MENU ITEMS
+  // ==============================================================
+
   List<PopupMenuEntry<String>> _menuItems() {
     return const [
       PopupMenuItem<String>(
@@ -120,6 +130,7 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
           label: 'Profile',
         ),
       ),
+
       PopupMenuItem<String>(
         value: 'wallet',
         child: _ProfileMenuItem(
@@ -127,6 +138,7 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
           label: 'Wallet',
         ),
       ),
+
       PopupMenuItem<String>(
         value: 'settings',
         child: _ProfileMenuItem(
@@ -134,11 +146,9 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
           label: 'Settings',
         ),
       ),
-      PopupMenuItem<String>(
-        value: 'security',
-        child: _ProfileMenuItem(icon: Icons.shield_outlined, label: 'Security'),
-      ),
+
       PopupMenuDivider(),
+
       PopupMenuItem<String>(
         value: 'logout',
         child: _ProfileMenuItem(
@@ -149,6 +159,10 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
       ),
     ];
   }
+
+  // ==============================================================
+  // HANDLE MENU ACTION
+  // ==============================================================
 
   void _handleAction(BuildContext context, String value) {
     switch (value) {
@@ -169,88 +183,29 @@ class _HeaderProfileDropdownState extends State<HeaderProfileDropdown> {
         break;
 
       case 'logout':
-        _showLogoutDialog(context);
+        // ==========================================================
+        // IMPORTANT:
+        //
+        // Use the SAME shared logout handler used by the sidebar.
+        //
+        // Sidebar:
+        //   onTap: () => showLogoutDialog(context)
+        //
+        // Header:
+        //   showLogoutDialog(context)
+        //
+        // Do NOT duplicate Firebase signOut/navigation logic here.
+        // ==========================================================
+
+        showLogoutDialog(context);
         break;
     }
   }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: navy,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Sign out?',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to sign out of GiftPay?',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              height: 1.5,
-              color: Colors.white70,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white70,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-
-                await DeviceTrust.clearDeviceTrust();
-                await FirebaseAuth.instance.signOut();
-
-                if (!context.mounted) {
-                  return;
-                }
-
-                Navigator.of(
-                  context,
-                  rootNavigator: true,
-                ).pushNamedAndRemoveUntil('/login', (route) => false);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: blue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(11),
-                ),
-              ),
-              child: const Text(
-                'Sign out',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
+
+// ==================================================================
+// PROFILE AVATAR
+// ==================================================================
 
 class _ProfileAvatar extends StatelessWidget {
   final String? photoUrl;
@@ -296,6 +251,10 @@ class _ProfileAvatar extends StatelessWidget {
     );
   }
 }
+
+// ==================================================================
+// PROFILE MENU ITEM
+// ==================================================================
 
 class _ProfileMenuItem extends StatelessWidget {
   final IconData icon;

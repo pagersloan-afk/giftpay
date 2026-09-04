@@ -3,14 +3,26 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:utilityhub/core/security/device_trust.dart';
 
 Future<void> showLogoutDialog(BuildContext context) async {
+  // ==============================================================
+  // CAPTURE THE ROOT NAVIGATOR BEFORE AUTH STATE CHANGES
+  // ==============================================================
+  //
+  // Firebase signOut() causes the authenticated part of the app
+  // to rebuild. Therefore, we must not depend on the original
+  // BuildContext after signOut() completes.
+  //
+  // Capturing the NavigatorState now gives us a stable navigator
+  // reference for the final redirect to /login.
+  // ==============================================================
+
+  final rootNavigator = Navigator.of(context, rootNavigator: true);
+
   final confirmed = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (context) {
+    builder: (dialogContext) {
       return Dialog(
-        insetPadding: const EdgeInsets.symmetric(
-          horizontal: 40,
-        ), // ⭐ portable width
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         backgroundColor: const Color(0xFF1A1D21),
         child: Padding(
@@ -19,6 +31,7 @@ Future<void> showLogoutDialog(BuildContext context) async {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.logout, size: 48, color: Colors.redAccent),
+
               const SizedBox(height: 16),
 
               const Text(
@@ -42,9 +55,14 @@ Future<void> showLogoutDialog(BuildContext context) async {
 
               Row(
                 children: [
+                  // ==================================================
+                  // CANCEL
+                  // ==================================================
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context, false),
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(false);
+                      },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.white24),
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -64,9 +82,14 @@ Future<void> showLogoutDialog(BuildContext context) async {
 
                   const SizedBox(width: 12),
 
+                  // ==================================================
+                  // LOGOUT
+                  // ==================================================
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(true);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -92,9 +115,51 @@ Future<void> showLogoutDialog(BuildContext context) async {
     },
   );
 
-  if (confirmed == true) {
-    await DeviceTrust.clearDeviceTrust();
-    await FirebaseAuth.instance.signOut();
-    Navigator.pushNamedAndRemoveUntil(context, "/login", (_) => false);
+  // ================================================================
+  // USER CANCELLED
+  // ================================================================
+
+  if (confirmed != true) {
+    return;
   }
+
+  // ================================================================
+  // CLEAR DEVICE TRUST
+  // ================================================================
+
+  try {
+    await DeviceTrust.clearDeviceTrust();
+  } catch (error) {
+    debugPrint('Logout: failed to clear device trust: $error');
+  }
+
+  // ================================================================
+  // SIGN OUT FROM FIREBASE
+  // ================================================================
+
+  try {
+    await FirebaseAuth.instance.signOut();
+  } catch (error) {
+    debugPrint('Logout: Firebase sign-out error: $error');
+  }
+
+  // ================================================================
+  // NAVIGATE TO LOGIN
+  // ================================================================
+  //
+  // IMPORTANT:
+  //
+  // Do NOT use the original `context` here.
+  //
+  // The Firebase signOut() above can cause the dashboard/auth
+  // widget tree to unmount.
+  //
+  // We captured `rootNavigator` before the auth state changed.
+  // ==============================================================
+
+  if (!rootNavigator.mounted) {
+    return;
+  }
+
+  rootNavigator.pushNamedAndRemoveUntil('/login', (route) => false);
 }

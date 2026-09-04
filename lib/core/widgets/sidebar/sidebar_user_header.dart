@@ -46,7 +46,6 @@ class SidebarUserHeader extends StatelessWidget {
         final rawLastName = data["lastName"]?.toString().trim() ?? "";
 
         final firstName = rawFirstName.isNotEmpty ? rawFirstName : "GiftPay";
-
         final lastName = rawLastName.isNotEmpty ? rawLastName : "User";
 
         final kycStatus =
@@ -128,6 +127,7 @@ class SidebarUserHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ==========================================================
           // AVATAR
@@ -180,30 +180,46 @@ class SidebarUserHeader extends StatelessWidget {
           // ==========================================================
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ----------------------------------------------------
                 // Full name
+                //
+                // IMPORTANT:
+                // FittedBox automatically scales the name down when
+                // the name is longer than the available sidebar width.
+                //
+                // Short names remain at 16px.
+                // Long names become smaller instead of showing "...".
                 // ----------------------------------------------------
-                Text(
-                  fullName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.95),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    letterSpacing: 0.2,
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      fullName,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.95),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
 
                 // ----------------------------------------------------
                 // GiftPay user + KYC badge
                 // ----------------------------------------------------
                 Row(
                   children: [
+                    // GiftPay user text
                     Flexible(
                       child: Text(
                         "giftpay user",
@@ -280,29 +296,31 @@ class SidebarUserHeader extends StatelessWidget {
           const SizedBox(width: 12),
 
           // Text shimmer
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 100,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 100,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 6),
+                const SizedBox(height: 6),
 
-              Container(
-                width: 70,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(4),
+                Container(
+                  width: 70,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

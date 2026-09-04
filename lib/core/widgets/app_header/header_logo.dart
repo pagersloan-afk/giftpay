@@ -16,11 +16,7 @@ class HeaderLogo extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/landing',
-          (route) => false,
-        );
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       },
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -5,25 +5,34 @@ class ApiConfig {
   static const bool isProduction = bool.fromEnvironment("dart.vm.product");
 
   static String get baseUrl {
-    // ⭐ PRODUCTION URL
+    // ⭐ PRODUCTION
     if (isProduction) {
-      return "https://gifttechnologyltd.com"; // <-- your real production domain
+      return "https://gifttechnologyltd.com";
     }
 
-    // ⭐ WEB (Flutter Web)
+    // ⭐ FLUTTER WEB
     if (identical(0, 0.0)) {
       return "http://localhost:4000";
     }
 
-    // ⭐ ANDROID (physical device)
+    // ⭐ ANDROID PHYSICAL DEVICE
     if (Platform.isAndroid) {
-      return "http://192.168.1.10:4000"; // <-- your LAN IP
+      return "http://192.168.1.10:4000";
     }
 
     // ⭐ iOS simulator / Windows / macOS / Linux
     return "http://localhost:4000";
   }
 
-  // ⭐ Helper to build endpoints cleanly
-  static String api(String path) => "$baseUrl$path";
+  // ⭐ Generic backend endpoint
+  static String api(String path) {
+    return "$baseUrl$path";
+  }
+
+  // ⭐ Express API routes mounted under /api
+  static String apiRoute(String path) {
+    final cleanPath = path.startsWith("/") ? path : "/$path";
+
+    return "$baseUrl/api$cleanPath";
+  }
 }

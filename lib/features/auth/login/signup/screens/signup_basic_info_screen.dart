@@ -36,6 +36,14 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
 
   Country? selectedCountry;
 
+  // ============================================================
+  // SUBMISSION STATE
+  // ============================================================
+
+  // Prevents duplicate account creation requests and gives the
+  // visitor clear visual feedback while the request is processing.
+  bool _isSubmitting = false;
+
   @override
   void initState() {
     super.initState();
@@ -78,7 +86,24 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
     });
   }
 
+  // ============================================================
+  // CREATE ACCOUNT / CONTINUE
+  // ============================================================
+
   Future<void> _goToIdentityScreen() async {
+    // ------------------------------------------------------------
+    // IMPORTANT:
+    // If the user taps Continue multiple times very quickly,
+    // only the first tap is allowed to continue.
+    // ------------------------------------------------------------
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
     try {
       final controller = SignupBasicController(
         firstName: firstNameCtrl.text.trim(),
@@ -91,12 +116,32 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
 
       final uid = await controller.createBasicAccount(context);
 
-      if (uid == null) return;
+      // ----------------------------------------------------------
+      // If account creation did not return a UID, allow the user
+      // to try again.
+      // ----------------------------------------------------------
+      if (uid == null) {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+          });
+        }
 
+        return;
+      }
+
+      // ----------------------------------------------------------
       // DO NOT show success dialog here.
       // DO NOT wait for email verification here.
+      //
+      // Keep the button in its loading/disabled state while we
+      // transition to the verification screen.
+      // ----------------------------------------------------------
 
-      // Immediately route to VerifyEmailScreen.
+      if (!mounted) {
+        return;
+      }
+
       Navigator.pushReplacementNamed(
         context,
         "/verify-email",
@@ -111,6 +156,19 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
         },
       );
     } catch (e) {
+      // ----------------------------------------------------------
+      // If something goes wrong, restore the button so the visitor
+      // can correct the problem and try again.
+      // ----------------------------------------------------------
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -209,11 +267,26 @@ class _SignupBasicInfoScreenState extends State<SignupBasicInfoScreen> {
 
                 const SizedBox(height: 24),
 
+                // ============================================================
+                // CONTINUE BUTTON
+                // ============================================================
                 SizedBox(
                   width: double.infinity,
+                  height: 50,
                   child: ElevatedButton(
-                    onPressed: _goToIdentityScreen,
-                    child: const Text("Continue"),
+                    onPressed: _isSubmitting ? null : _goToIdentityScreen,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text("Continue"),
                   ),
                 ),
               ],

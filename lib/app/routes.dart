@@ -163,6 +163,7 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/fund': (_) => wrap(FundWalletScreen()),
   '/withdraw': (_) => wrap(WithdrawScreen()),
   '/transactions': (_) => wrap(TransactionHistoryScreen()),
+  '/virtual-accounts': (_) => wrap(AddMoneyScreen()),
 
   // KYC
   '/kyc': (_) => wrap(const KycScreen()),

@@ -73,33 +73,51 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       return _DarkHeaderContainer(
         child: Row(
           children: [
+            // ===============================================================
+            // MENU
+            // ===============================================================
+            GestureDetector(
+              onTap: () => _openMenu(context),
+              behavior: HitTestBehavior.opaque,
+              child: const _HeaderActionButton(icon: Icons.menu_rounded),
+            ),
+
+            const SizedBox(width: 8),
+
+            // ===============================================================
+            // LOGO
+            // ===============================================================
             HeaderLogo(compact: true, showWordmark: !isMobile),
 
+            // ===============================================================
+            // SPACER
+            // ===============================================================
             const Spacer(),
 
+            // ===============================================================
+            // WALLET
+            // ===============================================================
             if (isLoggedIn) ...[
               const HeaderWallet(compact: true),
               const SizedBox(width: 8),
             ],
 
+            // ===============================================================
+            // NOTIFICATIONS
+            // ===============================================================
             const HeaderNotifications(),
 
             const SizedBox(width: 8),
 
+            // ===============================================================
+            // PROFILE
+            // ===============================================================
             if (isLoggedIn)
               HeaderProfileDropdown(
                 photoUrl: user?.photoURL,
                 alignRight: true,
                 compact: true,
               ),
-
-            const SizedBox(width: 8),
-
-            GestureDetector(
-              onTap: () => _openMenu(context),
-              behavior: HitTestBehavior.opaque,
-              child: const _HeaderActionButton(icon: Icons.menu_rounded),
-            ),
           ],
         ),
       );
