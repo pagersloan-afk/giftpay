@@ -191,7 +191,7 @@ class RefundPolicyScreen extends StatelessWidget {
           Text(
             "If you believe you are eligible for a refund or have questions about a transaction, "
             "please contact us at:\n"
-            "support@giftpayhq.com\n\n"
+            "support@gifttechnologyltd.com\n\n"
             "Include your transaction ID for faster resolution.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),

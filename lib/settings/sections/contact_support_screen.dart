@@ -89,9 +89,9 @@ class ContactSupportScreen extends StatelessWidget {
           // ⭐ EMAIL
           _sectionHeader("Email", "Avg. response time: 12 hrs"),
           _emailItem(
-            email: "support@giftpayhq.com",
+            email: "support@gifttechnologyltd.com",
             onTap: () {
-              sendEmail("support@giftpayhq.com");
+              sendEmail("support@gifttechnologyltd.com");
             },
           ),
 

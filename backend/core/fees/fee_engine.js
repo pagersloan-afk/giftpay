@@ -1,76 +1,124 @@
 // core/fees/fee_engine.js
 
 class FeeEngine {
-  // Airtime: 1% markup (Opay-level)
+  // ============================================================
+  // AIRTIME
+  // ============================================================
+  // No customer-facing fee.
+  // ClubKonnect compensates GiftPay for these transactions.
+
   static airtime(amount) {
-    const markup = amount * 0.01;
     return {
-      userPays: amount + markup,
-      fee: markup
+      userPays: amount,
+      fee: 0
     };
   }
 
-  // Data: 2% markup (Opay-level)
+  // ============================================================
+  // DATA
+  // ============================================================
+  // No customer-facing fee.
+  // ClubKonnect compensates GiftPay for these transactions.
+
   static data(amount) {
-    const markup = amount * 0.02;
     return {
-      userPays: amount + markup,
-      fee: markup
+      userPays: amount,
+      fee: 0
     };
   }
 
-  // Electricity: ₦15 flat (Opay-level)
+  // ============================================================
+  // ELECTRICITY
+  // ============================================================
+  // No customer-facing fee.
+  // ClubKonnect compensates GiftPay for these transactions.
+
   static electricity(amount) {
-    const fee = 15;
     return {
-      userPays: amount + fee,
-      fee
+      userPays: amount,
+      fee: 0
     };
   }
 
-  // Cable: ₦20 flat (Opay-level)
+  // ============================================================
+  // CABLE / TV
+  // ============================================================
+  // No customer-facing fee.
+  // ClubKonnect compensates GiftPay for these transactions.
+
   static cable(amount) {
-    const fee = 20;
     return {
-      userPays: amount + fee,
-      fee
+      userPays: amount,
+      fee: 0
     };
   }
 
-  // Betting: ₦10 flat (Opay-level)
+  // ============================================================
+  // BETTING
+  // ============================================================
+  // No customer-facing fee.
+  // ClubKonnect compensates GiftPay for these transactions.
+
   static betting(amount) {
-    const fee = 10;
     return {
-      userPays: amount + fee,
-      fee
+      userPays: amount,
+      fee: 0
     };
   }
 
-  // Withdrawal: ₦25 flat (Opay-level)
+  // ============================================================
+  // WITHDRAWAL
+  // ============================================================
+  // ₦25 flat withdrawal fee.
+
   static withdrawal(amount) {
     const fee = 25;
+
     return {
       debitAmount: amount + fee,
       fee
     };
   }
 
-  // Wallet funding:
+  // ============================================================
+  // WALLET FUNDING
+  // ============================================================
   // Bank = ₦0
-  // Card = 1.5% capped at ₦200 (Opay-level)
+  // Card = 1.5% capped at ₦200
+
   static walletFunding(method, amount) {
     if (method === "bank") {
-      return { userPays: amount, fee: 0 };
+      return {
+        userPays: amount,
+        fee: 0
+      };
     }
 
     if (method === "card") {
       let fee = amount * 0.015;
-      if (fee > 200) fee = 200; // cap at ₦200
-      return { userPays: amount + fee, fee };
+
+      if (fee > 200) {
+        fee = 200;
+      }
+
+      return {
+        userPays: amount + fee,
+        fee
+      };
     }
+
+    return {
+      userPays: amount,
+      fee: 0
+    };
   }
 
-  // Gift card payout (unchanged — your business logic)
+  // ============================================================
+  // GIFT CARD PAYOUT
+  // ============================================================
+  // Existing GiftPay business logic.
+  // This determines the NGN payout value for a traded gift card.
+
   static giftCardPayout(cardType, dollarValue) {
     const rates = {
       apple: 1200,
@@ -81,7 +129,13 @@ class FeeEngine {
       xbox: 700
     };
 
-    const rate = rates[cardType.toLowerCase()];
+    const normalizedCardType = cardType.toLowerCase();
+    const rate = rates[normalizedCardType];
+
+    if (!rate) {
+      throw new Error(`Unsupported gift card type: ${cardType}`);
+    }
+
     const payout = dollarValue * rate;
 
     return {
@@ -90,22 +144,18 @@ class FeeEngine {
     };
   }
 
-  // Cashback (Opay-style)
+  // ============================================================
+  // CASHBACK
+  // ============================================================
+  // No automatic cashback for ClubKonnect services.
+  //
+  // GiftPay receives provider compensation on these transactions,
+  // so cashback should not be automatically deducted from the
+  // customer's transaction unless a separate promotional campaign
+  // explicitly enables it.
+
   static cashback(type, amount) {
-    const rules = {
-      airtime: 0.01,      // 1%
-      data: 0.02,         // 2%
-      electricity: 5,     // ₦5
-      cable: 10           // ₦10
-    };
-
-    const rule = rules[type];
-
-    if (typeof rule === "number") {
-      return rule; // flat cashback
-    }
-
-    return amount * rule; // percentage cashback
+    return 0;
   }
 }
 

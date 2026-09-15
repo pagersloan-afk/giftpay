@@ -12,24 +12,24 @@ class BettingProviderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final providers = [
-      "NAIRABET",
-      "BET9JA",
-      "SPORTYBET",
-      "BETKING",
-      "MSPORT",
-      "1XBET",
-    ];
+    // These are DISPLAY names.
+    //
+    // The backend converts them to the official ClubKonnect
+    // provider codes before making the API request.
+    //
+    // MSPORT has been removed because it is not present in the
+    // ClubKonnect provider list supplied in the documentation.
+
+    final providers = ["NAIRABET", "BET9JA", "SPORTYBET", "BETKING", "1XBET"];
 
     return Container(
-      width: double.infinity, // ⭐ FULL WIDTH LIKE OTHER SECTIONS
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06), // GP‑1 transparent card
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24),
       ),
       padding: const EdgeInsets.all(16),
-
       child: Wrap(
         spacing: 10,
         runSpacing: 10,

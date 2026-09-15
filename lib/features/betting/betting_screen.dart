@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/giftpay_api.dart';
 import 'package:utilityhub/core/giftpay_toast.dart';
+import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/core/widgets/giftpay_success_dialog.dart';
 
@@ -31,26 +31,21 @@ class _BettingScreenState extends State<BettingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    int fee = 0;
-    int cashback = 0;
-    int totalPayable = 0;
+    // Betting is currently FREE to the customer.
+    const int fee = 0;
+    const int cashback = 0;
 
-    if (amount != null) {
-      fee = 20;
-      cashback = 10;
-      totalPayable = amount! + fee;
-    }
+    final int totalPayable = amount ?? 0;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: const AppHeaderr(title: "Betting Wallet Funding"),
-
       body: AppResponsiveLayout(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              BettingHeaderSection(),
+              const BettingHeaderSection(),
               const SizedBox(height: 16),
 
               BettingProviderSection(
@@ -59,6 +54,7 @@ class _BettingScreenState extends State<BettingScreen> {
                   setState(() {
                     provider = v;
                     customerName = null;
+                    customerId = null;
                   });
                 },
               ),
@@ -69,7 +65,12 @@ class _BettingScreenState extends State<BettingScreen> {
                 provider: provider,
                 verifying: verifying,
                 customerName: customerName,
-                onCustomerChanged: (v) => customerId = v,
+                onCustomerChanged: (v) {
+                  setState(() {
+                    customerId = v;
+                    customerName = null;
+                  });
+                },
                 onVerify: _verifyCustomer,
               ),
 
@@ -78,7 +79,9 @@ class _BettingScreenState extends State<BettingScreen> {
               BettingAmountSection(
                 amount: amount,
                 onChanged: (v) {
-                  setState(() => amount = v);
+                  setState(() {
+                    amount = v;
+                  });
                 },
               ),
 
@@ -110,6 +113,7 @@ class _BettingScreenState extends State<BettingScreen> {
         customerId != null &&
         customerId!.isNotEmpty &&
         customerName != null &&
+        customerName!.isNotEmpty &&
         amount != null &&
         amount! >= 100;
 
@@ -129,96 +133,258 @@ class _BettingScreenState extends State<BettingScreen> {
     );
   }
 
-  Future<void> _verifyCustomer() async {
-    if (provider == null || customerId == null || customerId!.isEmpty) return;
+  // ============================================================
+  // VERIFY CUSTOMER
+  // ============================================================
 
-    setState(() => verifying = true);
+  Future<void> _verifyCustomer() async {
+    if (provider == null || customerId == null || customerId!.trim().isEmpty) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      verifying = true;
+      customerName = null;
+    });
 
     try {
       final res = await GiftPayAPI.post("/api/betting/verify", {
         "bettingCompany": provider,
-        "customerId": customerId,
+        "customerId": customerId!.trim(),
       });
+
+      if (!mounted) return;
+
+      final bool success = res["status"] == true;
+      final String? verifiedName = res["customerName"]?.toString();
+
+      if (success && verifiedName != null && verifiedName.isNotEmpty) {
+        setState(() {
+          customerName = verifiedName;
+        });
+
+        GiftPayToast.success(context, "Customer verified");
+      } else {
+        setState(() {
+          customerName = null;
+        });
+
+        GiftPayToast.error(
+          context,
+          res["message"]?.toString() ?? "Unable to validate Customer ID.",
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
 
       setState(() {
-        customerName = res["customerName"];
+        customerName = null;
       });
-    } catch (_) {
-      GiftPayToast.error(context, "Verification failed");
-    }
 
-    setState(() => verifying = false);
+      GiftPayToast.error(context, "Unable to validate Customer ID.");
+    } finally {
+      if (mounted) {
+        setState(() {
+          verifying = false;
+        });
+      }
+    }
   }
 
-  // ⭐ UPDATED: Success Dialog Integration
+  // ============================================================
+  // FUND BETTING WALLET
+  // ============================================================
+
   Future<void> _pay() async {
-    setState(() => submitting = true);
+    if (provider == null ||
+        customerId == null ||
+        customerName == null ||
+        amount == null) {
+      return;
+    }
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      GiftPayToast.error(context, "Please sign in again.");
+      return;
+    }
+
+    setState(() {
+      submitting = true;
+    });
 
     try {
       final res = await GiftPayAPI.post("/api/betting/wallet/fund", {
-        "userId": FirebaseAuth.instance.currentUser!.uid,
+        "userId": currentUser.uid,
         "bettingCompany": provider,
-        "customerId": customerId,
+        "customerId": customerId!.trim(),
         "amount": amount,
       });
 
-      final requestId = res["requestId"];
+      if (!mounted) return;
 
-      // Start background requery
-      Future.delayed(const Duration(seconds: 5), () {
-        _requery(requestId);
-      });
+      final bool success = res["status"] == true;
+      final bool pending = res["pending"] == true;
 
-      // ⭐ Show Success Dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => GiftPaySuccessDialog(
-          title: "Success",
-          message:
-              "You have successfully funded ₦$amount to $customerName ($provider)",
-          details: {
-            "Provider": provider!,
-            "Customer ID": customerId!,
-            "Amount": "₦$amount",
-            "Fee": "₦20",
-            "Cashback": "₦10",
-            "Reference": requestId,
-          },
-          linkLabel: "Click here to view betting history",
-          onLinkTap: () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, "/betting/history");
-          },
-          warning: amount! > 200000
-              ? "Multifactor Authentication is required for transactions above ₦200,000."
-              : null,
-          onOk: () => Navigator.pop(context),
-        ),
+      final String requestId = res["requestId"]?.toString() ?? "";
+
+      final int fee = int.tryParse(res["fee"]?.toString() ?? "0") ?? 0;
+
+      final int debited =
+          int.tryParse(res["debited"]?.toString() ?? amount.toString()) ??
+          amount!;
+
+      final int cashback =
+          int.tryParse(res["cashback"]?.toString() ?? "0") ?? 0;
+
+      // ==========================================================
+      // ORDER RECEIVED / PENDING
+      // ==========================================================
+
+      if (success && pending) {
+        GiftPayToast.success(context, "Betting funding request received.");
+
+        // Requery after ClubKonnect has had time to process it.
+        if (requestId.isNotEmpty) {
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) {
+              _requery(requestId);
+            }
+          });
+        }
+
+        // Show a pending dialog rather than falsely saying
+        // the betting wallet has already been funded.
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => GiftPaySuccessDialog(
+            title: "Processing",
+            message:
+                "Your request to fund ₦$amount to $customerName ($provider) has been received and is being processed.",
+            details: {
+              "Provider": provider!,
+              "Customer ID": customerId!,
+              "Amount": "₦$amount",
+              "Fee": "₦$fee",
+              "Cashback": "₦$cashback",
+              "Total Debited": "₦$debited",
+              "Reference": requestId,
+              "Status": "PROCESSING",
+            },
+            linkLabel: "Click here to view betting history",
+            onLinkTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, "/betting/history");
+            },
+            warning: amount! > 200000
+                ? "Multifactor Authentication is required for transactions above ₦200,000."
+                : null,
+            onOk: () => Navigator.pop(context),
+          ),
+        );
+
+        return;
+      }
+
+      // ==========================================================
+      // IMMEDIATE SUCCESS
+      // ==========================================================
+
+      if (success && !pending) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => GiftPaySuccessDialog(
+            title: "Success",
+            message:
+                "You have successfully funded ₦$amount to $customerName ($provider)",
+            details: {
+              "Provider": provider!,
+              "Customer ID": customerId!,
+              "Amount": "₦$amount",
+              "Fee": "₦$fee",
+              "Cashback": "₦$cashback",
+              "Total Debited": "₦$debited",
+              "Reference": requestId,
+              "Status": "SUCCESS",
+            },
+            linkLabel: "Click here to view betting history",
+            onLinkTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, "/betting/history");
+            },
+            warning: amount! > 200000
+                ? "Multifactor Authentication is required for transactions above ₦200,000."
+                : null,
+            onOk: () => Navigator.pop(context),
+          ),
+        );
+
+        return;
+      }
+
+      // ==========================================================
+      // FAILURE
+      // ==========================================================
+
+      GiftPayToast.error(
+        context,
+        res["message"]?.toString() ?? "Betting wallet funding failed.",
       );
-    } catch (_) {
-      GiftPayToast.error(context, "Funding failed");
-    }
+    } catch (e) {
+      if (!mounted) return;
 
-    setState(() => submitting = false);
+      GiftPayToast.error(
+        context,
+        "Funding request failed. Please check your transaction history.",
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          submitting = false;
+        });
+      }
+    }
   }
+
+  // ============================================================
+  // REQUERY
+  // ============================================================
 
   Future<void> _requery(String requestId) async {
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) return;
+
       final res = await GiftPayAPI.post("/api/betting/requery", {
-        "userId": FirebaseAuth.instance.currentUser!.uid,
+        "userId": currentUser.uid,
         "requestId": requestId,
       });
 
-      if (res["status"] == true) {
-        GiftPayToast.success(context, "Transaction completed");
-      } else if (res["message"].toString().contains("Refunded")) {
-        GiftPayToast.error(context, "Transaction failed. Refunded.");
+      if (!mounted) return;
+
+      if (res["status"] == true && res["pending"] != true) {
+        GiftPayToast.success(context, "Betting transaction completed.");
+      } else if (res["pending"] == true) {
+        GiftPayToast.error(context, "Betting transaction is still processing.");
       } else {
-        GiftPayToast.error(context, "Still pending");
+        GiftPayToast.error(
+          context,
+          res["message"]?.toString() ?? "Betting transaction failed.",
+        );
       }
     } catch (_) {
-      GiftPayToast.error(context, "Requery failed");
+      if (!mounted) return;
+
+      GiftPayToast.error(
+        context,
+        "Unable to check betting transaction status.",
+      );
     }
   }
 }

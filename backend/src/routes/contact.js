@@ -15,6 +15,7 @@ function createTransporter() {
   // ⭐ DEVELOPMENT: Gmail
   if (provider === "gmail") {
     console.log("📨 Using Gmail transporter...");
+
     return nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -24,12 +25,15 @@ function createTransporter() {
     });
   }
 
-  // ⭐ PRODUCTION: Custom Domain (cPanel / Hostinger / Namecheap / WHM)
+  // ⭐ PRODUCTION: Custom Domain SMTP
   console.log("📨 Using Custom Domain SMTP transporter...");
+
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
+    port: Number(process.env.SMTP_PORT || 465),
+    secure:
+      process.env.SMTP_SECURE === "true" ||
+      Number(process.env.SMTP_PORT || 465) === 465,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -53,16 +57,34 @@ router.post("/contact", async (req, res) => {
     console.log("Message:", message);
 
     // ------------------------------------------------------------
-    // 1️⃣ SEND TO ADMIN + YOUR GMAIL
+    // DETERMINE SENDER
+    // ------------------------------------------------------------
+    // Production:
+    //   SMTP_USER = support@titleoneabstractny.com
+    //
+    // Gmail:
+    //   MAIL_USER = your Gmail address
+    //
+    // This allows the same file to work in both environments.
+    const senderEmail =
+      process.env.MAIL_PROVIDER === "gmail"
+        ? process.env.MAIL_USER
+        : process.env.SMTP_USER;
+
+    // ------------------------------------------------------------
+    // 1️⃣ SEND TO PRODUCTION EMAIL + GMAIL
     // ------------------------------------------------------------
     const adminMailOptions = {
-      from: process.env.MAIL_USER, // Gmail account
-      replyTo: email,              // Visitor email
+      from: `"Gift Technology Ltd" <${senderEmail}>`,
+      replyTo: email,
+
       to: [
-        process.env.SMTP_USER,     // support@gifttechnologyltd.com
-        process.env.MAIL_USER      // giftbaker77@gmail.com
+        process.env.SMTP_USER, // Production email
+        process.env.MAIL_USER,  // Gmail copy
       ],
+
       subject: `New Contact Message: ${subject}`,
+
       text: `
 Name: ${name}
 Email: ${email}
@@ -80,12 +102,14 @@ ${message}
     console.log("📨 Nodemailer result:", adminResult);
 
     // ------------------------------------------------------------
-    // 2️⃣ AUTO‑REPLY TO VISITOR
+    // 2️⃣ AUTO-REPLY TO VISITOR
     // ------------------------------------------------------------
     const autoReplyOptions = {
-      from: process.env.MAIL_USER, // Gmail account
-      to: email,                   // Visitor email
+      from: `"Gift Technology Ltd" <${senderEmail}>`,
+      to: email,
+
       subject: "We received your message",
+
       text: `
 Hello ${name},
 
@@ -117,7 +141,10 @@ Gift Technology Ltd Support Team
 
   } catch (err) {
     console.error("❌ Email error:", err);
-    return res.status(500).json({ error: "Failed to send message" });
+
+    return res.status(500).json({
+      error: "Failed to send message",
+    });
   }
 });
 

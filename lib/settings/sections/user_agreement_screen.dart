@@ -210,7 +210,7 @@ class UserAgreementScreen extends StatelessWidget {
           SizedBox(height: 10),
           Text(
             "If you have questions about this User Agreement, please contact us at:\n"
-            "support@giftpayhq.com",
+            "support@gifttechnologyltd.com",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 

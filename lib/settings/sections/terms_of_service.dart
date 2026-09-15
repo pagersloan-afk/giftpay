@@ -197,7 +197,7 @@ class TermsScreen extends StatelessWidget {
           SizedBox(height: 10),
           Text(
             "For questions or concerns regarding these Terms of Service, please contact us at:\n"
-            "support@giftpayhq.com",
+            "support@gifttechnologyltd.com",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 

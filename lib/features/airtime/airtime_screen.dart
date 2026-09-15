@@ -19,13 +19,39 @@ class _AirtimeScreenState extends State<AirtimeScreen> {
   @override
   void initState() {
     super.initState();
+
     controller = AirtimeController(
       phoneCtrl: TextEditingController(),
       amountCtrl: TextEditingController(),
     );
-    controller.fetchNetworks().then((_) {
-      setState(() {});
-    });
+
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await controller.initialize();
+
+    if (!mounted) return;
+
+    setState(() {});
+  }
+
+  void _selectRecentNumber(RecentAirtimeNumber recent) {
+    controller.phoneCtrl.text = recent.phone;
+
+    controller.phoneCtrl.selection = TextSelection.fromPosition(
+      TextPosition(offset: controller.phoneCtrl.text.length),
+    );
+
+    controller.autoDetectNetwork();
+
+    setState(() {});
+  }
+
+  void _removeRecentNumber(String phone) {
+    controller.removeRecentNumber(phone);
+
+    setState(() {});
   }
 
   @override
@@ -56,9 +82,19 @@ class _AirtimeScreenState extends State<AirtimeScreen> {
                 networkMap: controller.networkMap,
                 selectedNetworkCode: controller.selectedNetworkCode,
                 themeColor: themeColor,
+
+                recentNumbers: controller.recentNumbers,
+
+                onRecentNumberSelected: _selectRecentNumber,
+
+                onRecentNumberRemoved: _removeRecentNumber,
+
                 onAutoDetectNetwork: () {
-                  setState(() => controller.autoDetectNetwork());
+                  setState(() {
+                    controller.autoDetectNetwork();
+                  });
                 },
+
                 onNetworkChanged: (v) {
                   setState(() {
                     if (controller.phoneCtrl.text.trim().length >= 4) {
@@ -69,36 +105,61 @@ class _AirtimeScreenState extends State<AirtimeScreen> {
                   });
                 },
               ),
+
               const SizedBox(height: 24),
+
               AirtimePaymentSelector(
                 useWallet: controller.useWallet,
                 themeColor: themeColor,
                 onChanged: (v) {
-                  setState(() => controller.useWallet = v);
+                  setState(() {
+                    controller.useWallet = v;
+                  });
                 },
               ),
+
               const SizedBox(height: 16),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: controller.loading
                       ? null
                       : () async {
-                          setState(() => controller.loading = true);
-                          if (controller.useWallet) {
-                            await controller.payWithWallet(context);
-                          } else {
-                            await controller.payWithCard(context);
+                          setState(() {
+                            controller.loading = true;
+                          });
+
+                          try {
+                            if (controller.useWallet) {
+                              await controller.payWithWallet(context);
+                            } else {
+                              await controller.payWithCard(context);
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                controller.loading = false;
+                              });
+                            }
                           }
-                          setState(() => controller.loading = false);
                         },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: themeColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
+
                   child: controller.loading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
                       : const Text("Buy Airtime"),
                 ),
               ),

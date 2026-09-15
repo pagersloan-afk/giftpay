@@ -156,7 +156,7 @@ class PrivacyScreen extends StatelessWidget {
             "• Request deletion of your data (subject to legal requirements).\n"
             "• Opt out of marketing communications.\n"
             "• Withdraw consent for data processing.\n\n"
-            "To exercise these rights, contact us at support@giftpayhq.com.",
+            "To exercise these rights, contact us at support@gifttechnologyltd.com.",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
@@ -210,7 +210,7 @@ class PrivacyScreen extends StatelessWidget {
           SizedBox(height: 10),
           Text(
             "If you have questions or concerns about this Privacy Policy, please contact us at:\n"
-            "support@giftpayhq.com",
+            "support@gifttechnologyltd.com",
             style: TextStyle(color: Colors.white70, height: 1.5),
           ),
 
