@@ -1,170 +1,183 @@
 import 'package:flutter/material.dart';
-import 'package:utilityhub/features/giftcards/models/giftcard_trade.dart';
 
-class GiftCardTradeHistoryScreen extends StatelessWidget {
+import '../models/giftcard_trade.dart';
+import '../services/giftcard_trade_service.dart';
+
+class GiftCardTradeHistoryScreen extends StatefulWidget {
   const GiftCardTradeHistoryScreen({super.key});
 
-  // Mock trades (replace with Firestore later)
-  List<GiftCardTrade> get mockTrades => [
-    GiftCardTrade(
-      id: "1",
-      brand: "Amazon",
-      country: "USA",
-      cardType: "Physical",
-      amount: "100",
-      rate: "750",
-      valueInNaira: "75000",
-      images: [],
-      status: "pending",
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-    GiftCardTrade(
-      id: "2",
-      brand: "Steam",
-      country: "Global",
-      cardType: "E-code",
-      amount: "50",
-      rate: "700",
-      valueInNaira: "35000",
-      images: [],
-      status: "reviewing",
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    GiftCardTrade(
-      id: "3",
-      brand: "Apple",
-      country: "UK",
-      cardType: "Physical",
-      amount: "200",
-      rate: "800",
-      valueInNaira: "160000",
-      images: [],
-      status: "completed",
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-    ),
-  ];
+  @override
+  State<GiftCardTradeHistoryScreen> createState() =>
+      _GiftCardTradeHistoryScreenState();
+}
 
-  Color statusColor(String status) {
-    switch (status) {
-      case "pending":
-        return Colors.orange;
-      case "reviewing":
-        return Colors.blue;
-      case "completed":
-        return Colors.green;
-      case "rejected":
-        return Colors.red;
-      default:
-        return Colors.grey;
+class _GiftCardTradeHistoryScreenState
+    extends State<GiftCardTradeHistoryScreen> {
+  final GiftCardTradeService _service = GiftCardTradeService();
+
+  bool _loading = true;
+  String? _error;
+
+  List<GiftCardTrade> _trades = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final trades = await _service.getHistory();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _trades = trades;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _loading = false;
+        _error = error.toString().replaceFirst('Exception: ', '');
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final trades = mockTrades;
-
     return Scaffold(
-      appBar: AppBar(title: const Text("Gift Card Trades")),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: trades.length,
-        itemBuilder: (_, i) {
-          final trade = trades[i];
+      appBar: AppBar(title: const Text('Gift Card Trades')),
+      body: RefreshIndicator(onRefresh: _loadHistory, child: _buildBody()),
+    );
+  }
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TradeDetailsScreen(trade: trade),
-                ),
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+  Widget _buildBody() {
+    if (_loading && _trades.isEmpty) {
+      return ListView(
+        physics: AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: 300,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ],
+      );
+    }
+
+    if (_error != null && _trades.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        children: [
+          const SizedBox(height: 120),
+          const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+          const SizedBox(height: 16),
+          Text(_error!, textAlign: TextAlign.center),
+          const SizedBox(height: 18),
+          ElevatedButton(onPressed: _loadHistory, child: const Text('Retry')),
+        ],
+      );
+    }
+
+    if (_trades.isEmpty) {
+      return ListView(
+        physics: AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: 280,
+            child: Center(child: Text('No gift card trades yet.')),
+          ),
+        ],
+      );
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      itemCount: _trades.length,
+      itemBuilder: (_, index) {
+        final trade = _trades[index];
+
+        return _TradeListItem(
+          trade: trade,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TradeDetailsScreen(trade: trade),
               ),
-              child: Row(
-                children: [
-                  // Brand icon placeholder
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.card_giftcard, size: 28),
-                  ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
 
-                  const SizedBox(width: 16),
+class _TradeListItem extends StatelessWidget {
+  final GiftCardTrade trade;
+  final VoidCallback onTap;
 
-                  // Details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          trade.brand,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "₦${trade.valueInNaira}",
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "${trade.createdAt}",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+  const _TradeListItem({required this.trade, required this.onTap});
 
-                  // Status badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor(trade.status).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      trade.status.toUpperCase(),
-                      style: TextStyle(
-                        color: statusColor(trade.status),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+  Color _statusColor() {
+    switch (trade.status) {
+      case 'completed':
+        return Colors.green;
+
+      case 'rejected':
+        return Colors.red;
+
+      default:
+        return Colors.orange;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor();
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        onTap: onTap,
+        leading: CircleAvatar(
+          backgroundColor: color.withOpacity(.12),
+          child: Icon(Icons.card_giftcard, color: color),
+        ),
+        title: Text(
+          trade.brand.isEmpty ? 'Gift Card' : trade.brand,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text('₦${trade.valueInNaira}\n${trade.providerReference}'),
+        isThreeLine: true,
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            trade.status.toUpperCase(),
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -178,47 +191,48 @@ class TradeDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Trade Details")),
-      body: Padding(
+      appBar: AppBar(title: const Text('Trade Details')),
+      body: ListView(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Brand: ${trade.brand}", style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 8),
-            Text(
-              "Country: ${trade.country}",
-              style: const TextStyle(fontSize: 18),
+        children: [
+          _detail('Gift Card', trade.brand),
+          _detail('Country', trade.country),
+          _detail('Card Type', trade.cardType),
+          _detail('Amount', '\$${trade.amount}'),
+          _detail('Rate', '₦${trade.rate}'),
+          _detail('Expected Payout', '₦${trade.valueInNaira}'),
+          _detail('Payout Method', trade.payoutMethod),
+          _detail('Prestmit Reference', trade.providerReference),
+          _detail('Status', trade.status.toUpperCase()),
+          if (trade.rejectionReason != null &&
+              trade.rejectionReason!.isNotEmpty)
+            _detail('Rejection Reason', trade.rejectionReason!),
+          _detail('Created', trade.createdAt.toLocal().toString()),
+        ],
+      ),
+    );
+  }
+
+  Widget _detail(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 8),
-            Text(
-              "Card Type: ${trade.cardType}",
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Amount: \$${trade.amount}",
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Text("Rate: ₦${trade.rate}", style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 8),
-            Text(
-              "Value in Naira: ₦${trade.valueInNaira}",
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Status: ${trade.status}",
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Date: ${trade.createdAt}",
-              style: const TextStyle(fontSize: 18),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }

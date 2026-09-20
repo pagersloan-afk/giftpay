@@ -1,28 +1,61 @@
 class GiftCardBrand {
-  final String id;
+  final String sku;
   final String name;
-  final List<String> cardTypes;
+  final String currencyCode;
+  final double minPrice;
+  final double maxPrice;
+  final bool preOrder;
 
-  GiftCardBrand({
-    required this.id,
+  const GiftCardBrand({
+    required this.sku,
     required this.name,
-    required this.cardTypes,
+    required this.currencyCode,
+    required this.minPrice,
+    required this.maxPrice,
+    required this.preOrder,
   });
 
   factory GiftCardBrand.fromMap(Map<String, dynamic> map) {
+    final skuValue = map["sku"] ?? map["giftCardSKU"] ?? map["id"];
+
+    final minValue = map["minPrice"] ?? map["min"] ?? 0;
+    final maxValue = map["maxPrice"] ?? map["max"] ?? 0;
+
     return GiftCardBrand(
-      id: map["id"],
-      name: map["name"],
-      cardTypes: List<String>.from(map["cardTypes"]),
+      sku: skuValue.toString(),
+      name:
+          (map["name"] ??
+                  map["giftCardName"] ??
+                  map["productName"] ??
+                  "Gift Card")
+              .toString(),
+      currencyCode: (map["currencyCode"] ?? map["currency"] ?? "")
+          .toString()
+          .toUpperCase(),
+      minPrice: double.tryParse(minValue.toString()) ?? 0,
+      maxPrice: double.tryParse(maxValue.toString()) ?? 0,
+      preOrder: map["preOrder"] == true,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      "sku": sku,
+      "name": name,
+      "currencyCode": currencyCode,
+      "minPrice": minPrice,
+      "maxPrice": maxPrice,
+      "preOrder": preOrder,
+    };
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is GiftCardBrand &&
           runtimeType == other.runtimeType &&
-          id == other.id;
+          sku == other.sku;
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode => sku.hashCode;
 }

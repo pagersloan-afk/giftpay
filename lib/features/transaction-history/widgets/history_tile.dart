@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 import '../utils/history_icon_mapper.dart';
 
@@ -24,13 +26,36 @@ class HistoryTile extends StatelessWidget {
     required this.formattedDate,
   });
 
+  // ============================================================
+  // CURRENCY FORMATTING
+  // ============================================================
+
+  String _formatAmount(dynamic value) {
+    if (value == null) {
+      return "₦0.00";
+    }
+
+    final number = value is num
+        ? value
+        : num.tryParse(value.toString().replaceAll(",", ""));
+
+    if (number == null) {
+      return "₦${value.toString()}";
+    }
+
+    return "₦${NumberFormat("#,##0.00").format(number)}";
+  }
+
   @override
   Widget build(BuildContext context) {
-    final title = transaction["title"] ?? "Transaction";
-    final type = transaction["type"] ?? "transaction";
-    final amount = transaction["amount"]?.toString() ?? "0";
+    final title = transaction["title"]?.toString() ?? "Transaction";
+
+    final type = transaction["type"]?.toString() ?? "transaction";
+
+    final amount = _formatAmount(transaction["amount"]);
 
     final iconData = HistoryIconMapper.detect(title, type);
+
     final icon = iconData["icon"];
     final color = iconData["color"];
 
@@ -43,7 +68,7 @@ class HistoryTile extends StatelessWidget {
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(formattedDate, style: const TextStyle(fontSize: 12)),
       trailing: Text(
-        "₦$amount",
+        amount,
         style: TextStyle(color: color, fontWeight: FontWeight.bold),
       ),
       onTap: () => _openReceipt(context),
@@ -52,11 +77,19 @@ class HistoryTile extends StatelessWidget {
 
   Future<void> _openReceipt(BuildContext context) async {
     final id = transaction["id"];
-    final userId = FirebaseAuth.instance.currentUser!.uid;
 
-    final titleLower = (transaction["title"] ?? "").toLowerCase();
+    final user = FirebaseAuth.instance.currentUser;
 
-    // ⭐ ELECTRICITY
+    if (user == null) return;
+
+    final userId = user.uid;
+
+    final titleLower = (transaction["title"] ?? "").toString().toLowerCase();
+
+    // ============================================================
+    // ELECTRICITY
+    // ============================================================
+
     if (titleLower.startsWith("electricity")) {
       final snap = await FirebaseFirestore.instance
           .collection("users")
@@ -66,6 +99,8 @@ class HistoryTile extends StatelessWidget {
           .get();
 
       final fullTx = snap.data() ?? {};
+
+      if (!context.mounted) return;
 
       Navigator.push(
         context,
@@ -80,70 +115,138 @@ class HistoryTile extends StatelessWidget {
           ),
         ),
       );
+
       return;
     }
 
-    // ⭐ WALLET TRANSACTIONS
+    // ============================================================
+    // LOAD WALLET TRANSACTION
+    // ============================================================
+
     final walletDoc = await FirebaseFirestore.instance
         .collection("wallets")
         .doc(userId)
         .get();
 
     final walletData = walletDoc.data() ?? {};
+
     final txList = walletData["transactions"] as List<dynamic>? ?? [];
 
-    final realTx = txList.firstWhere((t) => t["id"] == id, orElse: () => {});
+    Map<String, dynamic> realTx = {};
 
-    final lower = (realTx["title"] ?? "").toLowerCase();
+    for (final item in txList) {
+      if (item is Map) {
+        final candidate = Map<String, dynamic>.from(item);
 
-    // ⭐ GIFT CARD RECEIPT
-    if (realTx["type"] == "giftcard") {
+        if (candidate["id"]?.toString() == id?.toString()) {
+          realTx = candidate;
+          break;
+        }
+      }
+    }
+
+    // ============================================================
+    // GIFT CARD
+    // ============================================================
+
+    final realTitle = (realTx["title"] ?? transaction["title"] ?? "")
+        .toString()
+        .toLowerCase();
+
+    final realType = (realTx["type"] ?? transaction["type"] ?? "")
+        .toString()
+        .toLowerCase();
+
+    final isGiftCard =
+        realType == "giftcard" ||
+        realType == "gift_card" ||
+        realTitle.startsWith("gift card") ||
+        realTitle.contains("gift card purchase") ||
+        realTitle.contains("giftcard");
+
+    if (isGiftCard) {
+      if (!context.mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => GiftCardReceiptScreen(transaction: realTx),
+          builder: (_) => GiftCardReceiptScreen(
+            transaction: realTx.isNotEmpty ? realTx : transaction,
+          ),
         ),
       );
+
       return;
     }
 
-    // ⭐ AIRTIME
-    if (lower.startsWith("airtime")) {
+    // ============================================================
+    // AIRTIME
+    // ============================================================
+
+    if (realTitle.startsWith("airtime")) {
+      if (!context.mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => AirtimeReceiptScreen(txn: realTx)),
       );
+
       return;
     }
 
-    // ⭐ DATA
-    if (lower.startsWith("data")) {
+    // ============================================================
+    // DATA
+    // ============================================================
+
+    if (realTitle.startsWith("data")) {
+      if (!context.mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DataReceiptScreen(txn: realTx)),
       );
+
       return;
     }
 
-    // ⭐ CABLE
-    if (lower.startsWith("cable")) {
+    // ============================================================
+    // CABLE
+    // ============================================================
+
+    if (realTitle.startsWith("cable")) {
+      if (!context.mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => CableReceiptScreen(txn: realTx)),
       );
+
       return;
     }
 
-    // ⭐ BETTING
-    if (lower.startsWith("betting")) {
+    // ============================================================
+    // BETTING
+    // ============================================================
+
+    if (realTitle.startsWith("betting") ||
+        realTitle.contains("betting") ||
+        realType == "betting") {
+      if (!context.mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => BettingReceiptScreen(txn: realTx)),
       );
+
       return;
     }
 
-    // ⭐ WALLET DEFAULT RECEIPT
+    // ============================================================
+    // DEFAULT WALLET RECEIPT
+    // ============================================================
+
+    if (!context.mounted) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(

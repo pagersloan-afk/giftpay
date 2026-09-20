@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/features/transaction-history/utils/history_date_formatter.dart';
 import 'package:utilityhub/features/transaction-history/widgets/history_tile.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
-  final bool fromBottomNav; // ⭐ NEW FLAG
+  final bool fromBottomNav;
 
   const TransactionHistoryScreen({super.key, this.fromBottomNav = false});
 
@@ -18,6 +19,7 @@ class TransactionHistoryScreen extends StatefulWidget {
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   bool loading = true;
+
   List<Map<String, dynamic>> transactions = [];
 
   @override
@@ -29,7 +31,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   int _safeTimestamp(dynamic value) {
     if (value == null) return 0;
 
-    if (value is int) return value;
+    if (value is int) {
+      return value;
+    }
 
     if (value is String && int.tryParse(value) != null) {
       return int.parse(value);
@@ -37,7 +41,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
     try {
       final dt = DateTime.tryParse(value.toString());
-      if (dt != null) return dt.millisecondsSinceEpoch;
+
+      if (dt != null) {
+        return dt.millisecondsSinceEpoch;
+      }
     } catch (_) {}
 
     return 0;
@@ -45,47 +52,76 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   Future<void> _loadHistory() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
 
-    final walletDoc = await FirebaseFirestore.instance
-        .collection("wallets")
-        .doc(userId)
-        .get();
+    if (userId == null) {
+      if (!mounted) return;
 
-    final walletTx = (walletDoc.data()?["transactions"] ?? [])
-        .whereType<Map<String, dynamic>>()
-        .toList();
+      setState(() {
+        loading = false;
+        transactions = [];
+      });
 
-    final elecSnap = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(userId)
-        .collection("transactions")
-        .get();
+      return;
+    }
 
-    final elecTx = elecSnap.docs.map((d) => d.data()).toList();
+    try {
+      final walletDoc = await FirebaseFirestore.instance
+          .collection("wallets")
+          .doc(userId)
+          .get();
 
-    final merged = <Map<String, dynamic>>[
-      ...walletTx.map((e) => Map<String, dynamic>.from(e)),
-      ...elecTx.map((e) => Map<String, dynamic>.from(e)),
-    ];
+      final walletTx = (walletDoc.data()?["transactions"] ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
 
-    merged.sort((a, b) {
-      final t1 = _safeTimestamp(a["timestamp"] ?? a["date"]);
-      final t2 = _safeTimestamp(b["timestamp"] ?? b["date"]);
-      return t2.compareTo(t1);
-    });
+      final elecSnap = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(userId)
+          .collection("transactions")
+          .get();
 
+      final elecTx = elecSnap.docs.map((d) => d.data()).toList();
+
+      final merged = <Map<String, dynamic>>[
+        ...walletTx.map((e) => Map<String, dynamic>.from(e)),
+        ...elecTx.map((e) => Map<String, dynamic>.from(e)),
+      ];
+
+      merged.sort((a, b) {
+        final t1 = _safeTimestamp(a["timestamp"] ?? a["date"]);
+
+        final t2 = _safeTimestamp(b["timestamp"] ?? b["date"]);
+
+        return t2.compareTo(t1);
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        transactions = merged;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        transactions = [];
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshHistory() async {
     setState(() {
-      transactions = merged;
-      loading = false;
+      loading = true;
     });
+
+    await _loadHistory();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ⭐ If opened from bottom nav → simple AppBar
-      // ⭐ If opened via push → GiftPay AppHeaderr
       appBar: widget.fromBottomNav
           ? AppBar(
               backgroundColor: const Color(0xFF0F1115),
@@ -94,42 +130,51 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               title: const Text(
                 "Transaction History",
                 style: TextStyle(
-                  fontSize: 17, // ⭐ same as GiftPay AppHeaderr
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
             )
           : const AppHeaderr(title: "Transaction History"),
-
       body: AppResponsiveLayout(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: loading
-              ? const Center(child: CircularProgressIndicator())
-              : transactions.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No transactions yet",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+        child: loading
+            ? const Center(child: CircularProgressIndicator())
+            : transactions.isEmpty
+            ? RefreshIndicator(
+                onRefresh: _refreshHistory,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 250),
+                    Center(
+                      child: Text(
+                        "No transactions yet",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _refreshHistory,
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(24),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: transactions.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, i) {
-                    final t = transactions[i];
+                    final transaction = transactions[i];
+
                     return HistoryTile(
-                      transaction: t,
+                      transaction: transaction,
                       formattedDate: HistoryDateFormatter.safeDate(
-                        t["timestamp"] ?? t["date"],
+                        transaction["timestamp"] ?? transaction["date"],
                       ),
                     );
                   },
                 ),
-        ),
+              ),
       ),
     );
   }

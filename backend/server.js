@@ -11,7 +11,8 @@ const fs = require("fs");
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET;
 const VTPASS_API_KEY = process.env.VTPASS_API_KEY;
 const VTPASS_SECRET_KEY = process.env.VTPASS_SECRET_KEY;
-const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+const FIREBASE_SERVICE_ACCOUNT_PATH =
+  process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
 
 // Firebase init
 if (!admin.apps.length) {
@@ -26,7 +27,9 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+// ============================================================
 // Route modules
+// ============================================================
 const electricityRoutes = require("./src/routes/electricity.routes.js");
 const airtimeRoutes = require("./src/routes/airtime.routes.js");
 const dataRoutes = require("./src/routes/data.routes.js");
@@ -48,30 +51,46 @@ const identityRoutes = require("./src/routes/identity.routes");
 const contactRoutes = require("./src/routes/contact.js");
 const profileRoutes = require("./src/routes/profile.routes.js");
 const securityRoutes = require("./src/routes/security.routes.js");
+const prestmitRoutes = require("./src/routes/prestmit.routes");
+const prestmitSellRoutes = require("./src/routes/prestmit.sell.routes");
 
+// IMPORTANT:
+// This is the actual Prestmit webhook handler.
+// There is NO prestmit.webhook.routes.js file required.
+const { prestmitWebhook } = require("./src/webhooks/prestmit.webhook");
 
-
+// ============================================================
+// App
+// ============================================================
 const app = express();
+
 app.set("trust proxy", 1);
+
 const PORT = process.env.PORT || 4000;
 
+// ============================================================
 // VTPASS base URL
+// ============================================================
 const VTPASS_BASE_URL =
   process.env.VTPASS_ENV === "sandbox"
     ? "https://sandbox.vtpass.com/api"
     : "https://vtpass.com/api";
 
+// ============================================================
 // Debug ENV (masked)
+// ============================================================
 const mask = (str) =>
-  str ? str.substring(0, 3) + "***" + str.substring(str.length - 3) : "undefined";
+  str
+    ? str.substring(0, 3) + "***" + str.substring(str.length - 3)
+    : "undefined";
 
 console.log("VTPASS_API_KEY:", mask(VTPASS_API_KEY));
 console.log("VTPASS_SECRET_KEY:", mask(VTPASS_SECRET_KEY));
 console.log("VTPASS_ENV:", process.env.VTPASS_ENV);
-console.log("CLUBKONNECT_APIKEY:", process.env.CLUBKONNECT_APIKEY);
 
-
+// ============================================================
 // Middleware
+// ============================================================
 app.use(
   cors({
     origin: [
@@ -86,57 +105,106 @@ app.use(
   })
 );
 
+// ============================================================
+// Prestmit Webhook
+// ============================================================
+//
+// IMPORTANT:
+// Prestmit webhook signature verification requires the ORIGINAL
+// raw request body.
+//
+// Therefore this route MUST be registered BEFORE:
+//
+//     app.use(express.json());
+//
+// Do not move it below express.json().
+//
+// Endpoint:
+//
+//     POST /api/prestmit/webhook
+//
+// ============================================================
+app.post(
+  "/api/prestmit/webhook",
+  express.raw({
+    type: "application/json",
+    limit: "1mb",
+  }),
+  prestmitWebhook
+);
+
+// ============================================================
+// Normal body parsing
+// ============================================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-// =========================
+// ============================================================
 // Health check
-// =========================
+// ============================================================
 app.get("/", (req, res) => {
-  res.json({ status: "ok", message: "UtilityHub backend running" });
+  res.json({
+    status: "ok",
+    message: "UtilityHub backend running",
+  });
 });
 
-// =========================
+// ============================================================
 // Core routes
-// =========================
+// ============================================================
 app.use("/", transactionRoutes);
 app.use("/", walletRoutes);
 app.use("/", userServicesRoutes);
 app.use("/", analyticsRoutes);
+
 app.use("/auth", authRoutes);
+
 app.use("/v1/statement", authMiddleware, statementRoute);
+
 app.use("/api/giftcard", giftcardRoutes);
+
 app.use("/api/monnify", monnifyRoutes);
+
 app.post("/api/monnify/webhook", monnifyWebhook);
+
 app.use("/api", identityRoutes);
 app.use("/api", contactRoutes);
 app.use("/api", profileRoutes);
 app.use("/api", securityRoutes);
 
+// ============================================================
+// Prestmit API routes
+// ============================================================
+app.use("/api/prestmit", prestmitRoutes);
+app.use("/api/prestmit/sell", prestmitSellRoutes);
 
-
+// ============================================================
 // ClubKonnect / VTPass feature routes
+// ============================================================
 app.use("/api/electricity", electricityRoutes);
 app.use("/api/airtime", airtimeRoutes);
 app.use("/api/data", dataRoutes);
 app.use("/api/cable", cableRoutes);
 app.use("/api/betting", bettingRoutes);
 
+// ============================================================
 // Transfers
+// ============================================================
 app.use("/api/transfer", transferRoutes);
 
+// ============================================================
 // Paystack Dedicated Virtual Account routes
+// ============================================================
 app.use("/paystack", dvaRoutes);
 
-// =========================
+// ============================================================
 // Import and start cron job
-// =========================
+// ============================================================
 require("./src/jobs/requeryPendingTransactions");
 
-// =========================
+// ============================================================
 // Paystack: Initialize Transaction
-// =========================
+// ============================================================
 app.post("/paystack/initialize", async (req, res) => {
   try {
     const { email, amount, reference, userId } = req.body;
@@ -174,7 +242,8 @@ app.post("/paystack/initialize", async (req, res) => {
     if (!data?.status) {
       return res.status(400).json({
         status: false,
-        message: data?.message || "Failed to initialize Paystack transaction",
+        message:
+          data?.message || "Failed to initialize Paystack transaction",
         raw: data,
       });
     }
@@ -185,7 +254,11 @@ app.post("/paystack/initialize", async (req, res) => {
       reference: data.data.reference,
     });
   } catch (err) {
-    console.error("Paystack initialize error:", err.message || err);
+    console.error(
+      "Paystack initialize error:",
+      err.message || err
+    );
+
     return res.status(500).json({
       status: false,
       message: "Server error initializing transaction",
@@ -193,9 +266,9 @@ app.post("/paystack/initialize", async (req, res) => {
   }
 });
 
-// =========================
-// Paystack: Verify Transaction (Future-Proof Funding)
-// =========================
+// ============================================================
+// Paystack: Verify Transaction
+// ============================================================
 app.get("/verify/:ref", async (req, res) => {
   const ref = req.params.ref;
   const userId = req.query.userId;
@@ -231,32 +304,45 @@ app.get("/verify/:ref", async (req, res) => {
     const amountKobo = data.data.amount;
     const amountNaira = amountKobo / 100;
 
-    // ⭐ AUTO-DETECT FUNDING METHOD
-    const channel = data.data.channel || "card"; // fallback
+    // ========================================================
+    // AUTO-DETECT FUNDING METHOD
+    // ========================================================
+    const channel = data.data.channel || "card";
     const method = channel === "bank" ? "bank" : "card";
 
-    // ⭐ APPLY FEE ENGINE
+    // ========================================================
+    // APPLY FEE ENGINE
+    // ========================================================
     const FeeEngine = require("./core/fees/fee_engine");
-    const feeResult = FeeEngine.walletFunding(method, amountNaira);
 
-    const userPays = feeResult.userPays; // amount + fee
+    const feeResult = FeeEngine.walletFunding(
+      method,
+      amountNaira
+    );
+
+    const userPays = feeResult.userPays;
     const fee = feeResult.fee;
 
-    // ⭐ CREDIT WALLET IF SUCCESSFUL
+    // ========================================================
+    // CREDIT WALLET IF SUCCESSFUL
+    // ========================================================
     if (paystackStatus === "success" && userId) {
       const walletRef = db.collection("wallets").doc(userId);
       const walletDoc = await walletRef.get();
 
-      const prevBalance = Number(walletDoc.data()?.balance || 0);
-      const newBalance = prevBalance + amountNaira; // user receives full amount
+      const prevBalance = Number(
+        walletDoc.data()?.balance || 0
+      );
+
+      const newBalance = prevBalance + amountNaira;
 
       const creditTx = {
         id: ref,
         type: "credit",
         title: "Wallet Funding (Paystack)",
         amount: amountNaira,
-        fee,               // ⭐ store fee
-        totalDebited: userPays, // ⭐ store total user paid
+        fee,
+        totalDebited: userPays,
         timestamp: Date.now(),
         status: "success",
         provider: "paystack",
@@ -266,7 +352,8 @@ app.get("/verify/:ref", async (req, res) => {
       await walletRef.set(
         {
           balance: newBalance,
-          transactions: admin.firestore.FieldValue.arrayUnion(creditTx),
+          transactions:
+            admin.firestore.FieldValue.arrayUnion(creditTx),
         },
         { merge: true }
       );
@@ -283,6 +370,11 @@ app.get("/verify/:ref", async (req, res) => {
       },
     });
   } catch (err) {
+    console.error(
+      "Paystack verify error:",
+      err.message || err
+    );
+
     return res.status(500).json({
       status: false,
       message: "Server error verifying transaction",
@@ -290,14 +382,16 @@ app.get("/verify/:ref", async (req, res) => {
   }
 });
 
-
-// =========================
+// ============================================================
 // Airtime Requery
-// =========================
+// ============================================================
 app.post("/api/airtime/requery", async (req, res) => {
   const { requestId } = req.body;
 
-  const { requeryAirtime } = require("./src/services/clubkonnectAirtime.service.js");
+  const {
+    requeryAirtime,
+  } = require("./src/services/clubkonnectAirtime.service.js");
+
   const data = await requeryAirtime({ requestId });
 
   const status =
@@ -322,6 +416,7 @@ app.post("/api/airtime/requery", async (req, res) => {
 
   wallets.forEach((doc) => {
     const txns = doc.data().transactions || [];
+
     if (txns.some((t) => t.id === requestId)) {
       userId = doc.id;
       walletRef = db.collection("wallets").doc(userId);
@@ -341,7 +436,10 @@ app.post("/api/airtime/requery", async (req, res) => {
   const walletData = walletDoc.data();
   const transactions = walletData.transactions || [];
 
-  const txn = transactions.find((t) => t.id === requestId);
+  const txn = transactions.find(
+    (t) => t.id === requestId
+  );
+
   if (!txn) {
     return res.json({
       data: {
@@ -351,11 +449,18 @@ app.post("/api/airtime/requery", async (req, res) => {
     });
   }
 
-  // ⭐ SUCCESS
-  if (status === "ORDER_COMPLETED" || status === "200") {
+  // ========================================================
+  // SUCCESS
+  // ========================================================
+  if (
+    status === "ORDER_COMPLETED" ||
+    status === "200"
+  ) {
     txn.status = "success";
 
-    await walletRef.update({ transactions });
+    await walletRef.update({
+      transactions,
+    });
 
     return res.json({
       data: {
@@ -365,20 +470,26 @@ app.post("/api/airtime/requery", async (req, res) => {
     });
   }
 
-  // ⭐ FAILED
-  if (status === "ORDER_FAILED" || status === "FAILED") {
+  // ========================================================
+  // FAILED
+  // ========================================================
+  if (
+    status === "ORDER_FAILED" ||
+    status === "FAILED"
+  ) {
     txn.status = "failed";
 
     await walletRef.update({
       balance: walletData.balance + txn.amount,
-      transactions: admin.firestore.FieldValue.arrayUnion({
-        id: `${requestId}_refund`,
-        type: "credit",
-        title: `Refund: Airtime Purchase Failed (${txn.title})`,
-        amount: txn.amount,
-        timestamp: Date.now(),
-        status: "refunded",
-      }),
+      transactions:
+        admin.firestore.FieldValue.arrayUnion({
+          id: `${requestId}_refund`,
+          type: "credit",
+          title: `Refund: Airtime Purchase Failed (${txn.title})`,
+          amount: txn.amount,
+          timestamp: Date.now(),
+          status: "refunded",
+        }),
     });
 
     return res.json({
@@ -389,7 +500,9 @@ app.post("/api/airtime/requery", async (req, res) => {
     });
   }
 
-  // ⭐ STILL PENDING
+  // ========================================================
+  // STILL PENDING
+  // ========================================================
   return res.json({
     data: {
       status: status || "PENDING",
@@ -398,15 +511,16 @@ app.post("/api/airtime/requery", async (req, res) => {
   });
 });
 
-
-
-// =========================
+// ============================================================
 // Airtime Networks (ClubKonnect)
-// =========================
+// ============================================================
 app.get("/api/airtime/networks", async (req, res) => {
   try {
     const USER_ID = process.env.CLUBKONNECT_USERID;
-    const url = `https://www.nellobytesystems.com/APIAirtimeDiscountV2.asp?UserID=${USER_ID}`;
+
+    const url =
+      `https://www.nellobytesystems.com/` +
+      `APIAirtimeDiscountV2.asp?UserID=${USER_ID}`;
 
     const response = await axios.get(url);
     const raw = response.data;
@@ -424,14 +538,20 @@ app.get("/api/airtime/networks", async (req, res) => {
 
     for (const key in mobileNetworks) {
       const arr = mobileNetworks[key];
-      if (!Array.isArray(arr) || arr.length === 0) continue;
+
+      if (!Array.isArray(arr) || arr.length === 0) {
+        continue;
+      }
 
       const item = arr[0];
 
       const name =
         item.PRODUCT_NAME ||
         item.network ||
-        key.replace("m_", "").replace("_", "").trim();
+        key
+          .replace("m_", "")
+          .replace("_", "")
+          .trim();
 
       const code = item.ID;
 
@@ -445,6 +565,11 @@ app.get("/api/airtime/networks", async (req, res) => {
       networks,
     });
   } catch (err) {
+    console.error(
+      "Airtime networks error:",
+      err.message || err
+    );
+
     return res.status(500).json({
       status: false,
       message: "Failed to fetch networks",
@@ -452,52 +577,73 @@ app.get("/api/airtime/networks", async (req, res) => {
   }
 });
 
-// =========================
+// ============================================================
 // Data Requery
-// =========================
-app.get("/api/data/requery/:requestId", async (req, res) => {
-  try {
-    const requestId = req.params.requestId;
+// ============================================================
+app.get(
+  "/api/data/requery/:requestId",
+  async (req, res) => {
+    try {
+      const requestId = req.params.requestId;
 
-    const USER_ID = process.env.CLUBKONNECT_USERID;
-    const API_KEY = process.env.CLUBKONNECT_APIKEY;
+      const USER_ID = process.env.CLUBKONNECT_USERID;
+      const API_KEY = process.env.CLUBKONNECT_APIKEY;
 
-    const url = `https://www.nellobytesystems.com/APIQueryV1.asp?UserID=${USER_ID}&APIKey=${API_KEY}&RequestID=${requestId}`;
+      const url =
+        `https://www.nellobytesystems.com/` +
+        `APIQueryV1.asp?UserID=${USER_ID}` +
+        `&APIKey=${API_KEY}` +
+        `&RequestID=${requestId}`;
 
-    const response = await axios.get(url);
-    const raw = response.data;
+      const response = await axios.get(url);
+      const raw = response.data;
 
-    return res.json({
-      status: true,
-      data: raw,
-    });
-  } catch (err) {
-    return res.json({ status: false, message: "Requery failed" });
+      return res.json({
+        status: true,
+        data: raw,
+      });
+    } catch (err) {
+      console.error(
+        "Data requery error:",
+        err.message || err
+      );
+
+      return res.json({
+        status: false,
+        message: "Requery failed",
+      });
+    }
   }
-});
+);
 
-// =========================
+// ============================================================
 // Save FCM Token
-// =========================
+// ============================================================
 app.post("/save-fcm-token", async (req, res) => {
   const { userId, token } = req.body;
 
   if (!userId || !token) {
-    return res
-      .status(400)
-      .json({ status: false, message: "Missing userId or token" });
+    return res.status(400).json({
+      status: false,
+      message: "Missing userId or token",
+    });
   }
 
   await db.collection("users").doc(userId).update({
     fcmToken: token,
   });
 
-  return res.json({ status: true, message: "Token saved" });
+  return res.json({
+    status: true,
+    message: "Token saved",
+  });
 });
 
-// =========================
+// ============================================================
 // Start server
-// =========================
+// ============================================================
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`UtilityHub backend running on http://0.0.0.0:${PORT}`);
+  console.log(
+    `UtilityHub backend running on http://0.0.0.0:${PORT}`
+  );
 });

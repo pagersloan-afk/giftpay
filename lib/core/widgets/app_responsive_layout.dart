@@ -14,7 +14,6 @@ class AppResponsiveLayout extends StatelessWidget {
   bool _isAuthOrLanding(BuildContext context) {
     final route = ModalRoute.of(context)?.settings.name ?? "";
 
-    // No sidebar on authentication / landing screens.
     return route == "/login" ||
         route == "/signup" ||
         route == "/reset" ||
@@ -39,30 +38,25 @@ class AppResponsiveLayout extends StatelessWidget {
     }
 
     // ==============================================================
-    // DESKTOP WEB / LARGE SCREEN
-    //
-    // Existing desktop navigation remains exactly the same:
-    //
-    // AppSidebar → content
+    // DESKTOP
     // ==============================================================
 
     if (width >= desktopMaxWidth + 200) {
       final activeRoute = ModalRoute.of(context)?.settings.name ?? "";
 
       return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSidebar(activeRoute: activeRoute),
 
           Expanded(
-            child: SingleChildScrollView(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 180),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: desktopMaxWidth),
-                    child: child,
-                  ),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 180),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: desktopMaxWidth),
+                  child: child,
                 ),
               ),
             ),
@@ -72,18 +66,15 @@ class AppResponsiveLayout extends StatelessWidget {
     }
 
     // ==============================================================
-    // MOBILE WEB + MOBILE APP
+    // MOBILE / SMALL WEB
     //
-    // Navigation is NOT handled here.
-    //
-    // The mobile-web Drawer is supplied by HomeScreen using the SAME
-    // AppSidebar.
-    //
-    // Android/iOS continues using the existing HomeShell navigation.
+    // IMPORTANT:
+    // Do NOT wrap child in SingleChildScrollView here.
+    // The individual screen handles its own scrolling.
     // ==============================================================
 
     return SafeArea(
-      child: SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
         child: child,
       ),

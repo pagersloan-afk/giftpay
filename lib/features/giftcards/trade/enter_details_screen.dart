@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'upload_card_screen.dart';
 
 class EnterTradeDetailsScreen extends StatefulWidget {
-  final String cardType;
+  final Map<String, dynamic> giftcard;
 
-  const EnterTradeDetailsScreen({super.key, required this.cardType});
+  const EnterTradeDetailsScreen({super.key, required this.giftcard});
 
   @override
   State<EnterTradeDetailsScreen> createState() =>
@@ -12,74 +13,134 @@ class EnterTradeDetailsScreen extends StatefulWidget {
 }
 
 class _EnterTradeDetailsScreenState extends State<EnterTradeDetailsScreen> {
-  final amountCtrl = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
 
-  // Example fixed rate for now
-  final int rate = 1500;
+  double _amount = 0;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  double get _rate {
+    return double.tryParse(widget.giftcard['rate']?.toString() ?? '') ?? 0;
+  }
+
+  double get _minimum {
+    return double.tryParse(widget.giftcard['minimum']?.toString() ?? '') ?? 0;
+  }
+
+  double get _payout {
+    return _amount * _rate;
+  }
+
+  bool get _isEcode {
+    final form = widget.giftcard['form']?.toString().toLowerCase() ?? '';
+
+    return form.contains('ecode') ||
+        form.contains('e-code') ||
+        form.contains('digital');
+  }
+
+  void _continue() {
+    if (_amount <= 0) {
+      _showError('Enter the card amount.');
+      return;
+    }
+
+    if (_minimum > 0 && _amount < _minimum) {
+      _showError('The minimum amount for this gift card is $_minimum.');
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UploadCardScreen(
+          giftcard: widget.giftcard,
+          amount: _amount.toString(),
+          rate: _rate.toString(),
+          payout: _payout.toString(),
+          isEcode: _isEcode,
+        ),
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final payout = (int.tryParse(amountCtrl.text) ?? 0) * rate;
+    final name = widget.giftcard['name']?.toString() ?? 'Gift Card';
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.cardType)),
+      appBar: AppBar(title: Text(name)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text('Current rate', style: TextStyle(color: Colors.grey.shade600)),
+            const SizedBox(height: 6),
+            Text(
+              '₦$_rate per unit',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 24),
             TextField(
-              controller: amountCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: "Card Amount (USD)",
-                border: OutlineInputBorder(),
+              controller: _amountController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
-              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Card Amount',
+                hintText: _minimum > 0 ? 'Minimum $_minimum' : null,
+                prefixText: '\$ ',
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _amount = double.tryParse(value.trim()) ?? 0;
+                });
+              },
             ),
-
-            const SizedBox(height: 20),
-
-            // Payout display
+            const SizedBox(height: 24),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.blue.withOpacity(.06),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Text(
-                "You will receive: ₦$payout",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Estimated payout',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '₦${_payout.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ),
-
             const Spacer(),
-
             SizedBox(
-              width: double.infinity,
+              height: 52,
               child: ElevatedButton(
-                onPressed: () {
-                  if (amountCtrl.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Enter amount")),
-                    );
-                    return;
-                  }
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => UploadCardScreen(
-                        cardType: widget.cardType,
-                        amount: amountCtrl.text.trim(),
-                        payout: payout.toString(),
-                      ),
-                    ),
-                  );
-                },
-                child: const Text("Continue"),
+                onPressed: _continue,
+                child: Text(
+                  _isEcode ? 'Continue to E-code' : 'Continue to Upload',
+                ),
               ),
             ),
           ],
