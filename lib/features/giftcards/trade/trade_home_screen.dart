@@ -19,7 +19,10 @@ class _TradeGiftCardHomeScreenState extends State<TradeGiftCardHomeScreen> {
   bool _loading = true;
   String? _error;
 
-  List<Map<String, dynamic>> _giftcards = [];
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _sellableGiftcards = [];
+
+  String _search = '';
 
   @override
   void initState() {
@@ -37,26 +40,62 @@ class _TradeGiftCardHomeScreenState extends State<TradeGiftCardHomeScreen> {
       final response = await _service.getRateCalculatorData();
 
       final raw = response['data'];
-
       final data = raw is Map ? Map<String, dynamic>.from(raw) : response;
 
-      final sellable = data['sellableGiftcards'];
+      final rawCategories = data['giftCardCategories'];
+      final rawSellable = data['sellableGiftcards'];
 
-      if (sellable is! List) {
+      if (rawSellable is! List) {
         throw Exception('No sellable gift cards were returned.');
       }
 
-      final items = sellable
+      final sellable = rawSellable
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
+
+      final categories = <Map<String, dynamic>>[];
+
+      if (rawCategories is List) {
+        categories.addAll(
+          rawCategories.whereType<Map>().map(
+            (item) => Map<String, dynamic>.from(item),
+          ),
+        );
+      }
+
+      // Some Prestmit responses may contain category information
+      // only inside sellableGiftcards. Build missing categories from
+      // that information as a fallback.
+      final existingCategoryIds = <String>{
+        for (final category in categories) category['id']?.toString() ?? '',
+      };
+
+      for (final giftcard in sellable) {
+        final category = giftcard['category'];
+
+        if (category is! Map) {
+          continue;
+        }
+
+        final categoryMap = Map<String, dynamic>.from(category);
+        final id = categoryMap['id']?.toString() ?? '';
+
+        if (id.isEmpty || existingCategoryIds.contains(id)) {
+          continue;
+        }
+
+        categories.add(categoryMap);
+        existingCategoryIds.add(id);
+      }
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _giftcards = items;
+        _categories = categories;
+        _sellableGiftcards = sellable;
         _loading = false;
       });
     } catch (error) {
@@ -71,11 +110,71 @@ class _TradeGiftCardHomeScreenState extends State<TradeGiftCardHomeScreen> {
     }
   }
 
-  void _openGiftCard(Map<String, dynamic> giftcard) {
+  List<Map<String, dynamic>> get _filteredCategories {
+    final query = _search.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      return _categories;
+    }
+
+    return _categories.where((category) {
+      final name = category['name']?.toString().toLowerCase() ?? '';
+
+      return name.contains(query);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _sellableForCategory(
+    Map<String, dynamic> category,
+  ) {
+    final categoryId = category['id']?.toString();
+    final categoryName = category['name']?.toString().toLowerCase();
+
+    return _sellableGiftcards.where((giftcard) {
+      final nestedCategory = giftcard['category'];
+
+      if (nestedCategory is Map) {
+        final nestedId = nestedCategory['id']?.toString();
+        final nestedName = nestedCategory['name']?.toString().toLowerCase();
+
+        if (categoryId != null &&
+            categoryId.isNotEmpty &&
+            nestedId == categoryId) {
+          return true;
+        }
+
+        if (categoryName != null &&
+            categoryName.isNotEmpty &&
+            nestedName == categoryName) {
+          return true;
+        }
+      }
+
+      return false;
+    }).toList();
+  }
+
+  void _openCategory(Map<String, dynamic> category) {
+    final options = _sellableForCategory(category);
+
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'There are currently no sellable options for this gift card.',
+          ),
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SelectCardTypeScreen(giftcard: giftcard),
+        builder: (_) => SelectCardTypeScreen(
+          category: category,
+          sellableGiftcards: options,
+        ),
       ),
     );
   }
@@ -84,7 +183,7 @@ class _TradeGiftCardHomeScreenState extends State<TradeGiftCardHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trade Gift Cards'),
+        title: const Text('Sell Gift Cards'),
         backgroundColor: Colors.black,
       ),
       body: AppResponsiveLayout(child: _buildBody()),
@@ -118,82 +217,128 @@ class _TradeGiftCardHomeScreenState extends State<TradeGiftCardHomeScreen> {
       );
     }
 
-    if (_giftcards.isEmpty) {
+    if (_categories.isEmpty) {
       return const Center(
-        child: Text('No gift cards are currently available for sale.'),
+        child: Text('No gift card categories are currently available.'),
       );
     }
 
+    final categories = _filteredCategories;
+
     return RefreshIndicator(
       onRefresh: _loadRates,
-      child: GridView.builder(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
-        itemCount: _giftcards.length,
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 240,
-          crossAxisSpacing: 18,
-          mainAxisSpacing: 18,
-          childAspectRatio: 0.92,
-        ),
-        itemBuilder: (_, index) {
-          final giftcard = _giftcards[index];
+        children: [
+          const Text(
+            'Sell Gift Cards',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Choose the brand of the gift card you want to sell.',
+            style: TextStyle(color: Colors.white60, height: 1.5),
+          ),
+          const SizedBox(height: 22),
+          TextField(
+            onChanged: (value) {
+              setState(() {
+                _search = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search gift cards',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _search.isNotEmpty
+                  ? IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _search = '';
+                        });
+                      },
+                      icon: const Icon(Icons.clear),
+                    )
+                  : null,
+              filled: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (categories.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 60),
+              child: Center(child: Text('No matching gift cards found.')),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: categories.length,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 260,
+                crossAxisSpacing: 18,
+                mainAxisSpacing: 18,
+                childAspectRatio: 1.05,
+              ),
+              itemBuilder: (_, index) {
+                final category = categories[index];
 
-          return _SellGiftCardCard(
-            giftcard: giftcard,
-            onTap: () => _openGiftCard(giftcard),
-          );
-        },
+                return _GiftCardCategoryCard(
+                  category: category,
+                  onTap: () => _openCategory(category),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
 }
 
-class _SellGiftCardCard extends StatefulWidget {
-  final Map<String, dynamic> giftcard;
+class _GiftCardCategoryCard extends StatefulWidget {
+  final Map<String, dynamic> category;
   final VoidCallback onTap;
 
-  const _SellGiftCardCard({required this.giftcard, required this.onTap});
+  const _GiftCardCategoryCard({required this.category, required this.onTap});
 
   @override
-  State<_SellGiftCardCard> createState() => _SellGiftCardCardState();
+  State<_GiftCardCategoryCard> createState() => _GiftCardCategoryCardState();
 }
 
-class _SellGiftCardCardState extends State<_SellGiftCardCard> {
+class _GiftCardCategoryCardState extends State<_GiftCardCategoryCard> {
   bool _hovering = false;
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.giftcard['name']?.toString() ?? 'Gift Card';
+    final name = widget.category['name']?.toString() ?? 'Gift Card';
 
-    final rate = widget.giftcard['rate']?.toString() ?? '';
-
-    final country = widget.giftcard['country']?.toString() ?? '';
-
-    final form = widget.giftcard['form']?.toString() ?? '';
-
-    final category = widget.giftcard['category'];
-
-    final categoryName = category is Map ? category['name']?.toString() : null;
-
-    final image = category is Map ? category['image']?.toString() : null;
+    final image = widget.category['image']?.toString();
 
     return MouseRegion(
       onEnter: (_) {
-        setState(() => _hovering = true);
+        setState(() {
+          _hovering = true;
+        });
       },
       onExit: (_) {
-        setState(() => _hovering = false);
+        setState(() {
+          _hovering = false;
+        });
       },
       child: AnimatedScale(
         scale: _hovering ? 1.025 : 1,
         duration: const Duration(milliseconds: 180),
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               gradient: const LinearGradient(
                 colors: [Color(0xFF1A1F25), Color(0xFF0D1117)],
                 begin: Alignment.topLeft,
@@ -201,57 +346,65 @@ class _SellGiftCardCardState extends State<_SellGiftCardCard> {
               ),
               border: Border.all(
                 color: _hovering
-                    ? Colors.blueAccent.withOpacity(.4)
+                    ? const Color(0xFF4A6BB8).withOpacity(.55)
                     : Colors.white.withOpacity(.08),
               ),
+              boxShadow: _hovering
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF4A6BB8).withOpacity(.14),
+                        blurRadius: 24,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
-                  height: 56,
-                  width: 56,
+                Container(
+                  height: 70,
+                  width: 70,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.05),
+                    shape: BoxShape.circle,
+                  ),
                   child: image != null && image.isNotEmpty
                       ? Image.network(
                           image,
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                                Icons.card_giftcard,
-                                size: 46,
-                                color: Colors.white54,
-                              ),
+                          errorBuilder: (_, __, ___) {
+                            return const Icon(
+                              Icons.card_giftcard,
+                              size: 42,
+                              color: Colors.white54,
+                            );
+                          },
                         )
                       : const Icon(
                           Icons.card_giftcard,
-                          size: 46,
+                          size: 42,
                           color: Colors.white54,
                         ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 Text(
-                  categoryName ?? name,
+                  name,
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '$country • $form',
+                const SizedBox(height: 7),
+                const Text(
+                  'View available cards',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '₦$rate / unit',
-                  style: const TextStyle(
-                    color: Color(0xFF75A1FF),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ],
             ),

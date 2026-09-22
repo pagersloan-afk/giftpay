@@ -39,16 +39,22 @@ class GiftCardTrade {
     return GiftCardTrade(
       id: _string(map['id']),
       providerReference: _string(map['providerReference'] ?? map['reference']),
-      brand: _string(map['brand']),
+      brand: _string(map['brand'] ?? map['categoryName']),
       country: _string(map['country']),
-      cardType: _string(map['cardType']),
+      cardType: _string(map['cardType'] ?? map['form']),
       amount: _string(map['amount']),
       rate: _string(map['rate']),
-      valueInNaira: _string(map['valueInNaira'] ?? map['expectedPayout']),
+      valueInNaira: _string(
+        map['valueInNaira'] ?? map['expectedPayout'] ?? map['totalAmount'],
+      ),
       images: _stringList(map['images']),
       status: _normalizeStatus(map['status']),
-      providerStatus: _normalizeStatus(map['providerStatus']),
-      payoutMethod: _string(map['payoutMethod'] ?? 'NAIRA'),
+      providerStatus: _normalizeStatus(
+        map['providerStatus'] ?? map['provider_status'],
+      ),
+      payoutMethod: _string(
+        map['payoutMethod'] ?? map['payout_method'] ?? 'NAIRA',
+      ),
       rejectionReason: map['rejectionReason']?.toString(),
       comments: map['comments']?.toString(),
       createdAt: _parseDate(map['createdAt']),

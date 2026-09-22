@@ -8,281 +8,689 @@ const BASE_URL =
 const API_KEY = process.env.PRESTMIT_API_KEY;
 const API_SECRET = process.env.PRESTMIT_SECRET_KEY;
 
+/**
+ * ============================================================
+ * PRESTMIT SELL DEBUG LOGGING
+ * ============================================================
+ *
+ * These logs are intentionally detailed so we can see exactly
+ * what Prestmit returns to GiftPay.
+ *
+ * IMPORTANT:
+ * - API keys are never logged.
+ * - API hashes are never logged.
+ * - Secrets are never logged.
+ * - Firebase/Bearer tokens are never logged.
+ * - Gift card codes/comments are redacted from logs.
+ */
+
+const DEBUG_SELL_RESPONSES =
+  process.env.PRESTMIT_SELL_DEBUG !== "false";
+
+function sellLog(label, data = null) {
+  if (!DEBUG_SELL_RESPONSES) {
+    return;
+  }
+
+  console.log(
+    "\n============================================================"
+  );
+
+  console.log(
+    `[PRESTMIT SELL] ${label}`
+  );
+
+  console.log(
+    "============================================================"
+  );
+
+  if (
+    data !== null &&
+    data !== undefined
+  ) {
+    try {
+      console.log(
+        JSON.stringify(
+          data,
+          null,
+          2
+        )
+      );
+    } catch (error) {
+      console.log(
+        "[PRESTMIT SELL] Unable to stringify log data:",
+        error.message
+      );
+    }
+  }
+
+  console.log(
+    "============================================================\n"
+  );
+}
+
+/**
+ * ============================================================
+ * SANITIZE PROVIDER DATA FOR LOGGING
+ * ============================================================
+ *
+ * Never allow an E-code or sensitive trade comment to appear
+ * in application logs, even if Prestmit echoes it back inside
+ * an error or response object.
+ */
+function sanitizeForLog(
+  value,
+  key = ""
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return value;
+  }
+
+  const normalizedKey =
+    String(key)
+      .toLowerCase()
+      .replace(/[_-]/g, "");
+
+  const sensitiveKeys = new Set([
+    "comments",
+    "comment",
+    "ecode",
+    "giftcardcode",
+    "giftcardcodes",
+    "code",
+    "authorization",
+    "apikey",
+    "apihash",
+    "secret",
+    "token",
+    "accesstoken",
+    "refreshtoken",
+    "cookie",
+    "setcookie",
+  ]);
+
+  if (
+    sensitiveKeys.has(
+      normalizedKey
+    )
+  ) {
+    return "[REDACTED]";
+  }
+
+  if (Buffer.isBuffer(value)) {
+    return "[BUFFER REDACTED]";
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(
+      (item) =>
+        sanitizeForLog(
+          item
+        )
+    );
+  }
+
+  if (
+    typeof value ===
+    "object"
+  ) {
+    const result = {};
+
+    for (
+      const [childKey, childValue] of Object.entries(
+        value
+      )
+    ) {
+      result[childKey] =
+        sanitizeForLog(
+          childValue,
+          childKey
+        );
+    }
+
+    return result;
+  }
+
+  return value;
+}
+
+/**
+ * ============================================================
+ * LOG COMPLETE PRESTMIT RESPONSE
+ * ============================================================
+ */
+function logPrestmitResponse(
+  operation,
+  response
+) {
+  if (!DEBUG_SELL_RESPONSES) {
+    return;
+  }
+
+  const safeHeaders = {};
+
+  if (response?.headers) {
+    for (
+      const [key, value] of Object.entries(
+        response.headers
+      )
+    ) {
+      const normalizedKey =
+        String(key).toLowerCase();
+
+      if (
+        normalizedKey ===
+          "authorization" ||
+        normalizedKey ===
+          "api-key" ||
+        normalizedKey ===
+          "api-hash" ||
+        normalizedKey ===
+          "cookie" ||
+        normalizedKey ===
+          "set-cookie"
+      ) {
+        continue;
+      }
+
+      safeHeaders[key] =
+        value;
+    }
+  }
+
+  const responseBody =
+    sanitizeForLog(
+      response?.data
+    );
+
+  let serializedBody;
+
+  try {
+    serializedBody =
+      JSON.stringify(
+        responseBody,
+        null,
+        2
+      );
+  } catch (_) {
+    serializedBody =
+      String(responseBody);
+  }
+
+  sellLog(
+    `${operation} RESPONSE`,
+    {
+      timestamp:
+        new Date().toISOString(),
+
+      operation,
+
+      status:
+        response?.status,
+
+      statusText:
+        response?.statusText,
+
+      contentType:
+        response?.headers?.[
+          "content-type"
+        ] || null,
+
+      contentLength:
+        response?.headers?.[
+          "content-length"
+        ] ||
+        Buffer.byteLength(
+          serializedBody || "",
+          "utf8"
+        ),
+
+      url:
+        response?.config?.url ||
+        null,
+
+      method:
+        response?.config?.method ||
+        null,
+
+      headers:
+        safeHeaders,
+
+      data:
+        responseBody,
+    }
+  );
+}
+
+/**
+ * ============================================================
+ * LOG PRESTMIT ERROR
+ * ============================================================
+ */
+function logPrestmitError(
+  operation,
+  error
+) {
+  if (!DEBUG_SELL_RESPONSES) {
+    return;
+  }
+
+  const response =
+    error?.response;
+
+  const responseData =
+    sanitizeForLog(
+      response?.data
+    );
+
+  const safeHeaders = {};
+
+  if (response?.headers) {
+    for (
+      const [key, value] of Object.entries(
+        response.headers
+      )
+    ) {
+      const normalizedKey =
+        String(key).toLowerCase();
+
+      if (
+        normalizedKey ===
+          "authorization" ||
+        normalizedKey ===
+          "api-key" ||
+        normalizedKey ===
+          "api-hash" ||
+        normalizedKey ===
+          "cookie" ||
+        normalizedKey ===
+          "set-cookie"
+      ) {
+        continue;
+      }
+
+      safeHeaders[key] =
+        value;
+    }
+  }
+
+  sellLog(
+    `${operation} ERROR RESPONSE`,
+    {
+      timestamp:
+        new Date().toISOString(),
+
+      operation,
+
+      message:
+        error?.message || null,
+
+      code:
+        error?.code || null,
+
+      status:
+        response?.status || null,
+
+      statusText:
+        response?.statusText || null,
+
+      url:
+        response?.config?.url ||
+        null,
+
+      method:
+        response?.config?.method ||
+        null,
+
+      headers:
+        safeHeaders,
+
+      data:
+        responseData,
+    }
+  );
+}
+
+/**
+ * ============================================================
+ * CREDENTIALS
+ * ============================================================
+ */
 function ensureCredentials() {
   if (!API_KEY) {
-    throw new Error("PRESTMIT_API_KEY is not configured");
+    throw new Error(
+      "PRESTMIT_API_KEY is not configured"
+    );
   }
 
   if (!API_SECRET) {
-    throw new Error("PRESTMIT_SECRET_KEY is not configured");
+    throw new Error(
+      "PRESTMIT_SECRET_KEY is not configured"
+    );
   }
 }
 
 /**
- * Creates the Prestmit API hash.
+ * ============================================================
+ * CLEAN OBJECT
+ * ============================================================
  *
- * Prestmit documentation:
- *
- * payload = API_KEY + ":" + JSON.stringify(body)
- *
- * IMPORTANT:
- * For multipart POST requests, attachments must NOT be included
- * in the body used to generate the hash.
+ * Remove undefined/null values while preserving:
+ * - 0
+ * - false
+ * - empty strings when intentionally supplied
  */
-function generateApiHash(body = {}) {
-  ensureCredentials();
-
-  const bodyString = JSON.stringify(body);
-
-  const payload = `${API_KEY}:${bodyString}`;
-
-  return crypto
-    .createHmac("sha256", API_SECRET)
-    .update(payload, "utf8")
-    .digest("hex");
-}
-
-/**
- * Build headers for signed Prestmit requests.
- */
-function signedHeaders(body = {}, extraHeaders = {}) {
-  ensureCredentials();
-
-  return {
-    Accept: "application/json",
-    "API-KEY": API_KEY,
-    "API-HASH": generateApiHash(body),
-    ...extraHeaders,
-  };
-}
-
-/**
- * Basic headers for endpoints where Prestmit does not require
- * a signed body.
- */
-function basicHeaders() {
-  ensureCredentials();
-
-  return {
-    Accept: "application/json",
-    "API-KEY": API_KEY,
-  };
-}
-
-/**
- * Remove undefined/null optional fields while preserving
- * legitimate false / zero values.
- */
-function cleanObject(object = {}) {
+function cleanObject(
+  object = {}
+) {
   return Object.fromEntries(
-    Object.entries(object).filter(
-      ([, value]) => value !== undefined && value !== null
+    Object.entries(
+      object
+    ).filter(
+      ([, value]) =>
+        value !==
+          undefined &&
+        value !== null
     )
   );
 }
 
 /**
- * Normalize a Prestmit error into a useful Error.
+ * ============================================================
+ * API HASH
+ * ============================================================
+ *
+ * Prestmit:
+ *
+ * payload =
+ *   API_KEY + ":" + JSON.stringify(body)
+ *
+ * hash =
+ *   HMAC-SHA256(payload, API_SECRET)
+ *
+ * IMPORTANT:
+ * attachments[] are deliberately excluded from the body used
+ * to generate API-HASH.
  */
-function normalizeAxiosError(error, operation) {
-  const responseData = error?.response?.data;
+function generateApiHash(
+  body = {}
+) {
+  ensureCredentials();
+
+  const bodyString =
+    JSON.stringify(body);
+
+  const payload =
+    `${API_KEY}:${bodyString}`;
+
+  return crypto
+    .createHmac(
+      "sha256",
+      API_SECRET
+    )
+    .update(
+      payload,
+      "utf8"
+    )
+    .digest("hex");
+}
+
+/**
+ * ============================================================
+ * SIGNED HEADERS
+ * ============================================================
+ */
+function signedHeaders(
+  body = {},
+  extraHeaders = {}
+) {
+  ensureCredentials();
+
+  return {
+    Accept:
+      "application/json",
+
+    "API-KEY":
+      API_KEY,
+
+    "API-HASH":
+      generateApiHash(
+        body
+      ),
+
+    ...extraHeaders,
+  };
+}
+
+/**
+ * ============================================================
+ * NORMALIZE AXIOS ERROR
+ * ============================================================
+ */
+function normalizeAxiosError(
+  error,
+  operation
+) {
+  logPrestmitError(
+    operation,
+    error
+  );
+
+  const response =
+    error?.response;
+
+  const responseData =
+    response?.data;
+
+  let details;
 
   if (responseData) {
-    const details =
-      responseData.message ||
-      responseData.details ||
-      responseData.error ||
-      responseData.errors ||
-      JSON.stringify(responseData);
+    if (
+      typeof responseData ===
+      "string"
+    ) {
+      details =
+        responseData;
+    } else {
+      details =
+        responseData.message ||
+        responseData.details ||
+        responseData.error ||
+        responseData.errors ||
+        JSON.stringify(
+          sanitizeForLog(
+            responseData
+          )
+        );
+    }
+  }
 
-    const normalized = new Error(
+  if (!details) {
+    details =
+      error?.message ||
+      "Unknown Prestmit error";
+  }
+
+  const normalized =
+    new Error(
       `Prestmit ${operation} failed: ${details}`
     );
 
-    normalized.status = error?.response?.status;
-    normalized.response = responseData;
+  normalized.status =
+    response?.status;
 
-    return normalized;
-  }
-
-  const normalized = new Error(
-    `Prestmit ${operation} failed: ${error.message}`
-  );
-
-  normalized.status = error?.response?.status;
+  normalized.response =
+    responseData;
 
   return normalized;
 }
 
 /**
- * GET /giftcard-trade/sell/rate-calculator-data
- *
- * Returns:
- * - giftCardCategories
- * - sellableGiftcards
- * - sellGiftcardPayoutMethods
- * - rateConversions
+ * ============================================================
+ * SIGNED GET
+ * ============================================================
+ */
+async function signedGet(
+  path,
+  params = {},
+  operation = "GET request"
+) {
+  const query =
+    cleanObject(
+      params
+    );
+
+  const requestUrl =
+    `${BASE_URL}${path}`;
+
+  sellLog(
+    `${operation} REQUEST`,
+    {
+      timestamp:
+        new Date().toISOString(),
+
+      method:
+        "GET",
+
+      url:
+        requestUrl,
+
+      params:
+        sanitizeForLog(
+          query
+        ),
+    }
+  );
+
+  try {
+    const response =
+      await axios.get(
+        requestUrl,
+        {
+          params:
+            query,
+
+          headers:
+            signedHeaders(
+              query
+            ),
+
+          timeout:
+            30000,
+        }
+      );
+
+    logPrestmitResponse(
+      operation,
+      response
+    );
+
+    return response.data;
+  } catch (error) {
+    throw normalizeAxiosError(
+      error,
+      operation
+    );
+  }
+}
+
+/**
+ * ============================================================
+ * SELL RATE CALCULATOR
+ * ============================================================
  */
 async function getSellRateCalculatorData() {
-  try {
-    const response = await axios.get(
-      `${BASE_URL}/giftcard-trade/sell/rate-calculator-data`,
-      {
-        headers: basicHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw normalizeAxiosError(
-      error,
-      "sell rate calculator request"
-    );
-  }
+  return signedGet(
+    "/giftcard-trade/sell/rate-calculator-data",
+    {},
+    "SELL RATE CALCULATOR"
+  );
 }
 
 /**
- * GET /giftcard-trade/sell/payout-methods
+ * ============================================================
+ * SELL PAYOUT METHODS
+ * ============================================================
  */
 async function getSellPayoutMethods() {
-  try {
-    const response = await axios.get(
-      `${BASE_URL}/giftcard-trade/sell/payout-methods`,
-      {
-        headers: basicHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw normalizeAxiosError(
-      error,
-      "sell payout methods request"
-    );
-  }
+  return signedGet(
+    "/giftcard-trade/sell/payout-methods",
+    {},
+    "SELL PAYOUT METHODS"
+  );
 }
 
 /**
- * GET /lookup/sell-giftcard-categories
+ * ============================================================
+ * SELL GIFT CARD CATEGORIES
+ * ============================================================
  */
-async function getSellGiftcardCategories() {
-  try {
-    const response = await axios.get(
-      `${BASE_URL}/lookup/sell-giftcard-categories`,
-      {
-        headers: basicHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw normalizeAxiosError(
-      error,
-      "sell gift card categories request"
-    );
-  }
+async function getSellGiftcardCategories(
+  params = {}
+) {
+  return signedGet(
+    "/lookup/sell-giftcard-categories",
+    params,
+    "SELL GIFTCARD CATEGORIES"
+  );
 }
 
 /**
- * GET /lookup/sell-giftcard-subcategories
+ * ============================================================
+ * SELL GIFT CARD SUBCATEGORIES
+ * ============================================================
  */
-async function getSellGiftcardSubcategories(params = {}) {
-  try {
-    const query = cleanObject(params);
-
-    const response = await axios.get(
-      `${BASE_URL}/lookup/sell-giftcard-subcategories`,
-      {
-        params: query,
-        headers: basicHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw normalizeAxiosError(
-      error,
-      "sell gift card subcategories request"
-    );
-  }
+async function getSellGiftcardSubcategories(
+  params = {}
+) {
+  return signedGet(
+    "/lookup/sell-giftcard-subcategories",
+    params,
+    "SELL GIFTCARD SUBCATEGORIES"
+  );
 }
 
 /**
- * GET /lookup/sell-giftcard-filters
+ * ============================================================
+ * SELL GIFTCARD FILTERS
+ * ============================================================
  */
-async function getSellGiftcardFilters(params = {}) {
-  try {
-    const query = cleanObject(params);
-
-    const response = await axios.get(
-      `${BASE_URL}/lookup/sell-giftcard-filters`,
-      {
-        params: query,
-        headers: basicHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw normalizeAxiosError(
-      error,
-      "sell gift card filters request"
-    );
-  }
+async function getSellGiftcardFilters(
+  params = {}
+) {
+  return signedGet(
+    "/lookup/sell-giftcard-filters",
+    params,
+    "SELL GIFTCARD FILTERS"
+  );
 }
 
 /**
- * GET /lookup/sell-giftcard-countries
+ * ============================================================
+ * SELL GIFTCARD COUNTRIES
+ * ============================================================
  */
-async function getSellGiftcardCountries() {
-  try {
-    const response = await axios.get(
-      `${BASE_URL}/lookup/sell-giftcard-countries`,
-      {
-        headers: basicHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw normalizeAxiosError(
-      error,
-      "sell gift card countries request"
-    );
-  }
+async function getSellGiftcardCountries(
+  params = {}
+) {
+  return signedGet(
+    "/lookup/sell-giftcard-countries",
+    params,
+    "SELL GIFTCARD COUNTRIES"
+  );
 }
 
 /**
- * Create a SELL transaction.
+ * ============================================================
+ * CREATE SELL TRANSACTION
+ * ============================================================
  *
- * Prestmit endpoint:
  * POST /giftcard-trade/sell/create
  *
- * Multipart fields:
- * - giftcard_id
- * - amount
- * - payoutMethod
- * - comments
- * - uniqueIdentifier
- * - attachments[]
- *
- * IMPORTANT:
- * The attachments are NOT included in the API-HASH.
- *
- * files is expected to be an array of multer memoryStorage files:
- *
- * {
- *   buffer,
- *   originalname,
- *   mimetype,
- *   size
- * }
+ * multipart/form-data
  */
 async function createSellTransaction({
   giftcard_id,
@@ -290,32 +698,101 @@ async function createSellTransaction({
   payoutMethod,
   comments,
   uniqueIdentifier,
+  payoutAddress,
+  promoCode,
   files = [],
 }) {
   ensureCredentials();
 
+  // ==========================================================
+  // GIFTCARD ID
+  // ==========================================================
+
   if (
-    giftcard_id === undefined ||
+    giftcard_id ===
+      undefined ||
     giftcard_id === null ||
     giftcard_id === ""
   ) {
-    throw new Error("giftcard_id is required");
+    throw new Error(
+      "giftcard_id is required"
+    );
   }
+
+  const normalizedGiftcardId =
+    Number(
+      giftcard_id
+    );
+
+  if (
+    !Number.isInteger(
+      normalizedGiftcardId
+    ) ||
+    normalizedGiftcardId <= 0
+  ) {
+    throw new Error(
+      "giftcard_id must be a valid positive integer"
+    );
+  }
+
+  // ==========================================================
+  // AMOUNT
+  // ==========================================================
 
   if (
     amount === undefined ||
     amount === null ||
     amount === ""
   ) {
-    throw new Error("amount is required");
+    throw new Error(
+      "amount is required"
+    );
   }
 
-  if (!payoutMethod) {
-    throw new Error("payoutMethod is required");
+  const normalizedAmount =
+    Number(amount);
+
+  if (
+    !Number.isFinite(
+      normalizedAmount
+    ) ||
+    normalizedAmount <= 0
+  ) {
+    throw new Error(
+      "amount must be a valid positive number"
+    );
   }
+
+  // ==========================================================
+  // PAYOUT METHOD
+  // ==========================================================
+
+  if (
+    payoutMethod ===
+      undefined ||
+    payoutMethod === null ||
+    String(
+      payoutMethod
+    ).trim() === ""
+  ) {
+    throw new Error(
+      "payoutMethod is required"
+    );
+  }
+
+  const normalizedPayoutMethod =
+    String(
+      payoutMethod
+    ).trim();
+
+  // ==========================================================
+  // FILE VALIDATION
+  // ==========================================================
 
   if (!Array.isArray(files)) {
-    throw new Error("files must be an array");
+    throw new Error(
+      "files must be an array"
+    );
   }
 
   if (files.length > 20) {
@@ -331,120 +808,303 @@ async function createSellTransaction({
       );
     }
 
-    if (!["image/jpeg", "image/png"].includes(file.mimetype)) {
+    const mimetype =
+      String(
+        file.mimetype || ""
+      ).toLowerCase();
+
+    if (
+      mimetype !==
+        "image/jpeg" &&
+      mimetype !==
+        "image/png"
+    ) {
       throw new Error(
         "Only JPG and PNG gift card images are accepted"
       );
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    const size =
+      Number(file.size) ||
+      file.buffer.length;
+
+    if (
+      size >
+      5 * 1024 * 1024
+    ) {
       throw new Error(
-        `Gift card image ${file.originalname || ""} exceeds the 5MB limit`
+        `Gift card image ${
+          file.originalname || ""
+        } exceeds the 5MB limit`
       );
     }
   }
 
-  /**
-   * This is the exact logical request body used for hashing.
-   *
-   * attachments are intentionally excluded.
-   */
-  const signedBody = cleanObject({
-    giftcard_id: Number(giftcard_id),
-    amount: Number(amount),
-    payoutMethod: String(payoutMethod),
-    comments:
-      comments !== undefined && comments !== null
-        ? String(comments)
-        : undefined,
-    uniqueIdentifier:
-      uniqueIdentifier !== undefined &&
-      uniqueIdentifier !== null
-        ? String(uniqueIdentifier)
-        : undefined,
-  });
+  // ==========================================================
+  // SIGNED BODY
+  // ==========================================================
+  //
+  // IMPORTANT:
+  //
+  // The signed body must contain exactly the non-file request
+  // fields that are actually sent to Prestmit.
+  //
+  // attachments[] are intentionally excluded.
+  //
+  // The object insertion order is preserved so JSON.stringify()
+  // produces the same field order used by the request.
+  // ==========================================================
 
-  /**
-   * Use native FormData/Blob available in modern Node.js.
-   */
-  const form = new FormData();
+  const signedBody =
+    cleanObject({
+      giftcard_id:
+        normalizedGiftcardId,
+
+      amount:
+        normalizedAmount,
+
+      payoutMethod:
+        normalizedPayoutMethod,
+
+      comments:
+        comments !==
+            undefined &&
+        comments !== null
+          ? String(
+              comments
+            )
+          : undefined,
+
+      uniqueIdentifier:
+        uniqueIdentifier !==
+            undefined &&
+        uniqueIdentifier !== null
+          ? String(
+              uniqueIdentifier
+            )
+          : undefined,
+
+      payoutAddress:
+        payoutAddress !==
+            undefined &&
+        payoutAddress !== null
+          ? String(
+              payoutAddress
+            )
+          : undefined,
+
+      promoCode:
+        promoCode !==
+            undefined &&
+        promoCode !== null
+          ? String(
+              promoCode
+            )
+          : undefined,
+    });
+
+  // ==========================================================
+  // REQUEST DEBUG LOG
+  // ==========================================================
+  //
+  // Do NOT log signedBody because comments may contain the
+  // actual gift card E-code.
+  // ==========================================================
+
+  sellLog(
+    "SELL CREATE REQUEST",
+    {
+      timestamp:
+        new Date().toISOString(),
+
+      method:
+        "POST",
+
+      url:
+        `${BASE_URL}/giftcard-trade/sell/create`,
+
+      giftcard_id:
+        normalizedGiftcardId,
+
+      amount:
+        normalizedAmount,
+
+      payoutMethod:
+        normalizedPayoutMethod,
+
+      hasComments:
+        Boolean(
+          comments !==
+              undefined &&
+          comments !== null &&
+          String(
+            comments
+          ).trim()
+        ),
+
+      hasUniqueIdentifier:
+        Boolean(
+          uniqueIdentifier
+        ),
+
+      hasPayoutAddress:
+        Boolean(
+          payoutAddress
+        ),
+
+      hasPromoCode:
+        Boolean(
+          promoCode
+        ),
+
+      attachmentCount:
+        files.length,
+
+      attachmentNames:
+        files.map(
+          (file) =>
+            file?.originalname ||
+            "unknown"
+        ),
+    }
+  );
+
+  // ==========================================================
+  // FORM DATA
+  // ==========================================================
+
+  const form =
+    new FormData();
+
+  // Required fields.
 
   form.append(
     "giftcard_id",
-    String(signedBody.giftcard_id)
+    String(
+      normalizedGiftcardId
+    )
   );
 
   form.append(
     "amount",
-    String(signedBody.amount)
+    String(
+      normalizedAmount
+    )
   );
 
   form.append(
     "payoutMethod",
-    signedBody.payoutMethod
+    normalizedPayoutMethod
   );
 
-  if (signedBody.comments !== undefined) {
-    form.append("comments", signedBody.comments);
+  // Optional text fields.
+
+  if (
+    signedBody.comments !==
+    undefined
+  ) {
+    form.append(
+      "comments",
+      signedBody.comments
+    );
   }
 
-  if (signedBody.uniqueIdentifier !== undefined) {
+  if (
+    signedBody.uniqueIdentifier !==
+    undefined
+  ) {
     form.append(
       "uniqueIdentifier",
       signedBody.uniqueIdentifier
     );
   }
 
-  for (const file of files) {
-    const blob = new Blob(
-      [file.buffer],
-      {
-        type: file.mimetype,
-      }
+  if (
+    signedBody.payoutAddress !==
+    undefined
+  ) {
+    form.append(
+      "payoutAddress",
+      signedBody.payoutAddress
     );
+  }
+
+  if (
+    signedBody.promoCode !==
+    undefined
+  ) {
+    form.append(
+      "promoCode",
+      signedBody.promoCode
+    );
+  }
+
+  // ==========================================================
+  // ATTACHMENTS
+  // ==========================================================
+  //
+  // Native FormData + Blob is intentionally used here.
+  //
+  // Do NOT manually add a Content-Type header. Axios must
+  // generate the multipart boundary.
+  // ==========================================================
+
+  for (const file of files) {
+    const blob =
+      new Blob(
+        [
+          file.buffer,
+        ],
+        {
+          type:
+            file.mimetype,
+        }
+      );
 
     form.append(
       "attachments[]",
       blob,
-      file.originalname || "giftcard-image"
+      file.originalname ||
+        "giftcard-image"
     );
   }
 
-  /**
-   * Do NOT manually set Content-Type.
-   *
-   * Axios/native FormData will generate the correct
-   * multipart boundary.
-   */
-  const headers = signedHeaders(signedBody);
+  // ==========================================================
+  // AUTH HEADERS
+  // ==========================================================
 
-  for (const [key, value] of Object.entries(headers)) {
-    form.append(
-      `__header_${key}`,
-      ""
+  const requestHeaders =
+    signedHeaders(
+      signedBody
     );
-  }
 
-  /**
-   * Convert headers separately because FormData should only
-   * contain actual request fields.
-   */
-  const requestHeaders = {
-    Accept: "application/json",
-    "API-KEY": API_KEY,
-    "API-HASH": generateApiHash(signedBody),
-  };
+  // ==========================================================
+  // SEND TO PRESTMIT
+  // ==========================================================
 
   try {
-    const response = await axios.post(
-      `${BASE_URL}/giftcard-trade/sell/create`,
-      form,
-      {
-        headers: requestHeaders,
-        timeout: 120000,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-      }
+    const response =
+      await axios.post(
+        `${BASE_URL}/giftcard-trade/sell/create`,
+        form,
+        {
+          headers:
+            requestHeaders,
+
+          timeout:
+            120000,
+
+          maxContentLength:
+            Infinity,
+
+          maxBodyLength:
+            Infinity,
+        }
+      );
+
+    logPrestmitResponse(
+      "SELL CREATE",
+      response
     );
 
     return response.data;
@@ -457,7 +1117,9 @@ async function createSellTransaction({
 }
 
 /**
- * GET /giftcard-trade/sell/history
+ * ============================================================
+ * SELL HISTORY
+ * ============================================================
  */
 async function getSellHistory({
   page = 1,
@@ -465,61 +1127,82 @@ async function getSellHistory({
   uniqueIdentifier,
   referenceOrID,
 } = {}) {
-  try {
-    const params = cleanObject({
+  const params =
+    cleanObject({
       page,
       perPage,
       uniqueIdentifier,
       referenceOrID,
     });
 
-    const response = await axios.get(
-      `${BASE_URL}/giftcard-trade/sell/history`,
-      {
-        params,
-        headers: basicHeaders(),
-        timeout: 30000,
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw normalizeAxiosError(
-      error,
-      "sell history request"
-    );
-  }
+  return signedGet(
+    "/giftcard-trade/sell/history",
+    params,
+    "SELL HISTORY"
+  );
 }
 
 /**
- * Get a single SELL transaction through Prestmit history.
+ * ============================================================
+ * GET SINGLE SELL TRANSACTION
+ * ============================================================
+ *
+ * Prestmit exposes this through the history endpoint using
+ * referenceOrID.
  */
-async function getSellTransaction(reference) {
-  if (!reference) {
+async function getSellTransaction(
+  reference
+) {
+  if (
+    reference ===
+      undefined ||
+    reference === null ||
+    String(
+      reference
+    ).trim() === ""
+  ) {
     throw new Error(
       "Prestmit sell reference is required"
     );
   }
 
-  const result = await getSellHistory({
-    referenceOrID: reference,
+  return getSellHistory({
+    referenceOrID:
+      String(
+        reference
+      ).trim(),
+
     page: 1,
+
     perPage: 1,
   });
-
-  return result;
 }
 
+/**
+ * ============================================================
+ * EXPORTS
+ * ============================================================
+ */
 module.exports = {
   BASE_URL,
+
   generateApiHash,
+
   getSellRateCalculatorData,
+
   getSellPayoutMethods,
+
   getSellGiftcardCategories,
+
   getSellGiftcardSubcategories,
+
   getSellGiftcardFilters,
+
   getSellGiftcardCountries,
+
   createSellTransaction,
+
   getSellHistory,
+
   getSellTransaction,
 };

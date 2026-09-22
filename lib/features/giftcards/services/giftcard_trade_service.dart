@@ -10,6 +10,10 @@ import '../models/giftcard_trade.dart';
 class GiftCardTradeService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // ============================================================
+  // AUTH
+  // ============================================================
+
   Future<String> _token() async {
     final user = _auth.currentUser;
 
@@ -26,9 +30,17 @@ class GiftCardTradeService {
     return token;
   }
 
+  // ============================================================
+  // URL
+  // ============================================================
+
   Uri _uri(String path) {
     return Uri.parse(ApiConfig.api(path));
   }
+
+  // ============================================================
+  // SELL RATE CALCULATOR
+  // ============================================================
 
   Future<Map<String, dynamic>> getRateCalculatorData() async {
     final token = await _token();
@@ -41,6 +53,10 @@ class GiftCardTradeService {
     return _decodeResponse(response);
   }
 
+  // ============================================================
+  // PAYOUT METHODS
+  // ============================================================
+
   Future<Map<String, dynamic>> getPayoutMethods() async {
     final token = await _token();
 
@@ -51,6 +67,39 @@ class GiftCardTradeService {
 
     return _decodeResponse(response);
   }
+
+  // ============================================================
+  // E-CODE DETECTION
+  // ============================================================
+  //
+  // Prestmit may return forms such as:
+  //
+  //   Ecode
+  //   E-code
+  //   E Code
+  //   e_code
+  //   Digital
+  //
+  // Normalize all of these before determining whether the
+  // transaction requires an E-code or physical card image.
+  // ============================================================
+
+  bool _isEcodeForm(String value) {
+    final normalized = value
+        .toLowerCase()
+        .replaceAll('-', '')
+        .replaceAll('_', '')
+        .replaceAll(' ', '')
+        .trim();
+
+    return normalized == 'ecode' ||
+        normalized == 'digital' ||
+        normalized.contains('ecode');
+  }
+
+  // ============================================================
+  // SUBMIT SELL TRADE
+  // ============================================================
 
   Future<GiftCardTrade> submitTrade({
     required String giftcardId,
@@ -66,6 +115,81 @@ class GiftCardTradeService {
   }) async {
     final token = await _token();
 
+    final trimmedGiftcardId = giftcardId.trim();
+
+    final trimmedAmount = amount.trim();
+
+    final trimmedCardType = cardType.trim();
+
+    final trimmedComments = comments?.trim();
+
+    final trimmedPayoutMethod = payoutMethod.trim();
+
+    // ==========================================================
+    // BASIC VALIDATION
+    // ==========================================================
+
+    if (trimmedGiftcardId.isEmpty) {
+      throw Exception('Gift card type is required.');
+    }
+
+    if (trimmedAmount.isEmpty) {
+      throw Exception('Gift card amount is required.');
+    }
+
+    final parsedAmount = double.tryParse(trimmedAmount.replaceAll(',', ''));
+
+    if (parsedAmount == null || parsedAmount <= 0) {
+      throw Exception('Enter a valid gift card amount.');
+    }
+
+    if (trimmedPayoutMethod.isEmpty) {
+      throw Exception('Please select a payout method.');
+    }
+
+    // ==========================================================
+    // DETERMINE CARD FORM
+    // ==========================================================
+
+    final isEcode = _isEcodeForm(trimmedCardType);
+
+    // ==========================================================
+    // E-CODE VALIDATION
+    // ==========================================================
+    //
+    // Prestmit's documented E-code flow is:
+    //
+    //   comments = actual E-code
+    //   attachments = none
+    //
+    // Therefore we explicitly clear attachments for E-code
+    // transactions before constructing the multipart request.
+    // ==========================================================
+
+    if (isEcode) {
+      if (trimmedComments == null || trimmedComments.isEmpty) {
+        throw Exception('Enter your gift card code.');
+      }
+
+      images = const [];
+    }
+
+    // ==========================================================
+    // PHYSICAL CARD VALIDATION
+    // ==========================================================
+
+    if (!isEcode && images.isEmpty) {
+      throw Exception('Upload at least one gift card image.');
+    }
+
+    if (images.length > 20) {
+      throw Exception('You can upload a maximum of 20 images.');
+    }
+
+    // ==========================================================
+    // CREATE MULTIPART REQUEST
+    // ==========================================================
+
     final request = http.MultipartRequest(
       'POST',
       _uri('/api/prestmit/sell/create'),
@@ -76,61 +200,116 @@ class GiftCardTradeService {
       'Authorization': 'Bearer $token',
     });
 
-    request.fields['giftcard_id'] = giftcardId;
+    // ==========================================================
+    // REQUIRED PRESTMIT FIELDS
+    // ==========================================================
 
-    request.fields['amount'] = amount;
+    request.fields['giftcard_id'] = trimmedGiftcardId;
 
-    request.fields['payoutMethod'] = payoutMethod;
+    request.fields['amount'] = trimmedAmount;
 
-    request.fields['brand'] = brand;
+    request.fields['payoutMethod'] = trimmedPayoutMethod;
 
-    request.fields['country'] = country;
+    // ==========================================================
+    // LOCAL/UI CONTEXT
+    // ==========================================================
+    //
+    // These are retained because your GiftPay backend/controller
+    // can use them for local transaction information.
+    //
+    // The Prestmit backend service should only forward fields
+    // supported by Prestmit's SELL API.
+    // ==========================================================
 
-    request.fields['cardType'] = cardType;
+    request.fields['brand'] = brand.trim();
 
-    request.fields['rate'] = rate;
+    request.fields['country'] = country.trim();
 
-    request.fields['expectedPayout'] = expectedPayout;
+    request.fields['cardType'] = trimmedCardType;
 
-    final trimmedComments = comments?.trim();
+    request.fields['rate'] = rate.trim();
+
+    request.fields['expectedPayout'] = expectedPayout.trim();
+
+    // ==========================================================
+    // COMMENTS
+    // ==========================================================
+    //
+    // For E-code:
+    //   comments = actual gift card code
+    //
+    // For physical cards:
+    //   comments is optional.
+    // ==========================================================
 
     if (trimmedComments != null && trimmedComments.isNotEmpty) {
       request.fields['comments'] = trimmedComments;
     }
 
-    /**
-     * Unique reference generated by GiftPay.
-     *
-     * This lets the backend/provider associate
-     * the trade with this GiftPay submission.
-     */
+    // ==========================================================
+    // UNIQUE IDENTIFIER
+    // ==========================================================
+
     request.fields['uniqueIdentifier'] =
         'giftpay-${DateTime.now().millisecondsSinceEpoch}';
 
-    for (final image in images) {
-      final bytes = await image.readAsBytes();
+    // ==========================================================
+    // ATTACHMENTS
+    // ==========================================================
+    //
+    // E-code:
+    //   NO attachments
+    //
+    // Physical:
+    //   JPG/PNG attachments
+    //
+    // This is deliberately based on the normalized Prestmit
+    // form rather than merely checking whether the user selected
+    // an image.
+    // ==========================================================
 
-      final filename = image.name.isNotEmpty
-          ? image.name
-          : 'giftcard_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    if (!isEcode) {
+      for (final image in images) {
+        final bytes = await image.readAsBytes();
 
-      final contentType = _contentType(filename);
+        if (bytes.isEmpty) {
+          throw Exception('One of the selected images is empty.');
+        }
 
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'attachments[]',
-          bytes,
-          filename: filename,
-          contentType: contentType,
-        ),
-      );
+        if (bytes.length > 5 * 1024 * 1024) {
+          throw Exception('Each gift card image must be 5 MB or smaller.');
+        }
+
+        final filename = image.name.isNotEmpty
+            ? image.name
+            : 'giftcard_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+        final contentType = _contentType(filename);
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'attachments[]',
+            bytes,
+            filename: filename,
+            contentType: contentType,
+          ),
+        );
+      }
     }
+
+    // ==========================================================
+    // SEND REQUEST
+    // ==========================================================
 
     final streamedResponse = await request.send();
 
     final response = await http.Response.fromStream(streamedResponse);
 
     final body = _decodeResponse(response);
+
+    // ==========================================================
+    // READ LOCAL TRANSACTION
+    // ==========================================================
 
     final transaction = body['transaction'];
 
@@ -140,21 +319,42 @@ class GiftCardTradeService {
 
     return GiftCardTrade.fromMap({
       'id': transaction['id'],
+
       'providerReference': transaction['reference'],
-      'brand': brand,
-      'country': country,
-      'cardType': cardType,
+
+      'brand': transaction['brand'] ?? brand,
+
+      'country': transaction['country'] ?? country,
+
+      'cardType': transaction['cardType'] ?? (isEcode ? 'E-code' : cardType),
+
       'amount': transaction['amount'] ?? amount,
+
       'rate': transaction['rate'] ?? rate,
+
       'valueInNaira': transaction['expectedPayout'] ?? expectedPayout,
-      'images': const [],
+
+      'images': transaction['images'] ?? const [],
+
       'status': transaction['status'] ?? 'PENDING',
+
       'providerStatus': transaction['providerStatus'] ?? 'PENDING',
+
       'payoutMethod': transaction['payoutMethod'] ?? payoutMethod,
-      'comments': comments,
+
+      'rejectionReason': transaction['rejectionReason'],
+
+      'comments': transaction['comments'] ?? trimmedComments,
+
       'createdAt': transaction['createdAt'] ?? DateTime.now().toIso8601String(),
+
+      'updatedAt': transaction['updatedAt'],
     });
   }
+
+  // ============================================================
+  // HISTORY
+  // ============================================================
 
   Future<List<GiftCardTrade>> getHistory() async {
     final token = await _token();
@@ -178,6 +378,10 @@ class GiftCardTradeService {
         .toList();
   }
 
+  // ============================================================
+  // GET SINGLE TRANSACTION
+  // ============================================================
+
   Future<GiftCardTrade> getTransaction(String reference) async {
     final token = await _token();
 
@@ -197,6 +401,10 @@ class GiftCardTradeService {
     return GiftCardTrade.fromMap(Map<String, dynamic>.from(transaction));
   }
 
+  // ============================================================
+  // REQUERY
+  // ============================================================
+
   Future<GiftCardTrade> requeryTransaction(String reference) async {
     final token = await _token();
 
@@ -205,18 +413,16 @@ class GiftCardTradeService {
       headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
     );
 
-    final body = _decodeResponse(response);
+    _decodeResponse(response);
 
-    final result = body['result'];
-
-    final transaction = await getTransaction(reference);
-
-    if (result is Map) {
-      return transaction;
-    }
-
-    return transaction;
+    // Always retrieve the refreshed
+    // local transaction.
+    return getTransaction(reference);
   }
+
+  // ============================================================
+  // RESPONSE DECODER
+  // ============================================================
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
     dynamic decoded;
@@ -248,6 +454,10 @@ class GiftCardTradeService {
     return body;
   }
 
+  // ============================================================
+  // IMAGE CONTENT TYPE
+  // ============================================================
+
   http.MediaType _contentType(String filename) {
     final lower = filename.toLowerCase();
 
@@ -255,6 +465,10 @@ class GiftCardTradeService {
       return http.MediaType('image', 'png');
     }
 
-    return http.MediaType('image', 'jpeg');
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return http.MediaType('image', 'jpeg');
+    }
+
+    throw Exception('Only JPG and PNG gift card images are allowed.');
   }
 }

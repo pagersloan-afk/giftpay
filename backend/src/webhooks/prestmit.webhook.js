@@ -11,31 +11,30 @@ const {
 /**
  * Prestmit webhook handler.
  *
- * server.js MUST register this endpoint with express.raw()
- * before express.json().
+ * IMPORTANT:
+ * server.js MUST register this endpoint with
+ * express.raw() BEFORE express.json().
  *
- * BUY:
+ * BUY events:
  * - giftcard-trade.buy.approved
  * - giftcard-trade.buy.rejected
  *
- * SELL:
+ * SELL events:
  * - giftcard-trade.sell.approved
  * - giftcard-trade.sell.rejected
  */
 exports.prestmitWebhook = async (req, res) => {
   try {
-    const signature =
-      req.get("x-prestmit-signature");
-
+    const signature = req.get("x-prestmit-signature");
     const rawBody = req.body;
 
     /**
-     * Prestmit requires verification against the raw
-     * request body.
+     * Prestmit signature verification must use
+     * the original raw request body.
      */
     if (!Buffer.isBuffer(rawBody)) {
       console.error(
-        "Prestmit webhook error: raw request body unavailable"
+        "[PRESTMIT WEBHOOK] Raw request body unavailable"
       );
 
       return res.status(400).json({
@@ -45,6 +44,10 @@ exports.prestmitWebhook = async (req, res) => {
       });
     }
 
+    /**
+     * Verify Prestmit webhook signature BEFORE
+     * parsing or processing the payload.
+     */
     const isValid =
       PrestmitService.verifyWebhookSignature(
         rawBody,
@@ -53,7 +56,7 @@ exports.prestmitWebhook = async (req, res) => {
 
     if (!isValid) {
       console.warn(
-        "Prestmit webhook rejected: invalid signature"
+        "[PRESTMIT WEBHOOK] Invalid signature"
       );
 
       return res.status(401).json({
@@ -63,6 +66,9 @@ exports.prestmitWebhook = async (req, res) => {
       });
     }
 
+    /**
+     * Parse the verified raw body.
+     */
     let payload;
 
     try {
@@ -71,7 +77,7 @@ exports.prestmitWebhook = async (req, res) => {
       );
     } catch (error) {
       console.error(
-        "Prestmit webhook JSON parse error:",
+        "[PRESTMIT WEBHOOK] JSON parse error:",
         error.message
       );
 
@@ -82,9 +88,13 @@ exports.prestmitWebhook = async (req, res) => {
       });
     }
 
-    const event =
-      payload?.event;
+    const event = payload?.event;
 
+    /**
+     * Prestmit's reference can appear in
+     * slightly different locations depending
+     * on the webhook payload.
+     */
     const reference =
       payload?.data?.reference ||
       payload?.data?.transactionReference ||
@@ -107,8 +117,7 @@ exports.prestmitWebhook = async (req, res) => {
      * =========================================================
      */
     if (
-      event ===
-        "giftcard-trade.buy.approved" &&
+      event === "giftcard-trade.buy.approved" &&
       reference
     ) {
       try {
@@ -118,13 +127,12 @@ exports.prestmitWebhook = async (req, res) => {
           );
 
         console.log(
-          "[PRESTMIT WEBHOOK] Purchase processor result:",
+          "[PRESTMIT WEBHOOK] BUY approved result:",
           JSON.stringify(
             {
               reference,
               status: result?.status,
-              processed:
-                result?.processed,
+              processed: result?.processed,
               alreadyProcessed:
                 result?.alreadyProcessed,
             },
@@ -134,13 +142,14 @@ exports.prestmitWebhook = async (req, res) => {
         );
       } catch (error) {
         /**
-         * Keep returning 200 after a verified webhook.
+         * The webhook itself is valid.
          *
-         * The BUY processor is idempotent and can be
-         * reconciled later.
+         * BUY processing can be reconciled later
+         * because the existing BUY processor is
+         * idempotent.
          */
         console.error(
-          "[PRESTMIT WEBHOOK] Purchase processing failed:",
+          "[PRESTMIT WEBHOOK] BUY processing failed:",
           error.message
         );
       }
@@ -152,20 +161,34 @@ exports.prestmitWebhook = async (req, res) => {
      * =========================================================
      */
     else if (
-      event ===
-        "giftcard-trade.buy.rejected"
+      event === "giftcard-trade.buy.rejected" &&
+      reference
     ) {
-      if (reference) {
-        try {
+      try {
+        const result =
           await processPrestmitPurchase(
             reference
           );
-        } catch (error) {
-          console.error(
-            "[PRESTMIT WEBHOOK] Rejected purchase update failed:",
-            error.message
-          );
-        }
+
+        console.log(
+          "[PRESTMIT WEBHOOK] BUY rejected result:",
+          JSON.stringify(
+            {
+              reference,
+              status: result?.status,
+              processed: result?.processed,
+              alreadyProcessed:
+                result?.alreadyProcessed,
+            },
+            null,
+            2
+          )
+        );
+      } catch (error) {
+        console.error(
+          "[PRESTMIT WEBHOOK] BUY rejection processing failed:",
+          error.message
+        );
       }
     }
 
@@ -175,8 +198,7 @@ exports.prestmitWebhook = async (req, res) => {
      * =========================================================
      */
     else if (
-      event ===
-        "giftcard-trade.sell.approved" &&
+      event === "giftcard-trade.sell.approved" &&
       reference
     ) {
       try {
@@ -186,22 +208,19 @@ exports.prestmitWebhook = async (req, res) => {
           );
 
         console.log(
-          "[PRESTMIT WEBHOOK] SELL processor result:",
+          "[PRESTMIT WEBHOOK] SELL approved result:",
           JSON.stringify(
             {
               reference,
-              status:
-                result?.status,
+              status: result?.status,
               providerStatus:
                 result?.providerStatus,
-              processed:
-                result?.processed,
+              processed: result?.processed,
               walletCredited:
                 result?.walletCredited,
               alreadyProcessed:
                 result?.alreadyProcessed,
-              payout:
-                result?.payout,
+              payout: result?.payout,
             },
             null,
             2
@@ -209,12 +228,11 @@ exports.prestmitWebhook = async (req, res) => {
         );
       } catch (error) {
         /**
-         * The webhook was authenticated successfully,
-         * but processing failed.
+         * Do not reject the provider webhook merely
+         * because local processing failed.
          *
-         * We still acknowledge the provider request.
-         * The transaction can be recovered through
-         * /requery/:reference.
+         * The SELL transaction can be recovered
+         * through the requery endpoint.
          */
         console.error(
           "[PRESTMIT WEBHOOK] SELL approved processing failed:",
@@ -229,8 +247,7 @@ exports.prestmitWebhook = async (req, res) => {
      * =========================================================
      */
     else if (
-      event ===
-        "giftcard-trade.sell.rejected" &&
+      event === "giftcard-trade.sell.rejected" &&
       reference
     ) {
       try {
@@ -240,18 +257,16 @@ exports.prestmitWebhook = async (req, res) => {
           );
 
         console.log(
-          "[PRESTMIT WEBHOOK] SELL rejection processor result:",
+          "[PRESTMIT WEBHOOK] SELL rejected result:",
           JSON.stringify(
             {
               reference,
-              status:
-                result?.status,
+              status: result?.status,
               providerStatus:
                 result?.providerStatus,
-                rejectionReason:
-                  result?.rejectionReason,
-              processed:
-                result?.processed,
+              rejectionReason:
+                result?.rejectionReason,
+              processed: result?.processed,
             },
             null,
             2
@@ -267,7 +282,7 @@ exports.prestmitWebhook = async (req, res) => {
 
     /**
      * =========================================================
-     * UNKNOWN / OTHER PRESTMIT EVENT
+     * UNKNOWN / OTHER EVENT
      * =========================================================
      */
     else {
@@ -275,19 +290,25 @@ exports.prestmitWebhook = async (req, res) => {
         "[PRESTMIT WEBHOOK] Event acknowledged:",
         event || "UNKNOWN"
       );
+
+      if (!reference) {
+        console.log(
+          "[PRESTMIT WEBHOOK] No transaction reference found"
+        );
+      }
     }
 
     /**
-     * The signature has already been verified.
+     * Signature was already verified successfully.
+     * Acknowledge the webhook.
      */
     return res.status(200).json({
       status: true,
-      message:
-        "Prestmit webhook received",
+      message: "Prestmit webhook received",
     });
   } catch (error) {
     console.error(
-      "Prestmit webhook error:",
+      "[PRESTMIT WEBHOOK] Unexpected error:",
       error.message
     );
 

@@ -141,6 +141,89 @@ async function notifyGiftCardCompletion({
 }
 
 /**
+ * Send a BUY rejection notification exactly once.
+ */
+async function notifyGiftCardRejection({
+  purchaseRef,
+  userId,
+  giftCardTitle,
+  reason,
+}) {
+  if (!purchaseRef || !userId) return;
+
+  let shouldSend = false;
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(purchaseRef);
+
+      if (!snapshot.exists) return;
+
+      const purchase = snapshot.data() || {};
+
+      if (
+        String(purchase.status || "").toUpperCase() !==
+        "REJECTED"
+      ) {
+        return;
+      }
+
+      if (purchase.rejectionNotificationSent === true) {
+        return;
+      }
+
+      transaction.update(purchaseRef, {
+        rejectionNotificationSent: true,
+        rejectionNotificationSentAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      shouldSend = true;
+    });
+
+    if (!shouldSend) return;
+
+    await sendNotification(
+      userId,
+      "Gift Card Purchase Rejected",
+      `${giftCardTitle || "Gift Card"} purchase was rejected. Reason: ${reason || "No rejection reason was provided."}`,
+      "giftcard"
+    );
+
+    console.log(
+      `🔔 Gift-card rejection notification sent for Prestmit purchase ${purchaseRef.id}`
+    );
+  } catch (error) {
+    console.error(
+      `⚠️ Gift-card rejection notification failed for ${purchaseRef.id}:`,
+      error.message
+    );
+
+    try {
+      await purchaseRef.set(
+        {
+          rejectionNotificationSent: false,
+          notificationError:
+            error.message || "Rejection notification failed",
+          notificationRetryAt:
+            admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt:
+            admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (resetError) {
+      console.error(
+        `⚠️ Could not reset gift-card rejection notification flag for ${purchaseRef.id}:`,
+        resetError.message
+      );
+    }
+  }
+}
+
+/**
  * Read Prestmit history and, when COMPLETED cards are available,
  * atomically debit the GiftPay wallet and complete the local purchase.
  *
@@ -227,11 +310,29 @@ async function processPrestmitPurchase(reference) {
           providerTransaction.message ||
           providerTransaction.remark ||
           `Prestmit transaction ${providerStatus.toLowerCase()}.`,
+        rejectionNotificationSent:
+          false,
         updatedAt:
           admin.firestore.FieldValue.serverTimestamp(),
       },
       { merge: true }
     );
+
+    const existingPurchase = await purchaseRef.get();
+    const existingPurchaseData = existingPurchase.data() || {};
+
+    await notifyGiftCardRejection({
+      purchaseRef,
+      userId: existingPurchaseData.userId,
+      giftCardTitle:
+        existingPurchaseData.giftCardTitle ||
+        providerTransaction.giftCard?.title ||
+        "Gift Card",
+      reason:
+        providerTransaction.message ||
+        providerTransaction.remark ||
+        `Prestmit transaction ${providerStatus.toLowerCase()}.`,
+    });
 
     return {
       processed: false,
@@ -538,6 +639,7 @@ async function adoptExistingPrestmitPurchase(reference, userId) {
     status: "PENDING",
     walletDebited: false,
     notificationSent: false,
+    rejectionNotificationSent: false,
     createdAt:
       admin.firestore.FieldValue.serverTimestamp(),
     updatedAt:
