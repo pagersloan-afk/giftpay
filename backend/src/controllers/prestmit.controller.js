@@ -4,6 +4,7 @@ const {
   adoptExistingPrestmitPurchase,
 } = require("../services/prestmit.purchase.processor");
 const admin = require("firebase-admin");
+const FeeEngine = require("../../core/fees/fee_engine");
 
 function getBearerToken(req) {
   const header = req.get("authorization") || "";
@@ -263,6 +264,19 @@ exports.createBuyTransaction = async (req, res) => {
 
     const giftCard = providerData?.giftCard || {};
 
+    const providerAmount = Number(
+      providerData?.totalPaymentAmount || 0
+    );
+
+    const buyPricing =
+      providerAmount > 0
+        ? FeeEngine.giftCardBuy(providerAmount)
+        : {
+            providerAmount: 0,
+            giftPayMarkup: 0,
+            customerDebitAmount: 0,
+          };
+
     await purchaseRef.set(
       {
         userId: user.uid,
@@ -281,12 +295,11 @@ exports.createBuyTransaction = async (req, res) => {
         uniqueIdentifier:
           providerData?.partnersApiIdentifier ||
           String(uniqueIdentifier),
-        totalPaymentAmount: Number(
-          providerData?.totalPaymentAmount || 0
-        ),
-        walletDebitAmount: Number(
-          providerData?.totalPaymentAmount || 0
-        ),
+        totalPaymentAmount: providerAmount,
+        providerAmount: buyPricing.providerAmount,
+        giftPayMarkup: buyPricing.giftPayMarkup,
+        customerDebitAmount: buyPricing.customerDebitAmount,
+        walletDebitAmount: buyPricing.customerDebitAmount,
         providerStatus:
           providerData?.status || "PENDING",
         status: "PENDING",
@@ -339,6 +352,12 @@ exports.createBuyTransaction = async (req, res) => {
           "PENDING",
         walletDebited:
           localData?.walletDebited === true,
+        providerAmount:
+          Number(localData?.providerAmount || providerAmount),
+        giftPayMarkup:
+          Number(localData?.giftPayMarkup || 0),
+        customerDebitAmount:
+          Number(localData?.customerDebitAmount || 0),
       },
     });
   } catch (error) {

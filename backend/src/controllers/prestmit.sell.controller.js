@@ -9,6 +9,7 @@ const {
 } = require("../services/prestmit.sell.processor");
 
 const db = admin.firestore();
+const FeeEngine = require("../../core/fees/fee_engine");
 
 const COLLECTION = "prestmitSellTransactions";
 
@@ -194,6 +195,38 @@ function getErrorStatus(error) {
   return 500;
 }
 
+
+// ============================================================
+// SELL CUSTOMER RATE
+// ============================================================
+
+const SELL_MARGIN_PERCENT = 5;
+
+function addCustomerSellRates(result) {
+  if (!result || typeof result !== "object" || !Array.isArray(result.sellableGiftcards)) {
+    return result;
+  }
+
+  return {
+    ...result,
+    sellableGiftcards: result.sellableGiftcards.map((giftcard) => {
+      const providerRate = Number(giftcard?.rate);
+      const pricing = FeeEngine.giftCardSellRate(
+        Number.isFinite(providerRate) ? providerRate : 0,
+        SELL_MARGIN_PERCENT
+      );
+
+      return {
+        ...giftcard,
+        rate: pricing.customerRate,
+        providerRate: pricing.providerRate,
+        customerRate: pricing.customerRate,
+        marginPercent: pricing.marginPercent,
+      };
+    }),
+  };
+}
+
 // ============================================================
 // SELL RATES
 // ============================================================
@@ -208,13 +241,17 @@ exports.getSellRates = async (
   try {
     await requireFirebaseUser(req);
 
-    const result =
+    const providerResult =
       await PrestmitSellService
         .getSellRateCalculatorData();
+
+    const result =
+      addCustomerSellRates(providerResult);
 
     return res.status(200).json({
       status: true,
       data: result,
+      pricing: { sellMarginPercent: SELL_MARGIN_PERCENT },
     });
   } catch (error) {
     console.error(
@@ -748,6 +785,25 @@ exports.createSell = async (
      * Wallet credit only occurs after Prestmit reports
      * the SELL transaction as COMPLETED.
      */
+    // Prestmit's actual payout is authoritative. Do not trust the Flutter estimate.
+    const providerExpectedPayout =
+      Number(
+        trade.totalAmount ??
+        trade.payoutTotal ??
+        trade.payoutAmount ??
+        expectedPayout ??
+        0
+      );
+
+    const sellPricing =
+      Number.isFinite(providerExpectedPayout) && providerExpectedPayout > 0
+        ? FeeEngine.giftCardSell(providerExpectedPayout)
+        : {
+            providerPayout: 0,
+            giftPayMargin: 0,
+            customerPayout: 0,
+          };
+
     const localTransaction =
       await createLocalSellTransaction({
         userId:
@@ -778,21 +834,15 @@ exports.createSell = async (
           normalizedAmount,
 
         rate:
-          rate !== undefined &&
-          rate !== null &&
-          rate !== ""
-            ? Number(rate)
-            : trade.rate ||
-              trade.giftcard?.rate,
+          normalizedAmount > 0 && sellPricing.customerPayout > 0
+            ? Math.round((sellPricing.customerPayout / normalizedAmount) * 100) / 100
+            : Number(rate || trade.rate || trade.giftcard?.rate || 0),
 
         expectedPayout:
-          expectedPayout !== undefined &&
-          expectedPayout !== null &&
-          expectedPayout !== ""
-            ? Number(
-                expectedPayout
-              )
-            : trade.totalAmount,
+          sellPricing.customerPayout,
+
+        providerExpectedPayout:
+          sellPricing.providerPayout,
 
         payoutMethod:
           normalizedPayoutMethod,
@@ -849,6 +899,12 @@ exports.createSell = async (
 
         createdAt:
           transaction.createdAt,
+      },
+
+      pricing: {
+        providerPayout: sellPricing.providerPayout,
+        giftPayMargin: sellPricing.giftPayMargin,
+        customerPayout: sellPricing.customerPayout,
       },
 
       provider:

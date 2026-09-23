@@ -1,6 +1,7 @@
 const admin = require("firebase-admin");
 const PrestmitService = require("./prestmit.service");
 const { sendNotification } = require("../../utils/notify");
+const FeeEngine = require("../../core/fees/fee_engine");
 
 const db = admin.firestore();
 
@@ -400,9 +401,8 @@ async function processPrestmitPurchase(reference) {
         alreadyProcessed: true,
         userId,
         amount: Number(
-          purchase.totalPaymentAmount ??
+          purchase.customerDebitAmount ??
             purchase.walletDebitAmount ??
-            providerTransaction.totalPaymentAmount ??
             0
         ),
         cards: purchase.cards || cards,
@@ -423,18 +423,21 @@ async function processPrestmitPurchase(reference) {
     const wallet = walletSnap.data() || {};
     const currentBalance = Number(wallet.balance || 0);
 
-    const amount = Number(
+    const providerAmount = Number(
       providerTransaction.totalPaymentAmount ??
+        purchase.providerAmount ??
         purchase.totalPaymentAmount ??
-        purchase.walletDebitAmount ??
         0
     );
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(providerAmount) || providerAmount <= 0) {
       throw new Error(
         `Invalid Prestmit payment amount for ${safeReference}`
       );
     }
+
+    const pricing = FeeEngine.giftCardBuy(providerAmount);
+    const amount = pricing.customerDebitAmount;
 
     if (currentBalance < amount) {
       throw new Error(
@@ -495,7 +498,10 @@ async function processPrestmitPurchase(reference) {
         providerStatus: "COMPLETED",
         status: "COMPLETED",
         walletDebited: true,
-        walletDebitAmount: amount,
+        providerAmount: pricing.providerAmount,
+        giftPayMarkup: pricing.giftPayMarkup,
+        customerDebitAmount: pricing.customerDebitAmount,
+        walletDebitAmount: pricing.customerDebitAmount,
         cards,
         providerTransaction: {
           reference:
@@ -631,9 +637,18 @@ async function adoptExistingPrestmitPurchase(reference, userId) {
     totalPaymentAmount: Number(
       providerTransaction.totalPaymentAmount || 0
     ),
-    walletDebitAmount: Number(
+    providerAmount: Number(
       providerTransaction.totalPaymentAmount || 0
     ),
+    giftPayMarkup: FeeEngine.giftCardBuy(
+      Number(providerTransaction.totalPaymentAmount || 0)
+    ).giftPayMarkup,
+    customerDebitAmount: FeeEngine.giftCardBuy(
+      Number(providerTransaction.totalPaymentAmount || 0)
+    ).customerDebitAmount,
+    walletDebitAmount: FeeEngine.giftCardBuy(
+      Number(providerTransaction.totalPaymentAmount || 0)
+    ).customerDebitAmount,
     providerStatus:
       providerTransaction.status || "PENDING",
     status: "PENDING",

@@ -8,117 +8,129 @@ class FeeEngine {
   // ClubKonnect compensates GiftPay for these transactions.
 
   static airtime(amount) {
-    return {
-      userPays: amount,
-      fee: 0
-    };
+    return { userPays: amount, fee: 0 };
   }
 
   // ============================================================
   // DATA
   // ============================================================
-  // No customer-facing fee.
-  // ClubKonnect compensates GiftPay for these transactions.
-
   static data(amount) {
-    return {
-      userPays: amount,
-      fee: 0
-    };
+    return { userPays: amount, fee: 0 };
   }
 
   // ============================================================
   // ELECTRICITY
   // ============================================================
-  // No customer-facing fee.
-  // ClubKonnect compensates GiftPay for these transactions.
-
   static electricity(amount) {
-    return {
-      userPays: amount,
-      fee: 0
-    };
+    return { userPays: amount, fee: 0 };
   }
 
   // ============================================================
   // CABLE / TV
   // ============================================================
-  // No customer-facing fee.
-  // ClubKonnect compensates GiftPay for these transactions.
-
   static cable(amount) {
-    return {
-      userPays: amount,
-      fee: 0
-    };
+    return { userPays: amount, fee: 0 };
   }
 
   // ============================================================
   // BETTING
   // ============================================================
-  // No customer-facing fee.
-  // ClubKonnect compensates GiftPay for these transactions.
-
   static betting(amount) {
-    return {
-      userPays: amount,
-      fee: 0
-    };
+    return { userPays: amount, fee: 0 };
   }
 
   // ============================================================
   // WITHDRAWAL
   // ============================================================
-  // ₦25 flat withdrawal fee.
-
   static withdrawal(amount) {
     const fee = 25;
-
-    return {
-      debitAmount: amount + fee,
-      fee
-    };
+    return { debitAmount: amount + fee, fee };
   }
 
   // ============================================================
   // WALLET FUNDING
   // ============================================================
-  // Bank = ₦0
-  // Card = 1.5% capped at ₦200
-
   static walletFunding(method, amount) {
     if (method === "bank") {
-      return {
-        userPays: amount,
-        fee: 0
-      };
+      return { userPays: amount, fee: 0 };
     }
 
     if (method === "card") {
       let fee = amount * 0.015;
-
-      if (fee > 200) {
-        fee = 200;
-      }
-
-      return {
-        userPays: amount + fee,
-        fee
-      };
+      if (fee > 200) fee = 200;
+      return { userPays: amount + fee, fee };
     }
 
+    return { userPays: amount, fee: 0 };
+  }
+
+  // ============================================================
+  // GIFT CARD BUY
+  // ============================================================
+  // Prestmit amount is the provider cost. GiftPay adds 3% internally.
+  // The customer sees only the final customerDebitAmount.
+  static giftCardBuy(providerAmount) {
+    const amount = Number(providerAmount);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new Error("Gift card BUY provider amount must be a valid number");
+    }
+
+    const fee = Math.round(amount * 0.03 * 100) / 100;
+    const customerDebitAmount = Math.round((amount + fee) * 100) / 100;
+
     return {
-      userPays: amount,
-      fee: 0
+      providerAmount: amount,
+      giftPayMarkup: fee,
+      customerDebitAmount,
+      fee,
     };
   }
 
   // ============================================================
-  // GIFT CARD PAYOUT
+  // GIFT CARD SELL
+  // ============================================================
+  // Prestmit payout is the provider amount. GiftPay retains 5%.
+  // The customer sees only the final customerPayout.
+  static giftCardSellRate(providerRate, marginPercent = 5) {
+    const rate = Number(providerRate);
+    const margin = Number(marginPercent);
+
+    if (!Number.isFinite(rate) || rate < 0) {
+      throw new Error("Gift card SELL provider rate must be a valid number");
+    }
+
+    if (!Number.isFinite(margin) || margin < 0 || margin >= 100) {
+      throw new Error("Gift card SELL margin percent must be between 0 and 100");
+    }
+
+    const customerRate = Math.round(rate * (1 - margin / 100) * 100) / 100;
+
+    return { providerRate: rate, customerRate, marginPercent: margin };
+  }
+
+  static giftCardSell(providerPayout, marginPercent = 5) {
+    const amount = Number(providerPayout);
+    const margin = Number(marginPercent);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new Error("Gift card SELL provider payout must be a valid number");
+    }
+
+    if (!Number.isFinite(margin) || margin < 0 || margin >= 100) {
+      throw new Error("Gift card SELL margin percent must be between 0 and 100");
+    }
+
+    const fee = Math.round(amount * (margin / 100) * 100) / 100;
+    const customerPayout = Math.round((amount - fee) * 100) / 100;
+
+    return { providerPayout: amount, giftPayMargin: fee, customerPayout, fee };
+  }
+
+  // ============================================================
+  // EXISTING GIFT CARD PAYOUT
   // ============================================================
   // Existing GiftPay business logic.
-  // This determines the NGN payout value for a traded gift card.
-
   static giftCardPayout(cardType, dollarValue) {
     const rates = {
       apple: 1200,
@@ -126,7 +138,7 @@ class FeeEngine {
       amazon: 850,
       google: 700,
       ps: 750,
-      xbox: 700
+      xbox: 700,
     };
 
     const normalizedCardType = cardType.toLowerCase();
@@ -137,23 +149,12 @@ class FeeEngine {
     }
 
     const payout = dollarValue * rate;
-
-    return {
-      payout,
-      rate
-    };
+    return { payout, rate };
   }
 
   // ============================================================
   // CASHBACK
   // ============================================================
-  // No automatic cashback for ClubKonnect services.
-  //
-  // GiftPay receives provider compensation on these transactions,
-  // so cashback should not be automatically deducted from the
-  // customer's transaction unless a separate promotional campaign
-  // explicitly enables it.
-
   static cashback(type, amount) {
     return 0;
   }

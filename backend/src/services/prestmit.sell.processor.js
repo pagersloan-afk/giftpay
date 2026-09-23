@@ -2,6 +2,7 @@ const admin = require("firebase-admin");
 
 const PrestmitSellService = require("./prestmit.sell.service");
 const { sendNotification } = require("../../utils/notify");
+const FeeEngine = require("../../core/fees/fee_engine");
 
 const db = admin.firestore();
 
@@ -471,6 +472,9 @@ async function settleCompletedSell({
   transactionRef,
   userId,
   amount,
+  providerPayout,
+  giftPayMargin,
+  customerPayout,
   giftCardTitle,
   providerReference,
   providerTrade,
@@ -680,13 +684,30 @@ async function settleCompletedSell({
               null,
 
             providerPayout:
-              payoutAmount,
+              Number(providerPayout ?? payoutAmount),
+
+            providerRate:
+              localData.providerRate ??
+              (localData.amount > 0
+                ? Number(providerPayout ?? payoutAmount) / Number(localData.amount)
+                : null),
+
+            customerRate:
+              localData.amount > 0
+                ? Number(customerPayout ?? payoutAmount) / Number(localData.amount)
+                : null,
+
+            giftPayMargin:
+              Number(giftPayMargin ?? 0),
+
+            customerPayout:
+              Number(customerPayout ?? payoutAmount),
 
             walletCredited:
               true,
 
             walletCreditAmount:
-              payoutAmount,
+              Number(customerPayout ?? payoutAmount),
 
             walletCreditTransactionId:
               walletTransactionId,
@@ -797,13 +818,19 @@ async function settleCompletedSell({
             null,
 
           providerPayout:
-            payoutAmount,
+            Number(providerPayout ?? payoutAmount),
+
+          giftPayMargin:
+            Number(giftPayMargin ?? 0),
+
+          customerPayout:
+            Number(customerPayout ?? payoutAmount),
 
           walletCredited:
             true,
 
           walletCreditAmount:
-            payoutAmount,
+            Number(customerPayout ?? payoutAmount),
 
           walletCreditTransactionId:
             walletTransactionId,
@@ -1354,19 +1381,19 @@ async function processPrestmitSell(
      * Therefore the wallet should receive the provider
      * settlement amount, not amount × rate calculated locally.
      */
-    const payout =
+    const providerPayoutAmount =
       providerPayout ??
-      toPositiveNumber(
-        localData.expectedPayout
-      );
+      toPositiveNumber(localData.providerPayout) ??
+      toPositiveNumber(localData.providerExpectedPayout) ??
+      toPositiveNumber(localData.expectedPayout);
 
-    if (
-      payout === null
-    ) {
+    if (providerPayoutAmount === null) {
       throw new Error(
         `Completed Prestmit SELL ${safeReference} has no valid payout amount`
       );
     }
+
+    const sellPricing = FeeEngine.giftCardSell(providerPayoutAmount);
 
     /**
      * Atomic wallet settlement.
@@ -1382,7 +1409,16 @@ async function processPrestmitSell(
           localData.userId,
 
         amount:
-          payout,
+          sellPricing.customerPayout,
+
+        providerPayout:
+          sellPricing.providerPayout,
+
+        giftPayMargin:
+          sellPricing.giftPayMargin,
+
+        customerPayout:
+          sellPricing.customerPayout,
 
         giftCardTitle:
           localData.giftCardName ||
@@ -1409,7 +1445,7 @@ async function processPrestmitSell(
         localData.cardType ||
         localData.brand ||
         "Gift Card",
-      payout,
+      payout: sellPricing.customerPayout,
       reference: safeReference,
     });
 
@@ -1435,7 +1471,13 @@ async function processPrestmitSell(
         walletResult.recoveredExistingCredit ||
         false,
 
-      payout,
+      payout: sellPricing.customerPayout,
+
+      providerPayout: sellPricing.providerPayout,
+
+      giftPayMargin: sellPricing.giftPayMargin,
+
+      customerPayout: sellPricing.customerPayout,
 
       walletTransactionId:
         walletResult.transactionId,
@@ -1496,6 +1538,7 @@ async function createLocalSellTransaction({
   amount,
   rate,
   expectedPayout,
+  providerExpectedPayout,
   payoutMethod,
   comments,
   uniqueIdentifier,
@@ -1549,13 +1592,31 @@ async function createLocalSellTransaction({
         0
     );
 
-  const normalizedExpectedPayout =
+  const normalizedProviderPayout =
     Number(
-      expectedPayout ??
+      providerExpectedPayout ??
         providerTrade.totalAmount ??
         providerTrade.payoutTotal ??
         0
     );
+
+  const normalizedSellPricing =
+    Number.isFinite(normalizedProviderPayout) && normalizedProviderPayout > 0
+      ? FeeEngine.giftCardSell(normalizedProviderPayout)
+      : {
+          providerPayout: 0,
+          giftPayMargin: 0,
+          customerPayout: 0,
+        };
+
+  const normalizedProviderRate = Number(
+    providerTrade.rate ?? providerTrade.giftcard?.rate ?? 0
+  );
+
+  const normalizedCustomerRate =
+    normalizedAmount > 0 && normalizedSellPricing.customerPayout > 0
+      ? Math.round((normalizedSellPricing.customerPayout / normalizedAmount) * 100) / 100
+      : 0;
 
   const normalizedProviderStatus =
     normalizeStatus(
@@ -1610,19 +1671,35 @@ async function createLocalSellTransaction({
         ? normalizedAmount
         : 0,
 
+    // Customer-facing rate: derived from the exact provider payout after the 5% margin.
     rate:
-      Number.isFinite(
-        normalizedRate
-      )
-        ? normalizedRate
-        : 0,
+      normalizedCustomerRate,
 
+    providerRate:
+      Number.isFinite(normalizedProviderRate) && normalizedProviderRate > 0
+        ? normalizedProviderRate
+        : normalizedAmount > 0 && normalizedProviderPayout > 0
+            ? normalizedProviderPayout / normalizedAmount
+            : normalizedRate,
+
+    customerRate:
+      normalizedCustomerRate,
+
+    marginPercent:
+      5,
+
+    // Customer-visible payout after GiftPay's 5% margin.
     expectedPayout:
-      Number.isFinite(
-        normalizedExpectedPayout
-      )
-        ? normalizedExpectedPayout
-        : 0,
+      normalizedSellPricing.customerPayout,
+
+    providerExpectedPayout:
+      normalizedSellPricing.providerPayout,
+
+    giftPayMargin:
+      normalizedSellPricing.giftPayMargin,
+
+    customerPayout:
+      normalizedSellPricing.customerPayout,
 
     payoutMethod:
       payoutMethod ||

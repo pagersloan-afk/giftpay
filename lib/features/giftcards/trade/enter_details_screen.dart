@@ -47,16 +47,28 @@ class _EnterTradeDetailsScreenState extends State<EnterTradeDetailsScreen> {
   // CARD INFORMATION
   // ============================================================
 
-  double get _rate {
+  // `customerRate` is already adjusted by the backend for GiftPay's 5% margin.
+  double get _customerRate {
+    final customerRate = double.tryParse(
+      widget.giftcard['customerRate']?.toString() ?? '',
+    );
+
+    if (customerRate != null && customerRate >= 0) {
+      return customerRate;
+    }
+
     return double.tryParse(widget.giftcard['rate']?.toString() ?? '') ?? 0;
   }
+
+  double get _rate => _customerRate;
 
   double get _minimum {
     return double.tryParse(widget.giftcard['minimum']?.toString() ?? '') ?? 0;
   }
 
+  // Use the customer-facing rate directly so the displayed rate and payout agree.
   double get _payout {
-    return _amount * _rate;
+    return _amount * _customerRate;
   }
 
   String get _name {
@@ -357,7 +369,7 @@ class _EnterTradeDetailsScreenState extends State<EnterTradeDetailsScreen> {
           const SizedBox(height: 18),
 
           const Text(
-            'The displayed payout is an estimate based on the current Prestmit rate. The final payout is determined after verification.',
+            'The displayed rate and payout use the current Prestmit rate after GiftPay pricing. The final payout is determined after verification.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.5),
           ),
@@ -544,7 +556,7 @@ class _EnterTradeDetailsScreenState extends State<EnterTradeDetailsScreen> {
           const SizedBox(height: 7),
 
           Text(
-            '₦${_rate.toStringAsFixed(0)} / unit',
+            '₦${_customerRate.toStringAsFixed(2)} / unit',
 
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
           ),
@@ -552,7 +564,7 @@ class _EnterTradeDetailsScreenState extends State<EnterTradeDetailsScreen> {
           const SizedBox(height: 22),
 
           const Text(
-            'Estimated payout',
+            'You will receive',
             style: TextStyle(color: Colors.white54),
           ),
 

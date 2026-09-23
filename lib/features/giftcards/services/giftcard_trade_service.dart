@@ -330,9 +330,20 @@ class GiftCardTradeService {
 
       'amount': transaction['amount'] ?? amount,
 
-      'rate': transaction['rate'] ?? rate,
+      'rate': transaction['customerRate'] ?? transaction['rate'] ?? rate,
 
-      'valueInNaira': transaction['expectedPayout'] ?? expectedPayout,
+      'providerRate': transaction['providerRate'],
+
+      'customerRate':
+          transaction['customerRate'] ?? transaction['rate'] ?? rate,
+
+      // Backend is the source of truth for the customer's final payout.
+      // Never expose the GiftPay margin as a separate UI field.
+      'valueInNaira':
+          transaction['customerPayout'] ??
+          transaction['walletCreditAmount'] ??
+          transaction['expectedPayout'] ??
+          expectedPayout,
 
       'images': transaction['images'] ?? const [],
 

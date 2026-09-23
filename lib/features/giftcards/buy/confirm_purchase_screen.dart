@@ -184,6 +184,14 @@ class _ConfirmGiftCardPurchaseScreenState
     return NumberFormat("#,##0.00").format(number);
   }
 
+  double _customerTotal() {
+    if (quote == null) {
+      throw Exception("Payment quote is not available.");
+    }
+
+    return _service.customerDebitAmount(quote!);
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = widget.product.currencyCode;
@@ -274,16 +282,15 @@ class _ConfirmGiftCardPurchaseScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Prestmit USD Value: "
-                        "\$${_formatNumber(quote!["USD"])}",
+                        "Gift Card Value: "
+                        "${widget.amount.toStringAsFixed(2)} $currency",
                         style: const TextStyle(color: Colors.white70),
                       ),
 
                       const SizedBox(height: 8),
 
                       Text(
-                        "You will be charged: "
-                        "₦${_formatNumber(quote!["NAIRA"])}",
+                        "Total: ₦${_formatNumber(_customerTotal())}",
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

@@ -200,6 +200,40 @@ class GiftCardService {
   }
 
   /// Create the actual Prestmit gift-card purchase.
+  /// Extract the amount the GiftPay customer should actually pay.
+  ///
+  /// The backend is the source of truth. Older responses may only contain
+  /// Prestmit's provider amount, so the 3% customer total is used only as a
+  /// compatibility fallback for old backend responses. The UI never displays
+  /// the fee itself.
+  double customerDebitAmount(Map<String, dynamic> quote) {
+    final directKeys = [
+      "customerDebitAmount",
+      "customerAmount",
+      "customerTotal",
+      "walletDebitAmount",
+    ];
+
+    for (final key in directKeys) {
+      final value = _number(quote[key]);
+      if (value != null && value > 0) return value;
+    }
+
+    final providerAmount =
+        _number(quote["totalPaymentAmount"]) ?? _number(quote["NAIRA"]);
+
+    if (providerAmount != null && providerAmount > 0) {
+      return providerAmount * 1.03;
+    }
+
+    throw Exception("A valid customer payment amount was not returned.");
+  }
+
+  double? _number(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString().replaceAll(',', '') ?? '');
+  }
+
   Future<Map<String, dynamic>> buyGiftCard({
     required String sku,
     required double price,

@@ -46,6 +46,78 @@ class HistoryTile extends StatelessWidget {
     return "₦${NumberFormat("#,##0.00").format(number)}";
   }
 
+  // ============================================================
+  // PRESTMIT SELL DETECTION
+  // ============================================================
+
+  bool _isPrestmitSell() {
+    if (transaction["prestmitSell"] == true) {
+      return true;
+    }
+
+    final type = transaction["type"]?.toString().toLowerCase() ?? "";
+
+    final title = transaction["title"]?.toString().toLowerCase() ?? "";
+
+    return type == "giftcard_sell" || title.contains("gift card sale");
+  }
+
+  bool _isRejectedPrestmitSell() {
+    if (!_isPrestmitSell()) {
+      return false;
+    }
+
+    final status = transaction["status"]?.toString().toLowerCase() ?? "";
+
+    return status == "rejected" || transaction["isRejectedSell"] == true;
+  }
+
+  bool _isCompletedPrestmitSell() {
+    if (!_isPrestmitSell()) {
+      return false;
+    }
+
+    final status = transaction["status"]?.toString().toLowerCase() ?? "";
+
+    return status == "completed" || transaction["isCompletedSell"] == true;
+  }
+
+  // ============================================================
+  // DISPLAY COLOR
+  // ============================================================
+
+  Color _prestmitSellColor() {
+    if (_isRejectedPrestmitSell()) {
+      return Colors.red;
+    }
+
+    if (_isCompletedPrestmitSell()) {
+      return Colors.green;
+    }
+
+    return Colors.orange;
+  }
+
+  // ============================================================
+  // DISPLAY ICON
+  // ============================================================
+
+  IconData _prestmitSellIcon() {
+    if (_isRejectedPrestmitSell()) {
+      return Icons.cancel_outlined;
+    }
+
+    if (_isCompletedPrestmitSell()) {
+      return Icons.check_circle_outline;
+    }
+
+    return Icons.card_giftcard;
+  }
+
+  // ============================================================
+  // MAIN BUILD
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
     final title = transaction["title"]?.toString() ?? "Transaction";
@@ -54,7 +126,18 @@ class HistoryTile extends StatelessWidget {
 
     final amount = _formatAmount(transaction["amount"]);
 
-    final iconData = HistoryIconMapper.detect(title, type);
+    // ----------------------------------------------------------
+    // Prestmit SELL
+    // ----------------------------------------------------------
+
+    final bool isPrestmitSell = _isPrestmitSell();
+
+    final dynamic iconData = isPrestmitSell
+        ? {
+            "icon": Icon(_prestmitSellIcon(), color: Colors.white, size: 20),
+            "color": _prestmitSellColor(),
+          }
+        : HistoryIconMapper.detect(title, type);
 
     final icon = iconData["icon"];
     final color = iconData["color"];
@@ -66,7 +149,28 @@ class HistoryTile extends StatelessWidget {
       ),
       leading: CircleAvatar(backgroundColor: color, child: icon),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(formattedDate, style: const TextStyle(fontSize: 12)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(formattedDate, style: const TextStyle(fontSize: 12)),
+
+          // ------------------------------------------------------
+          // Prestmit SELL status
+          // ------------------------------------------------------
+          if (isPrestmitSell)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                _sellStatusLabel(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _prestmitSellColor(),
+                ),
+              ),
+            ),
+        ],
+      ),
       trailing: Text(
         amount,
         style: TextStyle(color: color, fontWeight: FontWeight.bold),
@@ -75,7 +179,243 @@ class HistoryTile extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // SELL STATUS LABEL
+  // ============================================================
+
+  String _sellStatusLabel() {
+    final status = transaction["status"]?.toString().toLowerCase() ?? "";
+
+    switch (status) {
+      case "completed":
+        return "COMPLETED";
+
+      case "rejected":
+        return "REJECTED";
+
+      case "pending":
+        return "PENDING";
+
+      default:
+        return status.isEmpty ? "SELL TRANSACTION" : status.toUpperCase();
+    }
+  }
+
+  // ============================================================
+  // PRESTMIT SELL DETAILS
+  // ============================================================
+
+  Future<void> _showPrestmitSellDetails(BuildContext context) async {
+    final brand = transaction["brand"]?.toString() ?? "";
+
+    final country = transaction["country"]?.toString() ?? "";
+
+    final cardType = transaction["cardType"]?.toString() ?? "";
+
+    final providerReference =
+        transaction["providerReference"]?.toString() ?? "";
+
+    final cardAmount = transaction["cardAmount"] ?? transaction["amount"] ?? 0;
+
+    final rate = transaction["rate"] ?? 0;
+
+    final valueInNaira =
+        transaction["valueInNaira"] ?? transaction["amount"] ?? 0;
+
+    final payoutMethod = transaction["payoutMethod"]?.toString() ?? "";
+
+    final rejectionReason = transaction["rejectionReason"]?.toString() ?? "";
+
+    final status = transaction["status"]?.toString().toUpperCase() ?? "UNKNOWN";
+
+    if (!context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                status == "REJECTED"
+                    ? Icons.cancel_outlined
+                    : status == "COMPLETED"
+                    ? Icons.check_circle_outline
+                    : Icons.card_giftcard,
+                color: status == "REJECTED"
+                    ? Colors.red
+                    : status == "COMPLETED"
+                    ? Colors.green
+                    : Colors.orange,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  status == "REJECTED"
+                      ? "Gift Card Sale Rejected"
+                      : status == "COMPLETED"
+                      ? "Gift Card Sale"
+                      : "Gift Card Sale",
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (brand.isNotEmpty) _detailRow("Brand", brand),
+
+                if (country.isNotEmpty) _detailRow("Country", country),
+
+                if (cardType.isNotEmpty) _detailRow("Card Type", cardType),
+
+                _detailRow("Card Value", _formatAmount(cardAmount)),
+
+                _detailRow("Rate", rate.toString()),
+
+                _detailRow("Expected Payout", _formatAmount(valueInNaira)),
+
+                if (payoutMethod.isNotEmpty)
+                  _detailRow("Payout Method", payoutMethod),
+
+                if (providerReference.isNotEmpty)
+                  _detailRow("Reference", providerReference),
+
+                const SizedBox(height: 12),
+
+                Text(
+                  "Status",
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+
+                const SizedBox(height: 4),
+
+                Text(
+                  status,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: status == "REJECTED"
+                        ? Colors.red
+                        : status == "COMPLETED"
+                        ? Colors.green
+                        : Colors.orange,
+                  ),
+                ),
+
+                // ------------------------------------------------
+                // Rejection reason
+                // ------------------------------------------------
+                if (status == "REJECTED" && rejectionReason.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+
+                  Text(
+                    "Rejection Reason",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+
+                  const SizedBox(height: 5),
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.red.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Text(
+                      rejectionReason,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // DETAIL ROW
+  // ============================================================
+
+  Widget _detailRow(String label, dynamic value) {
+    final text = value?.toString() ?? "";
+
+    if (text.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 125,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // OPEN RECEIPT
+  // ============================================================
+
   Future<void> _openReceipt(BuildContext context) async {
+    // ==========================================================
+    // PRESTMIT SELL
+    // ==========================================================
+
+    if (_isPrestmitSell()) {
+      // Rejected SELLs don't have a wallet transaction.
+      // Show their trade details instead of attempting to open
+      // a wallet receipt.
+      if (_isRejectedPrestmitSell()) {
+        await _showPrestmitSellDetails(context);
+        return;
+      }
+
+      // Pending SELLs also don't necessarily have a wallet
+      // transaction yet.
+      final status = transaction["status"]?.toString().toLowerCase() ?? "";
+
+      if (status != "completed") {
+        await _showPrestmitSellDetails(context);
+        return;
+      }
+
+      // Completed SELL should normally have the actual wallet
+      // transaction, so continue below and find it.
+    }
+
     final id = transaction["id"];
 
     final user = FirebaseAuth.instance.currentUser;
