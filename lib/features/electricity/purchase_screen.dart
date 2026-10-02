@@ -1,11 +1,11 @@
 // lib/features/electricity/purchase_screen.dart
 
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:utilityhub/config/api.dart';
-
 import 'electricity_processing_screen.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 
@@ -69,11 +69,13 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(data["message"] ?? "Wallet payment failed")),
       );
+
       return null;
     } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Wallet payment error")));
+
       return null;
     }
   }
@@ -118,6 +120,7 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
 
     // STEP 1 — WALLET PAY
     final requestId = await walletPay();
+
     if (requestId == null) {
       setState(() => loading = false);
       return;
@@ -126,7 +129,8 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
     // STEP 2 — VEND
     final vend = await vendElectricity(requestId);
 
-    // ⭐ CASE 1 — BACKEND REUSED TOKEN (NO NEED FOR PROCESSING SCREEN)
+    // ⭐ CASE 1 — BACKEND REUSED TOKEN
+    // NO NEED FOR PROCESSING SCREEN
     if (vend["reused"] == true) {
       setState(() => loading = false);
 
@@ -144,6 +148,7 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
           ),
         ),
       );
+
       return;
     }
 
@@ -156,6 +161,7 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(vend["message"] ?? "Please wait a few minutes")),
       );
+
       return;
     }
 
@@ -166,6 +172,7 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(vend["message"] ?? "Vending failed")),
       );
+
       return;
     }
 
@@ -201,77 +208,110 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // CUSTOMER DETAILS CARD — GIFT PAY DARK THEME
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.15),
-                      width: 1.2,
+                // -------------------------------------------------
+                // CUSTOMER DETAILS CARD
+                // -------------------------------------------------
+                SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        blurRadius: 30,
-                        offset: const Offset(0, 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.15),
+                        width: 1.2,
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.15),
-                          shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 30,
+                          offset: const Offset(0, 12),
                         ),
-                        child: Icon(
-                          Icons.flash_on,
-                          size: 40,
-                          color: Colors.blue.shade300,
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // -------------------------------------------
+                        // ELECTRICITY ICON
+                        // -------------------------------------------
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.15),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.flash_on,
+                            size: 38,
+                            color: Colors.blue.shade300,
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 16),
+                        const SizedBox(width: 18),
 
-                      Text(
-                        widget.customerName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                        // -------------------------------------------
+                        // CUSTOMER DETAILS
+                        // -------------------------------------------
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.customerName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+
+                              const SizedBox(height: 6),
+
+                              Text(
+                                "Meter: ${widget.meterNumber} "
+                                "(${widget.meterType == "01" ? "Prepaid" : "Postpaid"})",
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              Text(
+                                "Disco: ${widget.discoCode}",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-
-                      const SizedBox(height: 6),
-
-                      Text(
-                        "Meter: ${widget.meterNumber} (${widget.meterType == "01" ? "Prepaid" : "Postpaid"})",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white70,
-                        ),
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      Text(
-                        "Disco: ${widget.discoCode}",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 24),
 
+                // -------------------------------------------------
                 // AMOUNT
+                // -------------------------------------------------
                 TextFormField(
                   decoration: const InputDecoration(
                     labelText: "Amount (₦)",
@@ -280,10 +320,15 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
                   keyboardType: TextInputType.number,
                   onChanged: (v) => amount = v,
                   validator: (v) {
-                    if (v == null || v.isEmpty) return "Enter amount";
+                    if (v == null || v.isEmpty) {
+                      return "Enter amount";
+                    }
 
                     final amt = double.tryParse(v) ?? 0;
-                    if (amt < 1000) return "Minimum purchase is ₦1000";
+
+                    if (amt < 1000) {
+                      return "Minimum purchase is ₦1000";
+                    }
 
                     return null;
                   },
@@ -291,7 +336,9 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
 
                 const SizedBox(height: 16),
 
+                // -------------------------------------------------
                 // PHONE
+                // -------------------------------------------------
                 TextFormField(
                   decoration: const InputDecoration(
                     labelText: "Phone Number",
@@ -305,6 +352,9 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
 
                 const SizedBox(height: 32),
 
+                // -------------------------------------------------
+                // PAY BUTTON
+                // -------------------------------------------------
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

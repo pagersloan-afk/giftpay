@@ -131,13 +131,15 @@ class _AddMoneyScreenState extends State<AddMoneyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Add Money")),
+
       body: AppResponsiveLayout(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // ⭐ Virtual Account Card (GiftPay style)
+              // Virtual Account Card
               if (loading)
                 const Padding(
                   padding: EdgeInsets.all(16),
@@ -160,6 +162,7 @@ class _AddMoneyScreenState extends State<AddMoneyScreen> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
                         "Bank Transfer",
@@ -170,58 +173,50 @@ class _AddMoneyScreenState extends State<AddMoneyScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-
-                      // ⭐ Account Number
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            va!.accountNumber,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
+                          Expanded(
+                            child: Text(
+                              va!.accountNumber,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.copy,
-                                  color: Colors.white70,
+                          IconButton(
+                            icon: const Icon(Icons.copy, color: Colors.white70),
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(text: va!.accountNumber),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Account number copied"),
                                 ),
-                                onPressed: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: va!.accountNumber),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Account number copied"),
-                                    ),
-                                  );
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.share,
-                                  color: Colors.white70,
+                              );
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.share,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(text: va!.accountNumber),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Copied for sharing"),
                                 ),
-                                onPressed: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: va!.accountNumber),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Copied for sharing"),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 6),
                       Text(
                         va!.bankName,
@@ -237,7 +232,6 @@ class _AddMoneyScreenState extends State<AddMoneyScreen> {
                           fontSize: 14,
                         ),
                       ),
-
                       const SizedBox(height: 12),
                       const Text(
                         "FREE Instant funding within 10s",
@@ -253,7 +247,6 @@ class _AddMoneyScreenState extends State<AddMoneyScreen> {
 
               _sectionDivider(),
 
-              // ⭐ Other Payment Options (PalmPay style)
               _optionTile(
                 icon: Icons.store_mall_directory,
                 title: "Cash Deposit",

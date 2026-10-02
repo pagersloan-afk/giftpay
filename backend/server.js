@@ -53,6 +53,7 @@ const profileRoutes = require("./src/routes/profile.routes.js");
 const securityRoutes = require("./src/routes/security.routes.js");
 const prestmitRoutes = require("./src/routes/prestmit.routes");
 const prestmitSellRoutes = require("./src/routes/prestmit.sell.routes");
+const bulkTransferRoutes = require("./src/routes/bulkTransfer.routes");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -191,6 +192,7 @@ app.use("/api/betting", bettingRoutes);
 // Transfers
 // ============================================================
 app.use("/api/transfer", transferRoutes);
+app.use("/api/transfers", bulkTransferRoutes);
 
 // ============================================================
 // Paystack Dedicated Virtual Account routes

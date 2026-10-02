@@ -284,7 +284,7 @@ class _HeroVisual extends StatelessWidget {
               ),
               const SizedBox(width: 7),
               Text(
-                'Powered by GiftPay',
+                'Powered by Gift Technology Limited',
                 style: TextStyle(
                   fontFamily: 'SegoeUI',
                   fontSize: 12,

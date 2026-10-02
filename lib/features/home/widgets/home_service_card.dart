@@ -1,6 +1,5 @@
-// lib/features/home/widgets/home_service_card.dart
-
 import 'package:flutter/material.dart';
+import 'package:utilityhub/features/wallet/transfer/bulk_transfer_screen.dart';
 import 'package:utilityhub/core/services/user_services_api.dart';
 import 'package:utilityhub/core/utils/logout_handler.dart';
 
@@ -95,6 +94,15 @@ class _HomeServiceCardState extends State<HomeServiceCard>
     // Gift Card requires a Buy/Sell choice first.
     if (_isGiftCardService) {
       await _showGiftCardChooser();
+      return;
+    }
+
+    // Bulk transfer opens its screen directly rather than using a named route.
+    if (widget.title.trim().toLowerCase() == 'bulk transfer') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BulkTransferScreen()),
+      );
       return;
     }
 

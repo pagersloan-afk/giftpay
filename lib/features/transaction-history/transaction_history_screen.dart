@@ -94,8 +94,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           return object[key];
         }
 
-        // Supports the GiftCardTrade model without requiring
-        // the transaction history screen to know every model detail.
         switch (key) {
           case "id":
             return object.id;
@@ -153,7 +151,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     ).toLowerCase();
 
     final rejectionReason = stringValue(read(trade, "rejectionReason"));
-
     final payoutMethod = stringValue(read(trade, "payoutMethod"));
 
     final createdAt = read(trade, "createdAt");
@@ -165,10 +162,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         ? "Gift Card Sale Completed"
         : "Gift Card Sale";
 
-    // A rejected SELL must NOT be represented as a wallet credit.
-    //
-    // We use the expected/value-in-naira amount for display only.
-    // This does not create or imply a wallet transaction.
     final displayAmount = valueInNaira ?? amount ?? 0;
 
     return {
@@ -179,8 +172,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       "amount": displayAmount,
       "timestamp": createdAt ?? updatedAt ?? 0,
       "date": createdAt ?? updatedAt ?? 0,
-
-      // Prestmit SELL metadata
       "prestmitSell": true,
       "providerReference": providerReference,
       "brand": brand,
@@ -194,10 +185,60 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       "payoutMethod": payoutMethod,
       "rejectionReason": rejectionReason,
       "comments": read(trade, "comments"),
-
-      // Helpful for UI/receipt handling.
       "isRejectedSell": status == "rejected",
       "isCompletedSell": status == "completed",
+    };
+  }
+
+  // ============================================================
+  // BULK TRANSFER → MAIN HISTORY FORMAT
+  // ============================================================
+
+  Map<String, dynamic> _bulkTransferToHistory(
+    String documentId,
+    Map<String, dynamic> batch,
+  ) {
+    final rawCreatedAt =
+        batch["createdAt"] ??
+        batch["created_at"] ??
+        batch["timestamp"] ??
+        batch["date"];
+
+    final items = batch["items"] is List
+        ? List<dynamic>.from(batch["items"] as List)
+        : <dynamic>[];
+
+    final itemCount =
+        batch["itemCount"] ?? batch["totalRecipients"] ?? items.length;
+
+    final totalAmount =
+        batch["totalAmount"] ?? batch["total_amount"] ?? batch["amount"] ?? 0;
+
+    final totalFees = batch["totalFees"] ?? batch["total_fees"] ?? 0;
+
+    final totalDebited =
+        batch["totalDebited"] ?? batch["total_debited"] ?? totalAmount;
+
+    return {
+      "id": documentId,
+      "type": "bulk_transfer",
+      "title": batch["batchName"]?.toString().trim().isNotEmpty == true
+          ? batch["batchName"].toString()
+          : "Bulk Transfer",
+      "amount": totalDebited,
+      "timestamp": _safeTimestamp(rawCreatedAt),
+      "date": rawCreatedAt,
+      "batchReference": batch["batchReference"]?.toString() ?? documentId,
+      "status": batch["status"]?.toString() ?? "unknown",
+      "currency": batch["currency"]?.toString() ?? "NGN",
+      "itemCount": itemCount,
+      "totalAmount": totalAmount,
+      "totalFees": totalFees,
+      "totalDebited": totalDebited,
+      "items": items,
+      "refunded": batch["refunded"] == true,
+      "refundAmount": batch["refundAmount"] ?? 0,
+      "refundReason": batch["refundReason"]?.toString() ?? "",
     };
   }
 
@@ -230,7 +271,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           .get();
 
       final walletTx = (walletDoc.data()?["transactions"] ?? [])
-          .whereType<Map<String, dynamic>>()
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
           .toList();
 
       // ==========================================================
@@ -243,20 +285,32 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           .collection("transactions")
           .get();
 
-      final elecTx = elecSnap.docs.map((d) => d.data()).toList();
+      final elecTx = elecSnap.docs
+          .map((d) => Map<String, dynamic>.from(d.data()))
+          .toList();
 
       // ==========================================================
-      // 3. PRESTMIT SELL TRANSACTIONS
+      // 3. BULK TRANSFER HISTORY
       // ==========================================================
-      //
-      // This is the important addition.
-      //
-      // Completed SELL transactions already appear through the
-      // wallet transaction created by the backend.
-      //
-      // Rejected SELL transactions do NOT create a wallet credit,
-      // so we explicitly load them from Prestmit SELL history.
-      //
+
+      final bulkSnap = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(userId)
+          .collection("bulk_transfers")
+          .get();
+
+      final bulkTx = bulkSnap.docs
+          .map((doc) {
+            return _bulkTransferToHistory(doc.id, doc.data());
+          })
+          .where((tx) {
+            return _safeTimestamp(tx["timestamp"]) > 0;
+          })
+          .toList();
+
+      // ==========================================================
+      // 4. PRESTMIT SELL TRANSACTIONS
+      // ==========================================================
 
       List<Map<String, dynamic>> prestmitSellTx = [];
 
@@ -267,35 +321,23 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             .map<Map<String, dynamic>>((trade) => _prestmitSellToHistory(trade))
             .toList();
       } catch (e) {
-        // Do not allow Prestmit history failure to break the
-        // normal wallet/utility transaction history.
         debugPrint("[TRANSACTION HISTORY] Prestmit SELL history failed: $e");
       }
 
       // ==========================================================
-      // 4. MERGE
+      // 5. MERGE
       // ==========================================================
 
       final merged = <Map<String, dynamic>>[
-        ...walletTx.map((e) => Map<String, dynamic>.from(e)),
-        ...elecTx.map((e) => Map<String, dynamic>.from(e)),
+        ...walletTx,
+        ...elecTx,
+        ...bulkTx,
         ...prestmitSellTx,
       ];
 
       // ==========================================================
-      // 5. REMOVE DUPLICATE COMPLETED SELL
+      // 6. REMOVE DUPLICATE COMPLETED SELL
       // ==========================================================
-      //
-      // A completed SELL can exist in:
-      //
-      // - wallet.transactions
-      // - Prestmit SELL history
-      //
-      // We keep the wallet transaction because it is the actual
-      // financial wallet transaction.
-      //
-      // Rejected SELLs remain because they have no wallet entry.
-      //
 
       final walletPrestmitReferences = <String>{};
 
@@ -305,7 +347,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
         final looksLikeGiftCardSell =
             type == "giftcard_sell" ||
-            type == "giftcard" && title.contains("sale") ||
+            (type == "giftcard" && title.contains("sale")) ||
             title.contains("gift card sale");
 
         if (!looksLikeGiftCardSell) {
@@ -328,10 +370,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       for (final tx in merged) {
         if (tx["prestmitSell"] == true) {
           final status = tx["status"]?.toString().toLowerCase() ?? "";
-
           final reference = tx["providerReference"]?.toString() ?? "";
 
-          // Completed SELL already exists as a wallet transaction.
           if (status == "completed" &&
               reference.isNotEmpty &&
               walletPrestmitReferences.contains(reference)) {
@@ -343,12 +383,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       }
 
       // ==========================================================
-      // 6. SORT NEWEST FIRST
+      // 7. SORT NEWEST FIRST
       // ==========================================================
 
       deduplicated.sort((a, b) {
         final t1 = _safeTimestamp(a["timestamp"] ?? a["date"]);
-
         final t2 = _safeTimestamp(b["timestamp"] ?? b["date"]);
 
         return t2.compareTo(t1);

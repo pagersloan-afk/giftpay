@@ -13,6 +13,7 @@ class ServicesScreen extends StatelessWidget {
     final Map<String, List<Map<String, dynamic>>> grouped = {
       "Send & Receive": [
         {"title": "Transfer", "icon": Icons.send, "route": "/transfer"},
+        {"title": "Bulk Transfer", "icon": Icons.send_to_mobile, "route": null},
         {"title": "Card", "icon": Icons.credit_card, "route": "/wallet"},
         {"title": "Network", "icon": Icons.network_check, "route": "/settings"},
         {"title": "Recurring", "icon": Icons.repeat, "route": "/settings"},

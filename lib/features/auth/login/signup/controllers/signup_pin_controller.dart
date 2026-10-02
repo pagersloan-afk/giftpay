@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 class SignupPinController {
   final String pin;
@@ -22,12 +25,40 @@ class SignupPinController {
     if (user == null) return false;
 
     try {
-      final encryptedPin = _encryptPin(pin);
+      // The PIN is never stored directly in Firestore by the Flutter client.
+      // The authenticated backend generates a unique salt and stores a
+      // scrypt-derived hash. The Firebase ID token binds this request to
+      // the currently signed-in user.
+      final idToken = await user.getIdToken(true);
 
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception("Unable to authenticate PIN setup");
+      }
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.api("/api/transaction-pin/set")),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $idToken",
+        },
+        body: jsonEncode({"pin": pin, "confirmPin": confirmPin}),
+      );
+
+      Map<String, dynamic> data = {};
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {}
+
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          data["status"] != true) {
+        throw Exception(data["message"] ?? "Unable to secure transaction PIN");
+      }
+
+      // Keep onboarding state in the same user document as before.
       await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
-        "transactionPin": encryptedPin,
         "onboardingStatus": "pin_set",
-      }, SetOptions(merge: true)); // ⭐ merge, keep all previous fields
+      }, SetOptions(merge: true));
 
       return true;
     } catch (e) {
@@ -36,10 +67,5 @@ class SignupPinController {
       ).showSnackBar(SnackBar(content: Text(e.toString())));
       return false;
     }
-  }
-
-  String _encryptPin(String pin) {
-    // TODO: Replace with real encryption
-    return "enc_$pin";
   }
 }

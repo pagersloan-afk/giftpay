@@ -56,7 +56,6 @@ class HistoryTile extends StatelessWidget {
     }
 
     final type = transaction["type"]?.toString().toLowerCase() ?? "";
-
     final title = transaction["title"]?.toString().toLowerCase() ?? "";
 
     return type == "giftcard_sell" || title.contains("gift card sale");
@@ -83,6 +82,14 @@ class HistoryTile extends StatelessWidget {
   }
 
   // ============================================================
+  // BULK TRANSFER DETECTION
+  // ============================================================
+
+  bool _isBulkTransfer() {
+    return transaction["type"]?.toString().toLowerCase() == "bulk_transfer";
+  }
+
+  // ============================================================
   // DISPLAY COLOR
   // ============================================================
 
@@ -96,6 +103,20 @@ class HistoryTile extends StatelessWidget {
     }
 
     return Colors.orange;
+  }
+
+  Color _bulkTransferColor() {
+    final status = transaction["status"]?.toString().toLowerCase() ?? "";
+
+    if (status == "completed" || status == "success") {
+      return Colors.green;
+    }
+
+    if (status == "failed" || status == "rejected") {
+      return Colors.red;
+    }
+
+    return Colors.indigo;
   }
 
   // ============================================================
@@ -121,21 +142,25 @@ class HistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = transaction["title"]?.toString() ?? "Transaction";
-
     final type = transaction["type"]?.toString() ?? "transaction";
-
     final amount = _formatAmount(transaction["amount"]);
 
-    // ----------------------------------------------------------
-    // Prestmit SELL
-    // ----------------------------------------------------------
-
     final bool isPrestmitSell = _isPrestmitSell();
+    final bool isBulkTransfer = _isBulkTransfer();
 
     final dynamic iconData = isPrestmitSell
         ? {
             "icon": Icon(_prestmitSellIcon(), color: Colors.white, size: 20),
             "color": _prestmitSellColor(),
+          }
+        : isBulkTransfer
+        ? {
+            "icon": const Icon(
+              Icons.account_balance,
+              color: Colors.white,
+              size: 20,
+            ),
+            "color": _bulkTransferColor(),
           }
         : HistoryIconMapper.detect(title, type);
 
@@ -153,10 +178,6 @@ class HistoryTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(formattedDate, style: const TextStyle(fontSize: 12)),
-
-          // ------------------------------------------------------
-          // Prestmit SELL status
-          // ------------------------------------------------------
           if (isPrestmitSell)
             Padding(
               padding: const EdgeInsets.only(top: 3),
@@ -169,13 +190,31 @@ class HistoryTile extends StatelessWidget {
                 ),
               ),
             ),
+          if (isBulkTransfer)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                _bulkTransferStatusLabel(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _bulkTransferColor(),
+                ),
+              ),
+            ),
         ],
       ),
       trailing: Text(
         amount,
         style: TextStyle(color: color, fontWeight: FontWeight.bold),
       ),
-      onTap: () => _openReceipt(context),
+      onTap: () {
+        if (isBulkTransfer) {
+          _showBulkTransferDetails(context);
+        } else {
+          _openReceipt(context);
+        }
+      },
     );
   }
 
@@ -189,15 +228,39 @@ class HistoryTile extends StatelessWidget {
     switch (status) {
       case "completed":
         return "COMPLETED";
-
       case "rejected":
         return "REJECTED";
-
       case "pending":
         return "PENDING";
-
       default:
         return status.isEmpty ? "SELL TRANSACTION" : status.toUpperCase();
+    }
+  }
+
+  // ============================================================
+  // BULK TRANSFER STATUS LABEL
+  // ============================================================
+
+  String _bulkTransferStatusLabel() {
+    final status = transaction["status"]?.toString().toLowerCase() ?? "";
+
+    switch (status) {
+      case "completed":
+      case "success":
+        return "COMPLETED";
+      case "failed":
+      case "rejected":
+        return "FAILED";
+      case "pending":
+      case "submitting":
+      case "processing":
+      case "in_progress":
+        return "PROCESSING";
+      case "partially_completed":
+      case "partial":
+        return "PARTIALLY COMPLETED";
+      default:
+        return status.isEmpty ? "BULK TRANSFER" : status.toUpperCase();
     }
   }
 
@@ -207,25 +270,16 @@ class HistoryTile extends StatelessWidget {
 
   Future<void> _showPrestmitSellDetails(BuildContext context) async {
     final brand = transaction["brand"]?.toString() ?? "";
-
     final country = transaction["country"]?.toString() ?? "";
-
     final cardType = transaction["cardType"]?.toString() ?? "";
-
     final providerReference =
         transaction["providerReference"]?.toString() ?? "";
-
     final cardAmount = transaction["cardAmount"] ?? transaction["amount"] ?? 0;
-
     final rate = transaction["rate"] ?? 0;
-
     final valueInNaira =
         transaction["valueInNaira"] ?? transaction["amount"] ?? 0;
-
     final payoutMethod = transaction["payoutMethod"]?.toString() ?? "";
-
     final rejectionReason = transaction["rejectionReason"]?.toString() ?? "";
-
     final status = transaction["status"]?.toString().toUpperCase() ?? "UNKNOWN";
 
     if (!context.mounted) return;
@@ -253,8 +307,6 @@ class HistoryTile extends StatelessWidget {
                 child: Text(
                   status == "REJECTED"
                       ? "Gift Card Sale Rejected"
-                      : status == "COMPLETED"
-                      ? "Gift Card Sale"
                       : "Gift Card Sale",
                 ),
               ),
@@ -265,32 +317,21 @@ class HistoryTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (brand.isNotEmpty) _detailRow("Brand", brand),
-
                 if (country.isNotEmpty) _detailRow("Country", country),
-
                 if (cardType.isNotEmpty) _detailRow("Card Type", cardType),
-
                 _detailRow("Card Value", _formatAmount(cardAmount)),
-
                 _detailRow("Rate", rate.toString()),
-
                 _detailRow("Expected Payout", _formatAmount(valueInNaira)),
-
                 if (payoutMethod.isNotEmpty)
                   _detailRow("Payout Method", payoutMethod),
-
                 if (providerReference.isNotEmpty)
                   _detailRow("Reference", providerReference),
-
                 const SizedBox(height: 12),
-
                 Text(
                   "Status",
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   status,
                   style: TextStyle(
@@ -302,20 +343,13 @@ class HistoryTile extends StatelessWidget {
                         : Colors.orange,
                   ),
                 ),
-
-                // ------------------------------------------------
-                // Rejection reason
-                // ------------------------------------------------
                 if (status == "REJECTED" && rejectionReason.isNotEmpty) ...[
                   const SizedBox(height: 16),
-
                   Text(
                     "Rejection Reason",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
-
                   const SizedBox(height: 5),
-
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -340,9 +374,167 @@ class HistoryTile extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // BULK TRANSFER DETAILS
+  // ============================================================
+
+  Future<void> _showBulkTransferDetails(BuildContext context) async {
+    final reference = transaction["batchReference"]?.toString() ?? "";
+
+    final status = transaction["status"]?.toString() ?? "unknown";
+
+    final rawItems = transaction["items"];
+
+    final items = rawItems is List
+        ? rawItems
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList()
+        : <Map<String, dynamic>>[];
+
+    final itemCount = transaction["itemCount"] ?? items.length;
+
+    final totalAmount =
+        transaction["totalAmount"] ?? transaction["amount"] ?? 0;
+
+    final totalFees = transaction["totalFees"] ?? 0;
+
+    final totalDebited =
+        transaction["totalDebited"] ?? transaction["amount"] ?? 0;
+
+    final refunded = transaction["refunded"] == true;
+
+    if (!context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text("Bulk Transfer Details"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _detailRow("Status", status.toUpperCase()),
+                  if (reference.isNotEmpty)
+                    _detailRow("Batch Reference", reference),
+                  _detailRow("Recipients", itemCount.toString()),
+                  _detailRow("Transfer Amount", _formatAmount(totalAmount)),
+                  _detailRow("Fees", _formatAmount(totalFees)),
+                  _detailRow("Total Debited", _formatAmount(totalDebited)),
+                  if (refunded)
+                    _detailRow(
+                      "Refund Amount",
+                      _formatAmount(transaction["refundAmount"]),
+                    ),
+                  if ((transaction["refundReason"] ?? "").toString().isNotEmpty)
+                    _detailRow("Refund Reason", transaction["refundReason"]),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Recipients",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
+                  if (items.isEmpty)
+                    const Text("No recipient details available.")
+                  else
+                    ...items.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final item = entry.value;
+
+                      final name =
+                          item["accountName"]?.toString() ??
+                          item["name"]?.toString() ??
+                          "Recipient";
+
+                      final account =
+                          item["accountNumber"]?.toString() ??
+                          item["accountNo"]?.toString() ??
+                          "";
+
+                      final bank =
+                          item["bankName"]?.toString() ??
+                          item["bank"]?.toString() ??
+                          "";
+
+                      final amount = item["amount"] ?? 0;
+
+                      final itemStatus =
+                          item["status"]?.toString() ?? "unknown";
+
+                      final normalizedStatus = itemStatus.toLowerCase();
+
+                      final statusColor =
+                          normalizedStatus == "success" ||
+                              normalizedStatus == "completed"
+                          ? Colors.green
+                          : normalizedStatus == "failed" ||
+                                normalizedStatus == "rejected"
+                          ? Colors.red
+                          : Colors.orange;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "${index + 1}. $name",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (account.isNotEmpty) Text("Account: $account"),
+                              if (bank.isNotEmpty) Text("Bank: $bank"),
+                              Text("Amount: ${_formatAmount(amount)}"),
+                              const SizedBox(height: 3),
+                              Text(
+                                "Status: ${itemStatus.toUpperCase()}",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                              if ((item["failureReason"] ?? "")
+                                  .toString()
+                                  .isNotEmpty)
+                                Text(
+                                  "Reason: ${item["failureReason"]}",
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text("Close"),
             ),
           ],
@@ -395,29 +587,20 @@ class HistoryTile extends StatelessWidget {
     // ==========================================================
 
     if (_isPrestmitSell()) {
-      // Rejected SELLs don't have a wallet transaction.
-      // Show their trade details instead of attempting to open
-      // a wallet receipt.
       if (_isRejectedPrestmitSell()) {
         await _showPrestmitSellDetails(context);
         return;
       }
 
-      // Pending SELLs also don't necessarily have a wallet
-      // transaction yet.
       final status = transaction["status"]?.toString().toLowerCase() ?? "";
 
       if (status != "completed") {
         await _showPrestmitSellDetails(context);
         return;
       }
-
-      // Completed SELL should normally have the actual wallet
-      // transaction, so continue below and find it.
     }
 
     final id = transaction["id"];
-
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) return;
@@ -426,9 +609,9 @@ class HistoryTile extends StatelessWidget {
 
     final titleLower = (transaction["title"] ?? "").toString().toLowerCase();
 
-    // ============================================================
+    // ==========================================================
     // ELECTRICITY
-    // ============================================================
+    // ==========================================================
 
     if (titleLower.startsWith("electricity")) {
       final snap = await FirebaseFirestore.instance
@@ -459,9 +642,9 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ============================================================
+    // ==========================================================
     // LOAD WALLET TRANSACTION
-    // ============================================================
+    // ==========================================================
 
     final walletDoc = await FirebaseFirestore.instance
         .collection("wallets")
@@ -469,7 +652,6 @@ class HistoryTile extends StatelessWidget {
         .get();
 
     final walletData = walletDoc.data() ?? {};
-
     final txList = walletData["transactions"] as List<dynamic>? ?? [];
 
     Map<String, dynamic> realTx = {};
@@ -485,9 +667,9 @@ class HistoryTile extends StatelessWidget {
       }
     }
 
-    // ============================================================
+    // ==========================================================
     // GIFT CARD
-    // ============================================================
+    // ==========================================================
 
     final realTitle = (realTx["title"] ?? transaction["title"] ?? "")
         .toString()
@@ -519,9 +701,9 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ============================================================
+    // ==========================================================
     // AIRTIME
-    // ============================================================
+    // ==========================================================
 
     if (realTitle.startsWith("airtime")) {
       if (!context.mounted) return;
@@ -534,9 +716,9 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ============================================================
+    // ==========================================================
     // DATA
-    // ============================================================
+    // ==========================================================
 
     if (realTitle.startsWith("data")) {
       if (!context.mounted) return;
@@ -549,9 +731,9 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ============================================================
+    // ==========================================================
     // CABLE
-    // ============================================================
+    // ==========================================================
 
     if (realTitle.startsWith("cable")) {
       if (!context.mounted) return;
@@ -564,9 +746,9 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ============================================================
+    // ==========================================================
     // BETTING
-    // ============================================================
+    // ==========================================================
 
     if (realTitle.startsWith("betting") ||
         realTitle.contains("betting") ||
@@ -581,9 +763,9 @@ class HistoryTile extends StatelessWidget {
       return;
     }
 
-    // ============================================================
+    // ==========================================================
     // DEFAULT WALLET RECEIPT
-    // ============================================================
+    // ==========================================================
 
     if (!context.mounted) return;
 

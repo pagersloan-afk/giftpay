@@ -63,6 +63,7 @@ import 'package:utilityhub/features/services/services_screen.dart';
 import 'package:utilityhub/features/statement/statement_download_screen.dart';
 import 'package:utilityhub/features/statement/statement_pdf_screen.dart';
 import 'package:utilityhub/features/statement/statement_screen.dart';
+import 'package:utilityhub/features/wallet/transfer/bulk_transfer_screen.dart';
 
 // Wallet
 import 'package:utilityhub/features/wallet/wallet_screen.dart';
@@ -193,6 +194,7 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // Transfer
   '/transfer': (_) => wrap(const TransferScreen()),
+  '/bulk-transfer': (_) => wrap(const BulkTransferScreen()),
 
   // Betting
   '/betting': (_) => wrap(const BettingScreen()),

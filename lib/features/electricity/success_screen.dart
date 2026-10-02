@@ -218,7 +218,7 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       pw.Text(
-                        "Powered by GiftPay",
+                        "Powered by Gift Technology Limited",
                         style: pw.TextStyle(
                           fontSize: 10,
                           color: PdfColors.grey700,
@@ -226,7 +226,7 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
-                        "www.giftpay.app",
+                        "www.gifttechnologyltd.com",
                         style: pw.TextStyle(
                           fontSize: 10,
                           color: PdfColors.blue800,
