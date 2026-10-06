@@ -2,12 +2,13 @@
 
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_paystack_plus/flutter_paystack_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:utilityhub/config/api.dart';
+
+import '../../wallet/transfer/wigets/pin_entry_dialog.dart';
 
 import '../airtime_processing_screen.dart';
 import '../airtime_success_screen.dart';
@@ -25,7 +26,6 @@ class AirtimeController {
   final TextEditingController amountCtrl;
 
   bool loading = false;
-  bool useWallet = true;
 
   String selectedNetworkCode = "";
 
@@ -56,24 +56,86 @@ class AirtimeController {
 
   Future<void> fetchNetworks() async {
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        debugPrint(
+          "[AIRTIME] Cannot fetch networks: no authenticated Firebase user.",
+        );
+        return;
+      }
+
+      final idToken = await currentUser.getIdToken();
+
+      if (idToken == null || idToken.isEmpty) {
+        debugPrint(
+          "[AIRTIME] Cannot fetch networks: Firebase ID token is empty.",
+        );
+        return;
+      }
+
       final uri = Uri.parse(ApiConfig.api("/api/airtime/networks"));
 
-      final response = await http.get(uri);
+      debugPrint("[AIRTIME] Fetching networks: $uri");
 
-      final data = jsonDecode(response.body);
+      final response = await http
+          .get(uri, headers: {"Authorization": "Bearer $idToken"})
+          .timeout(const Duration(seconds: 20));
 
-      if (data["status"] == true && data["networks"] != null) {
-        final map = Map<String, dynamic>.from(data["networks"]);
+      debugPrint("[AIRTIME] Network response: ${response.statusCode}");
 
-        final parsed = map.map((k, v) => MapEntry(k.toString(), v.toString()));
+      debugPrint("[AIRTIME] Network response body: ${response.body}");
 
-        networkMap = parsed;
-
-        if (networkMap.isNotEmpty) {
-          selectedNetworkCode = networkMap.values.first;
-        }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint(
+          "[AIRTIME] Network request failed with HTTP ${response.statusCode}",
+        );
+        return;
       }
-    } catch (_) {}
+
+      final decoded = jsonDecode(response.body);
+
+      if (decoded is! Map) {
+        debugPrint("[AIRTIME] Invalid network response format.");
+        return;
+      }
+
+      if (decoded["status"] != true) {
+        debugPrint(
+          "[AIRTIME] Backend returned unsuccessful network response: "
+          "${decoded["message"] ?? "Unknown error"}",
+        );
+        return;
+      }
+
+      final rawNetworks = decoded["networks"];
+
+      if (rawNetworks is! Map) {
+        debugPrint("[AIRTIME] No valid networks object returned by backend.");
+        return;
+      }
+
+      final parsed = rawNetworks.map(
+        (key, value) => MapEntry(key.toString(), value.toString()),
+      );
+
+      if (parsed.isEmpty) {
+        debugPrint("[AIRTIME] Backend returned an empty network map.");
+        return;
+      }
+
+      networkMap = Map<String, String>.from(parsed);
+
+      if (!networkMap.values.contains(selectedNetworkCode)) {
+        selectedNetworkCode = networkMap.values.first;
+      }
+
+      debugPrint("[AIRTIME] Networks loaded: $networkMap");
+
+      debugPrint("[AIRTIME] Selected network: $selectedNetworkCode");
+    } catch (error) {
+      debugPrint("[AIRTIME] Network loading error: $error");
+    }
   }
 
   // ============================================================
@@ -83,7 +145,9 @@ class AirtimeController {
   void autoDetectNetwork() {
     final phone = phoneCtrl.text.trim();
 
-    if (phone.length < 4) return;
+    if (phone.length < 4) {
+      return;
+    }
 
     final prefix = phone.substring(0, 4);
 
@@ -169,6 +233,7 @@ class AirtimeController {
 
           if (decoded is Map) {
             final phone = decoded["phone"]?.toString().trim() ?? "";
+
             final network = decoded["network"]?.toString().trim() ?? "";
 
             if (phone.isNotEmpty) {
@@ -176,7 +241,7 @@ class AirtimeController {
             }
           }
         } catch (_) {
-          // Ignore malformed stored entries.
+          // Ignore malformed entries.
         }
       }
 
@@ -192,21 +257,20 @@ class AirtimeController {
   }) async {
     final cleanedPhone = phone.trim();
 
-    if (cleanedPhone.isEmpty) return;
+    if (cleanedPhone.isEmpty) {
+      return;
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Remove an existing copy first.
       recentNumbers.removeWhere((item) => item.phone == cleanedPhone);
 
-      // Put the newly successful number at the top.
       recentNumbers.insert(
         0,
         RecentAirtimeNumber(phone: cleanedPhone, network: network),
       );
 
-      // Keep maximum 10.
       if (recentNumbers.length > _maxRecentNumbers) {
         recentNumbers = recentNumbers.take(_maxRecentNumbers).toList();
       }
@@ -217,7 +281,8 @@ class AirtimeController {
 
       await prefs.setStringList(_recentNumbersKey, encoded);
     } catch (_) {
-      // Recent-number storage must never break an airtime transaction.
+      // Recent-number storage must never
+      // break an airtime transaction.
     }
   }
 
@@ -238,24 +303,58 @@ class AirtimeController {
   }
 
   // ============================================================
-  // VALIDATION
+  // SAFE MESSAGE
+  // ============================================================
+
+  void _showMessage(BuildContext context, String message) {
+    if (!context.mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
+    if (messenger == null) {
+      return;
+    }
+
+    messenger.hideCurrentSnackBar();
+
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ============================================================
+  // BASIC VALIDATION
   // ============================================================
 
   bool _validateBasic(BuildContext context) {
-    if (phoneCtrl.text.isEmpty || amountCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Fill all fields")));
+    final phone = phoneCtrl.text.trim();
+
+    final amountText = amountCtrl.text.trim();
+
+    if (phone.isEmpty || amountText.isEmpty) {
+      _showMessage(context, "Fill all fields");
 
       return false;
     }
 
-    final amount = int.tryParse(amountCtrl.text.trim());
+    final amount = int.tryParse(amountText);
 
     if (amount == null || amount < 50) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Minimum is ₦50")));
+      _showMessage(context, "Minimum is ₦50");
+
+      return false;
+    }
+
+    return true;
+  }
+
+  bool validateForPurchase(BuildContext context) {
+    if (!_validateBasic(context)) {
+      return false;
+    }
+
+    if (selectedNetworkCode.isEmpty) {
+      _showMessage(context, "Select a network first");
 
       return false;
     }
@@ -264,16 +363,214 @@ class AirtimeController {
   }
 
   // ============================================================
+  // PIN VERIFICATION
+  // ============================================================
+
+  Future<PinVerificationResult> verifyTransactionPin(
+    BuildContext context,
+    String pin,
+  ) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      return const PinVerificationResult(
+        status: PinVerificationStatus.authRequired,
+        message: "Authentication is required.",
+        lockedUntil: null,
+      );
+    }
+
+    if (!RegExp(r"^\d{4}$").hasMatch(pin)) {
+      return const PinVerificationResult(
+        status: PinVerificationStatus.invalid,
+        message: "Enter your 4-digit PIN.",
+        lockedUntil: null,
+      );
+    }
+
+    try {
+      final idToken = await currentUser.getIdToken();
+
+      if (idToken == null || idToken.isEmpty) {
+        return const PinVerificationResult(
+          status: PinVerificationStatus.authRequired,
+          message: "Authentication is required.",
+          lockedUntil: null,
+        );
+      }
+
+      final uri = Uri.parse(ApiConfig.api("/api/airtime/verify-pin"));
+
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $idToken",
+            },
+            body: jsonEncode({"transactionPin": pin}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      Map<String, dynamic> data = {};
+
+      try {
+        final decoded = jsonDecode(response.body);
+
+        if (decoded is Map) {
+          data = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+
+      final statusCode = data["code"]?.toString() ?? "";
+
+      DateTime? lockedUntil;
+
+      final rawLockedUntil = data["lockedUntil"];
+
+      if (rawLockedUntil is num) {
+        lockedUntil = DateTime.fromMillisecondsSinceEpoch(
+          rawLockedUntil.toInt(),
+        );
+      } else if (rawLockedUntil != null) {
+        final parsed = DateTime.tryParse(rawLockedUntil.toString());
+
+        if (parsed != null) {
+          lockedUntil = parsed;
+        }
+      }
+
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          data["status"] == true) {
+        return const PinVerificationResult(
+          status: PinVerificationStatus.success,
+          message: "PIN verified successfully.",
+          lockedUntil: null,
+        );
+      }
+
+      switch (statusCode) {
+        case "PIN_LOCKED":
+          return PinVerificationResult(
+            status: PinVerificationStatus.locked,
+            message: "Transaction PIN temporarily locked.",
+            lockedUntil: lockedUntil,
+          );
+
+        case "PIN_NOT_SET":
+          return const PinVerificationResult(
+            status: PinVerificationStatus.pinNotSet,
+            message: "Transaction PIN has not been set.",
+            lockedUntil: null,
+          );
+
+        case "AUTH_REQUIRED":
+          return const PinVerificationResult(
+            status: PinVerificationStatus.authRequired,
+            message: "Authentication is required.",
+            lockedUntil: null,
+          );
+
+        case "PIN_REQUIRED":
+        case "PIN_INVALID":
+          return PinVerificationResult(
+            status: PinVerificationStatus.invalid,
+            message:
+                data["message"]?.toString() ??
+                "Incorrect PIN. Please try again.",
+            lockedUntil: lockedUntil,
+          );
+
+        default:
+          return PinVerificationResult(
+            status: PinVerificationStatus.error,
+            message:
+                data["message"]?.toString() ??
+                "Unable to verify PIN. Please try again.",
+            lockedUntil: lockedUntil,
+          );
+      }
+    } catch (error) {
+      debugPrint("[AIRTIME] PIN verification error: $error");
+
+      return const PinVerificationResult(
+        status: PinVerificationStatus.error,
+        message: "Unable to verify PIN. Please try again.",
+        lockedUntil: null,
+      );
+    }
+  }
+
+  // ============================================================
+  // PROVIDER ERROR MESSAGE
+  // ============================================================
+
+  String _extractApiMessage(dynamic data, int statusCode) {
+    if (data is Map) {
+      final directMessage = data["message"];
+
+      if (directMessage != null && directMessage.toString().trim().isNotEmpty) {
+        return directMessage.toString().trim();
+      }
+
+      final responseMessage = data["responseMessage"];
+
+      if (responseMessage != null &&
+          responseMessage.toString().trim().isNotEmpty) {
+        return responseMessage.toString().trim();
+      }
+
+      final provider = data["provider"];
+
+      if (provider is Map) {
+        final providerMessage =
+            provider["responseMessage"] ?? provider["message"];
+
+        if (providerMessage != null &&
+            providerMessage.toString().trim().isNotEmpty) {
+          return providerMessage.toString().trim();
+        }
+      }
+
+      final error = data["error"];
+
+      if (error != null && error.toString().trim().isNotEmpty) {
+        return error.toString().trim();
+      }
+    }
+
+    if (statusCode >= 500) {
+      return "Server error processing airtime purchase";
+    }
+
+    return "Airtime purchase failed";
+  }
+
+  // ============================================================
   // WALLET PAYMENT
   // ============================================================
 
-  Future<void> payWithWallet(BuildContext context) async {
-    if (!_validateBasic(context)) return;
+  Future<void> payWithWallet(
+    BuildContext context, {
+    required String transactionPin,
+  }) async {
+    if (loading) {
+      return;
+    }
+
+    if (!_validateBasic(context)) {
+      return;
+    }
 
     if (selectedNetworkCode.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Select a network first")));
+      _showMessage(context, "Select a network first");
+
+      return;
+    }
+
+    if (!RegExp(r"^\d{4}$").hasMatch(transactionPin)) {
+      _showMessage(context, "A valid 4-digit transaction PIN is required.");
 
       return;
     }
@@ -281,6 +578,7 @@ class AirtimeController {
     loading = true;
 
     final phone = phoneCtrl.text.trim();
+
     final amount = amountCtrl.text.trim();
 
     final uri = Uri.parse(ApiConfig.api("/api/airtime/wallet/pay-airtime"));
@@ -289,40 +587,93 @@ class AirtimeController {
       final currentUser = FirebaseAuth.instance.currentUser;
 
       if (currentUser == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("Please sign in again")));
-        }
+        _showMessage(context, "Please sign in again");
 
         return;
       }
 
-      final response = await http.post(
-        uri,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "userId": currentUser.uid,
-          "phone": phone,
-          "network": selectedNetworkCode,
-          "amount": amount,
-        }),
-      );
+      final idToken = await currentUser.getIdToken();
 
-      final data = jsonDecode(response.body);
+      if (idToken == null || idToken.isEmpty) {
+        _showMessage(context, "Please sign in again");
 
-      if (data["status"] == true && data["pending"] != true) {
-        // ======================================================
-        // IMPORTANT:
-        // Save ONLY after backend reports successful transaction.
-        // ======================================================
+        return;
+      }
 
+      debugPrint("[AIRTIME] Starting wallet purchase for $phone");
+
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $idToken",
+            },
+            body: jsonEncode({
+              "userId": currentUser.uid,
+              "phone": phone,
+              "network": selectedNetworkCode,
+              "amount": amount,
+
+              // Server-side PIN enforcement.
+              "transactionPin": transactionPin,
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+
+      dynamic data;
+
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        data = null;
+      }
+
+      debugPrint("[AIRTIME] Purchase response: ${response.statusCode}");
+
+      if (data is Map) {
+        debugPrint("[AIRTIME] Purchase status: ${data["status"]}");
+
+        debugPrint("[AIRTIME] Purchase pending: ${data["pending"]}");
+      }
+
+      final status = data is Map && data["status"] == true;
+
+      final pending = data is Map && data["pending"] == true;
+
+      final reference = data is Map
+          ? (data["reference"] ??
+                    data["transactionReference"] ??
+                    data["vendReference"])
+                ?.toString()
+                .trim()
+          : null;
+
+      final message = _extractApiMessage(data, response.statusCode);
+
+      // --------------------------------------------------------
+      // HTTP / BACKEND FAILURE
+      // --------------------------------------------------------
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _showMessage(context, message);
+
+        return;
+      }
+
+      // --------------------------------------------------------
+      // IMMEDIATE SUCCESS
+      // --------------------------------------------------------
+
+      if (status && !pending) {
         await saveRecentNumber(
           phone: phone,
           network: _networkNameFromCode(selectedNetworkCode),
         );
 
-        if (!context.mounted) return;
+        if (!context.mounted) {
+          return;
+        }
 
         Navigator.push(
           context,
@@ -330,39 +681,41 @@ class AirtimeController {
             builder: (_) => AirtimeSuccessScreen(
               phone: phone,
               amount: amount,
-              message: data["message"] ?? "Airtime purchase successful",
+              message: message.isNotEmpty
+                  ? message
+                  : "Airtime purchase successful",
             ),
           ),
         );
-      } else if (data["pending"] == true) {
-        final requestId = data["requestId"]?.toString();
 
-        if (requestId == null || requestId.isEmpty) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Transaction is processing, but no request ID was returned.",
-                ),
-              ),
-            );
-          }
+        return;
+      }
+
+      // --------------------------------------------------------
+      // PENDING
+      // --------------------------------------------------------
+
+      if (pending) {
+        if (reference == null || reference.isEmpty) {
+          _showMessage(
+            context,
+            "Transaction is processing, but no transaction reference was returned.",
+          );
 
           return;
         }
 
-        if (!context.mounted) return;
+        if (!context.mounted) {
+          return;
+        }
 
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => AirtimeProcessingScreen(
-              requestId: requestId,
+              reference: reference,
               phone: phone,
               amount: amount,
-
-              // Save only if the processing screen later
-              // confirms ORDER_COMPLETED.
               onSuccess: () async {
                 await saveRecentNumber(
                   phone: phone,
@@ -372,80 +725,34 @@ class AirtimeController {
             ),
           ),
         );
-      } else {
-        if (!context.mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data["message"] ?? "Airtime purchase failed")),
-        );
+        return;
       }
-    } catch (e) {
-      if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Unable to process airtime purchase. Please try again.",
-          ),
-        ),
-      );
+      // --------------------------------------------------------
+      // FAILURE
+      // --------------------------------------------------------
+
+      _showMessage(context, message);
+    } catch (error) {
+      debugPrint("[AIRTIME] Purchase error: $error");
+
+      if (!context.mounted) {
+        return;
+      }
+
+      String message = "Unable to process airtime purchase. Please try again.";
+
+      final errorText = error.toString();
+
+      if (errorText.isNotEmpty && !errorText.startsWith("Exception: null")) {
+        message = errorText.replaceFirst("Exception: ", "");
+      }
+
+      _showMessage(context, message);
     } finally {
       loading = false;
     }
-  }
-
-  // ============================================================
-  // CARD PAYMENT
-  // ============================================================
-
-  Future<void> payWithCard(BuildContext context) async {
-    if (!_validateBasic(context)) return;
-
-    if (selectedNetworkCode.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Select a network first")));
-
-      return;
-    }
-
-    final amount = int.parse(amountCtrl.text.trim());
-
-    bool paymentSuccess = false;
-
-    await FlutterPaystackPlus.openPaystackPopup(
-      context: context,
-
-      // Keep your existing Paystack configuration.
-      publicKey: "pk_test_40afdb486d9a12b37524295c00f169b9d355f0b3",
-
-      secretKey: "",
-
-      customerEmail: "user@example.com",
-
-      amount: (amount * 100).toString(),
-
-      reference: "airtime_${DateTime.now().millisecondsSinceEpoch}",
-
-      currency: "NGN",
-
-      onSuccess: () {
-        paymentSuccess = true;
-      },
-
-      onClosed: () {
-        if (!paymentSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Payment failed or closed")),
-          );
-        }
-      },
-    );
-
-    if (!paymentSuccess) return;
-
-    // Preserve your existing card flow.
-    await payWithWallet(context);
   }
 
   // ============================================================

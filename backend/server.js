@@ -37,7 +37,7 @@ const walletRoutes = require("./src/routes/wallet.routes.js");
 const transactionRoutes = require("./src/routes/transaction.routes");
 const transferRoutes = require("./src/routes/transfer.routes");
 const dvaRoutes = require("./src/routes/dva.routes");
-const cableRoutes = require("./src/routes/cable.routes");
+const cableRoutes = require("./src/routes/cable.routes.js");
 const bettingRoutes = require("./src/routes/betting.routes.js");
 const userServicesRoutes = require("./src/routes/userServices.routes");
 const analyticsRoutes = require("./src/routes/analytics.routes");
@@ -54,6 +54,8 @@ const securityRoutes = require("./src/routes/security.routes.js");
 const prestmitRoutes = require("./src/routes/prestmit.routes");
 const prestmitSellRoutes = require("./src/routes/prestmit.sell.routes");
 const bulkTransferRoutes = require("./src/routes/bulkTransfer.routes");
+const depositRoutes = require("./src/routes/deposit.routes");
+const monnifyBillsRoutes = require("./src/routes/monnifyBills.routes");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -135,6 +137,73 @@ app.post(
 );
 
 // ============================================================
+// Monnify Webhook
+// ============================================================
+//
+// IMPORTANT:
+// Monnify signature verification requires the ORIGINAL raw
+// request body.
+//
+// Therefore this route MUST also be registered BEFORE:
+//
+//     app.use(express.json());
+//
+// Endpoint:
+//
+//     POST /api/monnify/webhook
+//
+// The raw Buffer is saved as req.rawBody.
+// The same body is then parsed back into req.body so the
+// existing Monnify webhook handler can process eventData,
+// eventType, etc.
+//
+// ============================================================
+app.post(
+  "/api/monnify/webhook",
+  express.raw({
+    type: "application/json",
+    limit: "1mb",
+  }),
+  (req, res, next) => {
+    try {
+      if (!Buffer.isBuffer(req.body)) {
+        console.warn(
+          "⚠️ Monnify webhook body was not received as a Buffer."
+        );
+
+        req.rawBody = null;
+
+        return next();
+      }
+
+      // Preserve the exact original request body for
+      // Monnify HMAC signature validation.
+      req.rawBody = req.body;
+
+      const rawBodyString = req.body.toString("utf8");
+
+      if (!rawBodyString) {
+        req.body = {};
+
+        return next();
+      }
+
+      req.body = JSON.parse(rawBodyString);
+
+      next();
+    } catch (err) {
+      console.error(
+        "❌ Failed to parse Monnify webhook body:",
+        err.message || err
+      );
+
+      return res.status(400).send("Invalid JSON payload");
+    }
+  },
+  monnifyWebhook
+);
+
+// ============================================================
 // Normal body parsing
 // ============================================================
 app.use(express.json());
@@ -165,8 +234,8 @@ app.use("/v1/statement", authMiddleware, statementRoute);
 app.use("/api/giftcard", giftcardRoutes);
 
 app.use("/api/monnify", monnifyRoutes);
-
-app.post("/api/monnify/webhook", monnifyWebhook);
+app.use("/api/deposits", depositRoutes);
+app.use("/api/monnify/bills", monnifyBillsRoutes);
 
 app.use("/api", identityRoutes);
 app.use("/api", contactRoutes);
@@ -200,9 +269,28 @@ app.use("/api/transfers", bulkTransferRoutes);
 app.use("/paystack", dvaRoutes);
 
 // ============================================================
-// Import and start cron job
+// Import cron job
 // ============================================================
 require("./src/jobs/requeryPendingTransactions");
+
+// ============================================================
+// Monnify Reserved-Account Deposit Monitor
+// ============================================================
+//
+// TEMPORARILY DISABLED.
+//
+// We are testing the Monnify webhook as the primary deposit
+// notification path. The monitor is NOT being deleted.
+// It can be re-enabled later as a reconciliation/fallback
+// mechanism after the webhook has been proven.
+//
+// ============================================================
+
+// const {
+//   startDepositMonitor,
+// } = require("./src/jobs/deposit-monitor.job");
+
+// startDepositMonitor();
 
 // ============================================================
 // Paystack: Initialize Transaction

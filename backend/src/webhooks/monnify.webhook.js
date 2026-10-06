@@ -2,39 +2,44 @@
 //
 // GiftPay Monnify webhook.
 //
-// This endpoint intentionally supports TWO separate concerns:
+// Handles:
+// 1. Reserved account collection notifications.
+// 2. Single-transfer final-status callbacks.
 //
-// 1. Existing Reserved Account collection notifications
-//    - SUCCESSFUL_TRANSACTION remains unchanged.
-//    - It credits the customer's GiftPay wallet.
-//
-// 2. Single-transfer final-status notifications
-//    - We do NOT assume undocumented event names such as
-//      SUCCESSFUL_DISBURSEMENT / FAILED_DISBURSEMENT.
-//    - When a callback contains a documented transfer reference + status,
-//      we reconcile it through the same idempotent logic used by the
-//      transfer-status endpoint.
-//
-// Transaction Validation is NOT implemented here.
-// Transaction Validation is a separate optional Monnify feature with its
-// own X-Monnify-Signature / X-Monnify-Timestamp protocol and APPROVE/REJECT
-// response. Keep that disabled until you explicitly enable it in Monnify.
+// IMPORTANT:
+// - server.js captures req.rawBody before express.json().
+// - Collection accountReference is expected to be USER_<uid>.
+// - Reserved-account SUCCESSFUL_TRANSACTION callbacks credit
+//   the corresponding GiftPay wallet.
+// - Duplicate collection callbacks are ignored atomically.
+// - Deposit notification is sent only after a new deposit
+//   has actually been credited.
+// - Monnify deposits are also recorded in wallet.transactions
+//   so existing history/recent-transaction systems can display them.
 
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 
+const { sendNotification } = require("../../utils/notify");
+
 const db = admin.firestore();
+
+// ============================================================
+// SIGNATURE VALIDATION
+// ============================================================
 
 function validateMonnifySignature(req) {
   const signature = req.headers["monnify-signature"];
 
-  // Preserve the existing GiftPay collection-webhook behavior in sandbox.
-  // In production/live, Monnify signature validation is mandatory.
   if (!signature) {
     if (
       process.env.MONNIFY_BASE_URL ===
       "https://sandbox.monnify.com"
     ) {
+      console.warn(
+        "⚠️ Sandbox webhook received without signature."
+      );
+
       return true;
     }
 
@@ -45,8 +50,7 @@ function validateMonnifySignature(req) {
     return false;
   }
 
-  const secretKey =
-    process.env.MONNIFY_SECRET_KEY;
+  const secretKey = process.env.MONNIFY_SECRET_KEY;
 
   if (!secretKey) {
     console.error(
@@ -56,21 +60,29 @@ function validateMonnifySignature(req) {
     return false;
   }
 
-  const rawBody =
-    req.rawBody ||
-    JSON.stringify(req.body);
+  if (!req.rawBody) {
+    console.error(
+      "❌ Monnify webhook raw body is missing."
+    );
+
+    return false;
+  }
 
   const computed = crypto
     .createHmac("sha512", secretKey)
-    .update(rawBody)
+    .update(req.rawBody)
     .digest("hex");
 
   try {
-    const computedBuffer =
-      Buffer.from(computed, "utf8");
+    const computedBuffer = Buffer.from(
+      computed,
+      "utf8"
+    );
 
-    const signatureBuffer =
-      Buffer.from(signature, "utf8");
+    const signatureBuffer = Buffer.from(
+      String(signature),
+      "utf8"
+    );
 
     if (
       computedBuffer.length !==
@@ -86,24 +98,17 @@ function validateMonnifySignature(req) {
   } catch (err) {
     console.error(
       "❌ Monnify signature comparison error:",
-      err.message
+      err.message || err
     );
 
     return false;
   }
 }
 
-// ------------------------------------------------------------
-// Generic final-status extraction
-// ------------------------------------------------------------
-//
-// The supplied Monnify documentation establishes the status values and
-// states that async=true causes Monnify to send final status to the webhook.
-// It does NOT establish event names such as SUCCESSFUL_DISBURSEMENT.
-//
-// Therefore we inspect the reference/status fields without depending on
-// an assumed event name.
-//
+// ============================================================
+// TRANSFER CALLBACK EXTRACTION
+// ============================================================
+
 function getTransferCallbackData(body) {
   const eventData =
     body?.eventData ||
@@ -119,8 +124,8 @@ function getTransferCallbackData(body) {
 
   const status = String(
     eventData?.status ||
-    body?.status ||
-    ""
+      body?.status ||
+      ""
   )
     .trim()
     .toUpperCase();
@@ -161,8 +166,6 @@ async function handleTransferStatusCallback(body) {
     };
   }
 
-  // Import lazily so the webhook module keeps its normal Firebase behavior
-  // and there is no controller/webhook initialization cycle.
   const {
     reconcileMonnifyTransfer,
   } = require("../controllers/transfer.controller");
@@ -183,6 +186,405 @@ async function handleTransferStatusCallback(body) {
 }
 
 // ============================================================
+// COLLECTION ACCOUNT REFERENCE MAPPING
+// ============================================================
+
+function resolveUserId(accountReference) {
+  if (typeof accountReference !== "string") {
+    return null;
+  }
+
+  const prefix = "USER_";
+
+  if (accountReference.startsWith(prefix)) {
+    return accountReference.slice(
+      prefix.length
+    );
+  }
+
+  return accountReference;
+}
+
+// ============================================================
+// COLLECTION WEBHOOK
+// ============================================================
+
+async function handleSuccessfulCollection(eventData) {
+  // Monnify reserved-account SUCCESSFUL_TRANSACTION
+  // payloads place the reserved account reference inside:
+  //
+  // eventData.product.reference
+  //
+  // Keep eventData.accountReference as a fallback in case
+  // another Monnify collection payload supplies it there.
+
+  const accountReference =
+    eventData?.accountReference ||
+    eventData?.product?.reference ||
+    null;
+
+  const amountPaid = eventData?.amountPaid;
+
+  console.log(
+    "🔎 MONNIFY COLLECTION DETAILS:",
+    {
+      accountReference,
+      amountPaid,
+      transactionReference:
+        eventData.transactionReference || null,
+      paymentReference:
+        eventData.paymentReference || null,
+      paymentDescription:
+        eventData.paymentDescription || null,
+    }
+  );
+
+  // ==========================================================
+  // BASIC PAYLOAD VALIDATION
+  // ==========================================================
+
+  if (
+    !accountReference ||
+    amountPaid === undefined ||
+    amountPaid === null
+  ) {
+    console.warn(
+      "⚠️ SUCCESSFUL_TRANSACTION missing accountReference or amountPaid."
+    );
+
+    return {
+      status: 400,
+      message: "Invalid transaction payload",
+    };
+  }
+
+  const amount = Number(amountPaid);
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    console.warn(
+      "⚠️ Invalid collection amount:",
+      amountPaid
+    );
+
+    return {
+      status: 400,
+      message: "Invalid amount",
+    };
+  }
+
+  // ==========================================================
+  // RESOLVE USER
+  // ==========================================================
+
+  const userId =
+    resolveUserId(accountReference);
+
+  if (!userId) {
+    console.error(
+      "❌ Could not resolve user ID from accountReference:",
+      accountReference
+    );
+
+    return {
+      status: 400,
+      message: "Invalid account reference",
+    };
+  }
+
+  // ==========================================================
+  // MONNIFY TRANSACTION REFERENCE
+  // ==========================================================
+
+  const monnifyTransactionReference =
+    eventData.transactionReference ||
+    eventData.paymentReference;
+
+  if (!monnifyTransactionReference) {
+    console.error(
+      "❌ Collection callback has no transaction reference."
+    );
+
+    return {
+      status: 400,
+      message: "Missing transaction reference",
+    };
+  }
+
+  // ==========================================================
+  // FIRESTORE REFERENCES
+  // ==========================================================
+
+  const processedRef = db
+    .collection("monnify_processed_webhooks")
+    .doc(
+      `collection_${monnifyTransactionReference}`
+    );
+
+  const userRef = db
+    .collection("users")
+    .doc(userId);
+
+  const walletRef = db
+    .collection("wallets")
+    .doc(userId);
+
+  // ==========================================================
+  // TRANSACTION HISTORY RECORD
+  // ==========================================================
+  //
+  // This is the important addition.
+  //
+  // Existing Transaction History and Recent Transactions
+  // both read wallet.transactions.
+  //
+  // The previous webhook updated the wallet balance but did
+  // not create this transaction record.
+  //
+  // We create it inside the SAME Firestore transaction as
+  // the balance update so the balance and history cannot get
+  // out of sync.
+  // ==========================================================
+
+  const transactionTimestamp = Date.now();
+
+  const walletTransaction = {
+    id: monnifyTransactionReference,
+    type: "credit",
+    title: "Wallet Funding (Monnify)",
+    amount,
+    timestamp: transactionTimestamp,
+    date: transactionTimestamp,
+    status: "success",
+    provider: "monnify",
+    channel: "account_transfer",
+    reference: monnifyTransactionReference,
+    paymentReference:
+      eventData.paymentReference ||
+      monnifyTransactionReference,
+    accountReference,
+    currency: "NGN",
+    paymentMethod:
+      eventData.paymentMethod ||
+      "ACCOUNT_TRANSFER",
+  };
+
+  // ==========================================================
+  // ATOMIC WALLET CREDIT + HISTORY
+  // ==========================================================
+  //
+  // Returns:
+  //
+  // { credited: false }
+  //
+  // when the webhook was already processed.
+  //
+  // This prevents both duplicate wallet credits and
+  // duplicate history entries.
+  // ==========================================================
+
+  const creditResult =
+    await db.runTransaction(
+      async (transaction) => {
+        const processedDoc =
+          await transaction.get(
+            processedRef
+          );
+
+        // ----------------------------------------------------
+        // DUPLICATE WEBHOOK
+        // ----------------------------------------------------
+
+        if (processedDoc.exists) {
+          console.log(
+            "ℹ️ Duplicate collection webhook ignored:",
+            monnifyTransactionReference
+          );
+
+          return {
+            credited: false,
+            reason: "already_processed",
+          };
+        }
+
+        // ----------------------------------------------------
+        // READ USER + WALLET
+        // ----------------------------------------------------
+
+        const userDoc =
+          await transaction.get(
+            userRef
+          );
+
+        const walletDoc =
+          await transaction.get(
+            walletRef
+          );
+
+        if (
+          !userDoc.exists &&
+          !walletDoc.exists
+        ) {
+          throw new Error(
+            `No user or wallet document found for resolved userId: ${userId}`
+          );
+        }
+
+        // ----------------------------------------------------
+        // CREDIT USER DOCUMENT
+        // ----------------------------------------------------
+
+        if (userDoc.exists) {
+          transaction.update(
+            userRef,
+            {
+              walletBalance:
+                admin.firestore.FieldValue.increment(
+                  amount
+                ),
+            }
+          );
+        }
+
+        // ----------------------------------------------------
+        // CREDIT WALLET DOCUMENT
+        // ----------------------------------------------------
+
+        if (walletDoc.exists) {
+          transaction.update(
+            walletRef,
+            {
+              balance:
+                admin.firestore.FieldValue.increment(
+                  amount
+                ),
+
+              // IMPORTANT:
+              // Add the Monnify deposit to the existing
+              // wallet transaction history used by:
+              //
+              // - Transaction History screen
+              // - Recent Transactions section
+              // - /transaction-history backend endpoint
+              //
+              // arrayUnion prevents the exact same transaction
+              // object from being inserted twice.
+              transactions:
+                admin.firestore.FieldValue.arrayUnion(
+                  walletTransaction
+                ),
+
+              updatedAt:
+                admin.firestore.Timestamp.now(),
+            }
+          );
+        }
+
+        // ----------------------------------------------------
+        // RECORD PROCESSED WEBHOOK
+        // ----------------------------------------------------
+
+        transaction.create(
+          processedRef,
+          {
+            type:
+              "SUCCESSFUL_TRANSACTION",
+
+            accountReference,
+
+            resolvedUserId:
+              userId,
+
+            amount,
+
+            monnifyTransactionReference,
+
+            processedAt:
+              admin.firestore.Timestamp.now(),
+          }
+        );
+
+        return {
+          credited: true,
+        };
+      }
+    );
+
+  // ==========================================================
+  // DUPLICATE CALLBACK
+  // ==========================================================
+
+  if (!creditResult.credited) {
+    return {
+      status: 200,
+      message: "OK",
+    };
+  }
+
+  // ==========================================================
+  // WALLET CREDIT CONFIRMED
+  // ==========================================================
+
+  console.log(
+    `✅ Collection callback processed: ${userId} | ₦${amount} | ${monnifyTransactionReference}`
+  );
+
+  console.log(
+    `🧾 Wallet transaction history recorded: ${monnifyTransactionReference}`
+  );
+
+  // ==========================================================
+  // DEPOSIT NOTIFICATION
+  // ==========================================================
+  //
+  // Existing GiftPay notification system handles:
+  //
+  // 1. In-app notification
+  // 2. FCM push notification
+  // 3. Transaction email when enabled by the user
+  //
+  // "wallet" is already treated by notify.js as a
+  // transaction-notification category.
+  //
+  // Notification is deliberately AFTER the Firestore
+  // transaction so the user is only notified after the
+  // wallet credit and transaction history have committed.
+  // ==========================================================
+
+  try {
+    await sendNotification(
+      userId,
+      "Wallet funded",
+      `₦${amount.toLocaleString(
+        "en-NG"
+      )} has been added to your wallet`,
+      "wallet"
+    );
+
+    console.log(
+      `🔔 Deposit notification sent for ${userId} | ₦${amount}`
+    );
+  } catch (notificationError) {
+    // Notification failure must NOT cause the Monnify
+    // webhook to return an error after the wallet has
+    // already been successfully credited.
+
+    console.error(
+      `⚠️ Monnify deposit notification failed for ${userId}:`,
+      notificationError.message ||
+        notificationError
+    );
+  }
+
+  return {
+    status: 200,
+    message: "OK",
+  };
+}
+
+// ============================================================
 // MAIN MONNIFY WEBHOOK
 // ============================================================
 
@@ -190,16 +592,90 @@ exports.monnifyWebhook = async (
   req,
   res
 ) => {
+  console.log(
+    "========================================"
+  );
+
+  console.log(
+    "📩 MONNIFY WEBHOOK REQUEST"
+  );
+
+  console.log(
+    "Received at:",
+    new Date().toISOString()
+  );
+
+  console.log(
+    "Method:",
+    req.method
+  );
+
+  console.log(
+    "URL:",
+    req.originalUrl
+  );
+
+  console.log(
+    "Content-Type:",
+    req.headers["content-type"] ||
+      "unknown"
+  );
+
+  console.log(
+    "Signature present:",
+    Boolean(
+      req.headers["monnify-signature"]
+    )
+  );
+
+  console.log(
+    "Raw body captured:",
+    Boolean(req.rawBody)
+  );
+
+  console.log(
+    "Parsed body:",
+    JSON.stringify(
+      req.body || {},
+      null,
+      2
+    )
+  );
+
+  console.log(
+    "========================================"
+  );
+
   try {
-    if (!validateMonnifySignature(req)) {
+    // ========================================================
+    // SIGNATURE VALIDATION
+    // ========================================================
+
+    const signatureValid =
+      validateMonnifySignature(req);
+
+    console.log(
+      "Monnify signature validation:",
+      signatureValid
+        ? "PASSED"
+        : "FAILED"
+    );
+
+    if (!signatureValid) {
       console.warn(
         "⚠️ Invalid Monnify webhook signature."
       );
 
       return res
         .status(401)
-        .send("Invalid signature");
+        .send(
+          "Invalid signature"
+        );
     }
+
+    // ========================================================
+    // PAYLOAD
+    // ========================================================
 
     const body =
       req.body || {};
@@ -211,222 +687,98 @@ exports.monnifyWebhook = async (
       body.eventData || {};
 
     console.log(
-      `📩 Monnify webhook received: ${event || "UNNAMED_EVENT"}`
+      `📩 Monnify event received: ${
+        event || "UNNAMED_EVENT"
+      }`
+    );
+
+    console.log(
+      "Monnify event data:",
+      JSON.stringify(
+        eventData,
+        null,
+        2
+      )
     );
 
     // ========================================================
-    // EXISTING RESERVED ACCOUNT COLLECTION FLOW
-    // ========================================================
-    //
-    // This remains the same GiftPay wallet-credit flow.
-    // It is intentionally checked before generic transfer status handling.
+    // RESERVED ACCOUNT COLLECTION
     // ========================================================
 
     if (
       event ===
       "SUCCESSFUL_TRANSACTION"
     ) {
-      const {
-        accountReference,
-        amountPaid,
-      } = eventData;
+      const result =
+        await handleSuccessfulCollection(
+          eventData
+        );
 
       if (
-        !accountReference ||
-        amountPaid ===
-          undefined ||
-        amountPaid === null
+        result.status !== 200
       ) {
-        console.warn(
-          "⚠️ SUCCESSFUL_TRANSACTION missing accountReference or amountPaid."
-        );
-
         return res
-          .status(400)
-          .send("Invalid transaction payload");
-      }
-
-      const amount =
-        Number(amountPaid);
-
-      if (
-        !Number.isFinite(amount) ||
-        amount <= 0
-      ) {
-        console.warn(
-          `⚠️ Invalid collection amount: ${amountPaid}`
-        );
-
-        return res
-          .status(400)
-          .send("Invalid amount");
-      }
-
-      // ======================================================
-      // IDEMPOTENCY FOR COLLECTION
-      // ======================================================
-      //
-      // Use Monnify's transactionReference where available.
-      // This prevents a duplicated webhook from crediting
-      // the customer's wallet twice.
-      // ======================================================
-
-      const monnifyTransactionReference =
-        eventData.transactionReference ||
-        eventData.paymentReference ||
-        `${accountReference}_${amountPaid}`;
-
-      const processedRef = db
-        .collection(
-          "monnify_processed_webhooks"
-        )
-        .doc(
-          `collection_${monnifyTransactionReference}`
-        );
-
-      const processedDoc =
-        await processedRef.get();
-
-      if (processedDoc.exists) {
-        console.log(
-          `ℹ️ Duplicate collection webhook ignored: ${monnifyTransactionReference}`
-        );
-
-        return res.send("OK");
-      }
-
-      // ======================================================
-      // CREDIT CUSTOMER WALLET
-      // ======================================================
-
-      const userRef = db
-        .collection("users")
-        .doc(accountReference);
-
-      const walletRef = db
-        .collection("wallets")
-        .doc(accountReference);
-
-      await db.runTransaction(
-        async (transaction) => {
-          const userDoc =
-            await transaction.get(
-              userRef
-            );
-
-          const walletDoc =
-            await transaction.get(
-              walletRef
-            );
-
-          /*
-           * Preserve your existing users/{userId}
-           * walletBalance architecture.
-           */
-          if (userDoc.exists) {
-            transaction.update(
-              userRef,
-              {
-                walletBalance:
-                  admin.firestore.FieldValue.increment(
-                    amount
-                  ),
-              }
-            );
-          }
-
-          /*
-           * If the separate wallets/{userId}
-           * document exists, keep it synchronized too.
-           *
-           * This is important because the withdrawal
-           * controller uses wallets/{userId}.balance.
-           */
-          if (walletDoc.exists) {
-            transaction.update(
-              walletRef,
-              {
-                balance:
-                  admin.firestore.FieldValue.increment(
-                    amount
-                  ),
-
-                updatedAt:
-                  admin.firestore.Timestamp.now(),
-              }
-            );
-          }
-
-          transaction.create(
-            processedRef,
-            {
-              type:
-                "SUCCESSFUL_TRANSACTION",
-
-              accountReference,
-
-              amount,
-
-              monnifyTransactionReference,
-
-              processedAt:
-                admin.firestore.Timestamp.now(),
-            }
+          .status(result.status)
+          .send(
+            result.message
           );
-        }
-      );
+      }
 
-      console.log(
-        `✅ Customer wallet credited: ${accountReference} | ₦${amount}`
+      return res.send(
+        "OK"
       );
-
-      return res.send("OK");
     }
-
-
 
     // ========================================================
     // SINGLE-TRANSFER FINAL STATUS
     // ========================================================
-    //
-    // Do not check for assumed event names. If Monnify's async callback
-    // contains a documented transfer status + reference, reconcile it.
-    //
-    // If the payload does not contain those fields, acknowledge it without
-    // changing the wallet. The transfer-status API remains available for
-    // deterministic reconciliation.
-    // ========================================================
 
     const transferResult =
-      await handleTransferStatusCallback(body);
+      await handleTransferStatusCallback(
+        body
+      );
 
     if (
       transferResult.handled
     ) {
       console.log(
-        `✅ Monnify transfer reconciled: ${transferResult.reference} | ${transferResult.status}`
+        `✅ Monnify transfer reconciled: ${
+          transferResult.reference
+        } | ${
+          transferResult.status
+        }`
       );
 
-      return res.send("OK");
+      return res.send(
+        "OK"
+      );
     }
 
+    // ========================================================
+    // OTHER MONNIFY EVENTS
+    // ========================================================
+
     console.log(
-      `ℹ️ Monnify event received but no documented transfer status was found: ${event || "UNNAMED_EVENT"}`
+      `ℹ️ Monnify event received, but no documented transfer status was found: ${
+        event || "UNNAMED_EVENT"
+      }`
     );
 
-    return res.send("OK");
+    return res.send(
+      "OK"
+    );
   } catch (err) {
     console.error(
       "❌ Monnify webhook processing error:",
       err.response?.data ||
-        err.message
+        err.message ||
+        err
     );
 
-    /*
-     * Return 500 so Monnify can retry the webhook if processing failed.
-     */
     return res
       .status(500)
-      .send("Webhook processing failed");
+      .send(
+        "Webhook processing failed"
+      );
   }
 };

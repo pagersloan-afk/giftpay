@@ -1,4 +1,3 @@
-
 // backend/src/controllers/transfer.controller.js
 //
 // Monnify single-transfer integration.
@@ -16,6 +15,7 @@ const axios = require("axios");
 const admin = require("firebase-admin");
 const FeeEngine = require("../../core/fees/fee_engine");
 const { verifyTransactionPin } = require("../services/transactionPin.service");
+const { sendNotification } = require("../../utils/notify");
 
 const db = admin.firestore();
 
@@ -171,7 +171,6 @@ function normalizeProviderStatus(status) {
   return String(status || "").trim().toUpperCase();
 }
 
-
 function isFailureStatus(status) {
   return ["FAILED", "REVERSED", "EXPIRED"].includes(
     normalizeProviderStatus(status)
@@ -232,20 +231,30 @@ async function createTransferRecordsAtomically({
   reason,
 }) {
   const walletRef = db.collection("wallets").doc(userId);
+
   const userTxRef = db
     .collection("users")
     .doc(userId)
     .collection("transactions")
     .doc(reference);
-  const lookupRef = db.collection("monnify_transfers").doc(reference);
+
+  const lookupRef = db
+    .collection("monnify_transfers")
+    .doc(reference);
 
   let newBalance = 0;
 
   await db.runTransaction(async (transaction) => {
     const walletDoc = await transaction.get(walletRef);
+    const userTxDoc = await transaction.get(userTxRef);
+    const lookupDoc = await transaction.get(lookupRef);
 
     if (!walletDoc.exists) {
       throw new Error("WALLET_NOT_FOUND");
+    }
+
+    if (userTxDoc.exists || lookupDoc.exists) {
+      throw new Error("DUPLICATE_INTERNAL_REFERENCE");
     }
 
     const walletData = walletDoc.data();
@@ -255,35 +264,18 @@ async function createTransferRecordsAtomically({
       throw new Error("INSUFFICIENT_BALANCE");
     }
 
-    const transactions = Array.isArray(walletData.transactions)
-      ? [...walletData.transactions]
-      : [];
-
-    if (transactions.some((tx) => tx.id === reference)) {
-      throw new Error("DUPLICATE_INTERNAL_REFERENCE");
-    }
-
     newBalance = Number((balance - debitAmount).toFixed(2));
 
-    const pendingTx = {
-      id: reference,
-      type: "debit",
-      title: "Bank Transfer",
-      amount: withdrawalAmount,
-      fee,
-      totalDebited: debitAmount,
-      timestamp: Date.now(),
-      status: "pending",
-      provider: "monnify",
-      bankCode,
-      accountNumber,
-      accountName,
-      reason,
-    };
-
+    // IMPORTANT:
+    //
+    // We intentionally do NOT create a generic "Bank Transfer"
+    // item in wallets.transactions.
+    //
+    // The detailed transaction below is the single transfer
+    // record used by the user's transaction history/recent
+    // transaction system.
     transaction.update(walletRef, {
       balance: newBalance,
-      transactions: admin.firestore.FieldValue.arrayUnion(pendingTx),
       updatedAt: admin.firestore.Timestamp.now(),
     });
 
@@ -332,7 +324,12 @@ async function createTransferRecordsAtomically({
     );
   });
 
-  return { walletRef, userTxRef, lookupRef, newBalance };
+  return {
+    walletRef,
+    userTxRef,
+    lookupRef,
+    newBalance,
+  };
 }
 
 async function updateLocalTransfer({
@@ -348,13 +345,16 @@ async function updateLocalTransfer({
     .doc(userId)
     .collection("transactions")
     .doc(reference);
-  const walletRef = db.collection("wallets").doc(userId);
-  const lookupRef = db.collection("monnify_transfers").doc(reference);
+
+  const lookupRef = db
+    .collection("monnify_transfers")
+    .doc(reference);
+
+  let notificationPayload = null;
 
   await db.runTransaction(async (transaction) => {
     const userTxDoc = await transaction.get(userTxRef);
     const lookupDoc = await transaction.get(lookupRef);
-    const walletDoc = await transaction.get(walletRef);
 
     const current = userTxDoc.exists ? userTxDoc.data() : {};
     const lookup = lookupDoc.exists ? lookupDoc.data() : {};
@@ -368,6 +368,17 @@ async function updateLocalTransfer({
       providerData.transactionReference ||
       lookup.monnifyReference ||
       null;
+
+    const isSuccessfulStatus = ["SUCCESS", "COMPLETED"].includes(status);
+
+    // A transfer can be reconciled from more than one path:
+    // webhook, transfer-status endpoint, authorization endpoint, etc.
+    // Keep the success notification idempotent so only the first
+    // successful transition sends the notification.
+    const successNotificationAlreadySent = Boolean(
+      current.successNotificationSentAt ||
+      lookup.successNotificationSentAt
+    );
 
     const patch = {
       status: status.toLowerCase(),
@@ -389,7 +400,38 @@ async function updateLocalTransfer({
       updatedAt: admin.firestore.Timestamp.now(),
     };
 
-    transaction.set(userTxRef, patch, { merge: true });
+    if (
+      isSuccessfulStatus &&
+      !successNotificationAlreadySent
+    ) {
+      const notificationSentAt =
+        admin.firestore.Timestamp.now();
+
+      patch.successNotificationSentAt = notificationSentAt;
+
+      notificationPayload = {
+        userId,
+        reference,
+        amount: Number(
+          lookup.amount ??
+          current.amount ??
+          providerData.amount ??
+          0
+        ),
+        accountName:
+          lookup.accountName ||
+          current.accountName ||
+          providerData.destinationAccountName ||
+          "recipient",
+        sentAt: notificationSentAt,
+      };
+    }
+
+    transaction.set(
+      userTxRef,
+      patch,
+      { merge: true }
+    );
 
     transaction.set(
       lookupRef,
@@ -409,36 +451,30 @@ async function updateLocalTransfer({
       },
       { merge: true }
     );
-
-    if (walletDoc.exists) {
-      const walletData = walletDoc.data();
-      const transactions = Array.isArray(walletData.transactions)
-        ? [...walletData.transactions]
-        : [];
-
-      const index = transactions.findIndex(
-        (tx) => tx.id === reference
-      );
-
-      if (index !== -1) {
-        transactions[index] = {
-          ...transactions[index],
-          status: status.toLowerCase(),
-          provider: "monnify",
-          providerReference,
-          monnifyReference,
-          monnifyStatus: status,
-          failureReason: failureReason || null,
-          updatedAt: Date.now(),
-        };
-
-        transaction.update(walletRef, {
-          transactions,
-          updatedAt: admin.firestore.Timestamp.now(),
-        });
-      }
-    }
   });
+
+  // Notifications are deliberately sent only after the Firestore
+  // transaction commits successfully. A notification failure must
+  // never roll back or alter the wallet/transfer status update.
+  if (notificationPayload) {
+    const { userId, reference, amount, accountName } =
+      notificationPayload;
+
+    await sendNotification(
+      userId,
+      "Transfer successful",
+      `₦${Number(amount || 0).toLocaleString("en-NG")} was successfully transferred to ${accountName}`,
+      "transfer"
+    );
+
+    console.log(
+      `🔔 Transfer success notification processed: ${userId} | ${reference}`
+    );
+  }
+
+  return {
+    notificationSent: Boolean(notificationPayload),
+  };
 }
 
 async function refundFailedTransfer({
@@ -447,13 +483,19 @@ async function refundFailedTransfer({
   reason,
   finalStatus = "FAILED",
 }) {
-  const walletRef = db.collection("wallets").doc(userId);
+  const walletRef = db
+    .collection("wallets")
+    .doc(userId);
+
   const userTxRef = db
     .collection("users")
     .doc(userId)
     .collection("transactions")
     .doc(reference);
-  const lookupRef = db.collection("monnify_transfers").doc(reference);
+
+  const lookupRef = db
+    .collection("monnify_transfers")
+    .doc(reference);
 
   let refundedAmount = 0;
 
@@ -467,13 +509,24 @@ async function refundFailedTransfer({
     }
 
     const walletData = walletDoc.data();
-    const currentBalance = Number(walletData.balance || 0);
-    const transactions = Array.isArray(walletData.transactions)
-      ? [...walletData.transactions]
-      : [];
+    const currentBalance = Number(
+      walletData.balance || 0
+    );
 
-    const lookup = lookupDoc.exists ? lookupDoc.data() : {};
-    const originalTx = userTxDoc.exists ? userTxDoc.data() : {};
+    const transactions =
+      Array.isArray(walletData.transactions)
+        ? [...walletData.transactions]
+        : [];
+
+    const lookup =
+      lookupDoc.exists
+        ? lookupDoc.data()
+        : {};
+
+    const originalTx =
+      userTxDoc.exists
+        ? userTxDoc.data()
+        : {};
 
     refundedAmount = Number(
       lookup.totalDebited ??
@@ -481,21 +534,36 @@ async function refundFailedTransfer({
       0
     );
 
-    if (!Number.isFinite(refundedAmount) || refundedAmount <= 0) {
-      throw new Error(`INVALID_REFUND_AMOUNT:${reference}`);
+    if (
+      !Number.isFinite(refundedAmount) ||
+      refundedAmount <= 0
+    ) {
+      throw new Error(
+        `INVALID_REFUND_AMOUNT:${reference}`
+      );
     }
 
-    const refundId = `${reference}_refund`;
+    const refundId =
+      `${reference}_refund`;
 
-    if (transactions.some((tx) => tx.id === refundId)) {
+    // Refund already applied.
+    if (
+      transactions.some(
+        (tx) => tx.id === refundId
+      )
+    ) {
       transaction.set(
         userTxRef,
         {
           status: "failed",
-          monnifyStatus: normalizeProviderStatus(finalStatus),
+          monnifyStatus:
+            normalizeProviderStatus(
+              finalStatus
+            ),
           failureReason: reason,
           refunded: true,
-          updatedAt: admin.firestore.Timestamp.now(),
+          updatedAt:
+            admin.firestore.Timestamp.now(),
         },
         { merge: true }
       );
@@ -504,10 +572,14 @@ async function refundFailedTransfer({
         lookupRef,
         {
           status: "failed",
-          monnifyStatus: normalizeProviderStatus(finalStatus),
+          monnifyStatus:
+            normalizeProviderStatus(
+              finalStatus
+            ),
           failureReason: reason,
           refunded: true,
-          updatedAt: admin.firestore.Timestamp.now(),
+          updatedAt:
+            admin.firestore.Timestamp.now(),
         },
         { merge: true }
       );
@@ -515,9 +587,17 @@ async function refundFailedTransfer({
       return;
     }
 
-    const originalIndex = transactions.findIndex(
-      (tx) => tx.id === reference
-    );
+    // IMPORTANT:
+    //
+    // We no longer expect the original transfer to exist
+    // in wallets.transactions for new transfers.
+    //
+    // This section remains only for legacy records that may
+    // already exist from the old implementation.
+    const originalIndex =
+      transactions.findIndex(
+        (tx) => tx.id === reference
+      );
 
     if (originalIndex !== -1) {
       transactions[originalIndex] = {
@@ -529,6 +609,8 @@ async function refundFailedTransfer({
       };
     }
 
+    // Refund records remain in wallet history because they
+    // represent an actual balance credit back to the wallet.
     transactions.push({
       id: refundId,
       type: "credit",
@@ -539,27 +621,42 @@ async function refundFailedTransfer({
       provider: "monnify",
       reference,
       reason,
-      providerStatus: normalizeProviderStatus(finalStatus),
+      providerStatus:
+        normalizeProviderStatus(
+          finalStatus
+        ),
     });
 
-    const newBalance = Number(
-      (currentBalance + refundedAmount).toFixed(2)
+    const newBalance =
+      Number(
+        (
+          currentBalance +
+          refundedAmount
+        ).toFixed(2)
+      );
+
+    transaction.update(
+      walletRef,
+      {
+        balance: newBalance,
+        transactions,
+        updatedAt:
+          admin.firestore.Timestamp.now(),
+      }
     );
-
-    transaction.update(walletRef, {
-      balance: newBalance,
-      transactions,
-      updatedAt: admin.firestore.Timestamp.now(),
-    });
 
     transaction.set(
       userTxRef,
       {
         status: "failed",
-        monnifyStatus: normalizeProviderStatus(finalStatus),
+        monnifyStatus:
+          normalizeProviderStatus(
+            finalStatus
+          ),
         failureReason: reason,
         refunded: true,
-        updatedAt: admin.firestore.Timestamp.now(),
+        updatedAt:
+          admin.firestore.Timestamp.now(),
       },
       { merge: true }
     );
@@ -568,11 +665,15 @@ async function refundFailedTransfer({
       lookupRef,
       {
         status: "failed",
-        monnifyStatus: normalizeProviderStatus(finalStatus),
+        monnifyStatus:
+          normalizeProviderStatus(
+            finalStatus
+          ),
         failureReason: reason,
         refunded: true,
         refundedAmount,
-        updatedAt: admin.firestore.Timestamp.now(),
+        updatedAt:
+          admin.firestore.Timestamp.now(),
       },
       { merge: true }
     );
@@ -591,36 +692,64 @@ async function applyFinalProviderStatus({
   statusOverride = null,
 }) {
   if (!reference) {
-    return { found: false, reason: "MISSING_REFERENCE" };
+    return {
+      found: false,
+      reason: "MISSING_REFERENCE",
+    };
   }
 
-  const lookupRef = db.collection("monnify_transfers").doc(reference);
-  const lookupDoc = await lookupRef.get();
+  const lookupRef =
+    db.collection("monnify_transfers")
+      .doc(reference);
+
+  const lookupDoc =
+    await lookupRef.get();
 
   if (!lookupDoc.exists) {
-    return { found: false, reason: "TRANSFER_NOT_FOUND" };
+    return {
+      found: false,
+      reason: "TRANSFER_NOT_FOUND",
+    };
   }
 
-  const lookup = lookupDoc.data();
-  const userId = lookup.userId;
+  const lookup =
+    lookupDoc.data();
 
-  const providerStatus = normalizeProviderStatus(
-    statusOverride || providerData?.status
-  );
+  const userId =
+    lookup.userId;
 
-  if (!userId || !providerStatus) {
-    return { found: false, reason: "MISSING_USER_OR_STATUS" };
-  }
+  const providerStatus =
+    normalizeProviderStatus(
+      statusOverride ||
+      providerData?.status
+    );
 
-  const currentStatus = normalizeProviderStatus(
-    lookup.monnifyStatus || lookup.status
-  );
-
-  // Never let an older/later callback downgrade a transfer that GiftPay
-  // has already finalized successfully.
   if (
-    ["SUCCESS", "COMPLETED"].includes(currentStatus) &&
-    !["SUCCESS", "COMPLETED"].includes(providerStatus)
+    !userId ||
+    !providerStatus
+  ) {
+    return {
+      found: false,
+      reason:
+        "MISSING_USER_OR_STATUS",
+    };
+  }
+
+  const currentStatus =
+    normalizeProviderStatus(
+      lookup.monnifyStatus ||
+      lookup.status
+    );
+
+  // Never let an older/later callback downgrade
+  // a transfer that GiftPay has already finalized successfully.
+  if (
+    ["SUCCESS", "COMPLETED"].includes(
+      currentStatus
+    ) &&
+    !["SUCCESS", "COMPLETED"].includes(
+      providerStatus
+    )
   ) {
     return {
       found: true,
@@ -632,11 +761,21 @@ async function applyFinalProviderStatus({
     };
   }
 
-  // Never allow a stale success/pending notification to undo a transfer
-  // that has already been refunded.
+  // Never allow a stale success/pending notification
+  // to undo a transfer that has already been refunded.
   if (
-    ["FAILED", "REVERSED", "EXPIRED"].includes(currentStatus) &&
-    ["SUCCESS", "COMPLETED", "PENDING", "AWAITING_PROCESSING", "IN_PROGRESS", "PENDING_AUTHORIZATION", "OTP_EMAIL_DISPATCH_FAILED"].includes(providerStatus)
+    ["FAILED", "REVERSED", "EXPIRED"].includes(
+      currentStatus
+    ) &&
+    [
+      "SUCCESS",
+      "COMPLETED",
+      "PENDING",
+      "AWAITING_PROCESSING",
+      "IN_PROGRESS",
+      "PENDING_AUTHORIZATION",
+      "OTP_EMAIL_DISPATCH_FAILED",
+    ].includes(providerStatus)
   ) {
     return {
       found: true,
@@ -648,12 +787,17 @@ async function applyFinalProviderStatus({
     };
   }
 
-  const failureReason = getFailureReason(
-    providerData,
-    `Monnify transfer status: ${providerStatus}`
-  );
+  const failureReason =
+    getFailureReason(
+      providerData,
+      `Monnify transfer status: ${providerStatus}`
+    );
 
-  if (isFailureStatus(providerStatus)) {
+  if (
+    isFailureStatus(
+      providerStatus
+    )
+  ) {
     await refundFailedTransfer({
       userId,
       reference,
@@ -678,10 +822,12 @@ async function applyFinalProviderStatus({
   };
 }
 
-// Public helper used by the normal Monnify webhook. The webhook deliberately
-// does not depend on undocumented disbursement event names; it only applies
-// a documented transfer status when the callback payload contains one.
-exports.reconcileMonnifyTransfer = applyFinalProviderStatus;
+// Public helper used by the normal Monnify webhook.
+// The webhook deliberately does not depend on undocumented
+// disbursement event names; it only applies a documented
+// transfer status when the callback payload contains one.
+exports.reconcileMonnifyTransfer =
+  applyFinalProviderStatus;
 
 // ============================================================
 // BANK LIST
@@ -689,12 +835,15 @@ exports.reconcileMonnifyTransfer = applyFinalProviderStatus;
 
 exports.getBanks = async (req, res) => {
   try {
-    const response = await monnifyRequest({
-      method: "GET",
-      url: "/api/v1/banks",
-    });
+    const response =
+      await monnifyRequest({
+        method: "GET",
+        url: "/api/v1/banks",
+      });
 
-    const banks = response.data?.responseBody || [];
+    const banks =
+      response.data?.responseBody ||
+      [];
 
     return res.json({
       status: true,
@@ -707,7 +856,9 @@ exports.getBanks = async (req, res) => {
   } catch (err) {
     console.error(
       "❌ Monnify getBanks error:",
-      err.response?.data || err.responseData || err.message
+      err.response?.data ||
+        err.responseData ||
+        err.message
     );
 
     return res.status(500).json({
@@ -721,36 +872,57 @@ exports.getBanks = async (req, res) => {
 // NAME ENQUIRY
 // ============================================================
 
-exports.resolveAccount = async (req, res) => {
+exports.resolveAccount = async (
+  req,
+  res
+) => {
   try {
-    const { bankCode, accountNumber } = req.body;
+    const {
+      bankCode,
+      accountNumber,
+    } = req.body;
 
-    if (!bankCode || !accountNumber) {
+    if (
+      !bankCode ||
+      !accountNumber
+    ) {
       return res.status(400).json({
         status: false,
-        message: "Missing bankCode or accountNumber",
+        message:
+          "Missing bankCode or accountNumber",
       });
     }
 
-    const normalizedAccountNumber = String(accountNumber).trim();
+    const normalizedAccountNumber =
+      String(accountNumber).trim();
 
-    if (!/^\d{10}$/.test(normalizedAccountNumber)) {
+    if (
+      !/^\d{10}$/.test(
+        normalizedAccountNumber
+      )
+    ) {
       return res.status(400).json({
         status: false,
-        message: "Invalid Nigerian account number",
+        message:
+          "Invalid Nigerian account number",
       });
     }
 
-    const response = await monnifyRequest({
-      method: "GET",
-      url: "/api/v2/disbursements/account/validate",
-      params: {
-        accountNumber: normalizedAccountNumber,
-        bankCode: String(bankCode).trim(),
-      },
-    });
+    const response =
+      await monnifyRequest({
+        method: "GET",
+        url:
+          "/api/v2/disbursements/account/validate",
+        params: {
+          accountNumber:
+            normalizedAccountNumber,
+          bankCode:
+            String(bankCode).trim(),
+        },
+      });
 
-    const data = response.data?.responseBody;
+    const data =
+      response.data?.responseBody;
 
     if (!data) {
       return res.status(400).json({
@@ -764,16 +936,22 @@ exports.resolveAccount = async (req, res) => {
     return res.json({
       status: true,
       data: {
-        accountName: data.accountName,
-        accountNumber: data.accountNumber,
-        bankCode: data.bankCode,
-        bankName: data.bankName,
+        accountName:
+          data.accountName,
+        accountNumber:
+          data.accountNumber,
+        bankCode:
+          data.bankCode,
+        bankName:
+          data.bankName,
       },
     });
   } catch (err) {
     console.error(
       "❌ Monnify resolveAccount error:",
-      err.response?.data || err.responseData || err.message
+      err.response?.data ||
+        err.responseData ||
+        err.message
     );
 
     return res.status(400).json({
@@ -790,22 +968,54 @@ exports.resolveAccount = async (req, res) => {
 // SINGLE TRANSFER
 // ============================================================
 
-exports.transferToBank = async (req, res) => {
+exports.transferToBank = async (
+  req,
+  res
+) => {
   // Confirms the request reached this controller.
   // Never log the transaction PIN or full account numbers.
-  console.log("\n========================================");
-  console.log("📥 GIFTPAY transferToBank endpoint reached");
-  console.log("========================================");
-  console.log("Method:", req.method);
-  console.log("Path:", req.originalUrl);
-  console.log("Timestamp:", new Date().toISOString());
-  console.log("Has request body:", Boolean(req.body));
-  console.log("Has transaction PIN:", Boolean(req.body?.transactionPin));
+  console.log(
+    "\n========================================"
+  );
+  console.log(
+    "📥 GIFTPAY transferToBank endpoint reached"
+  );
+  console.log(
+    "========================================"
+  );
+  console.log(
+    "Method:",
+    req.method
+  );
+  console.log(
+    "Path:",
+    req.originalUrl
+  );
+  console.log(
+    "Timestamp:",
+    new Date().toISOString()
+  );
+  console.log(
+    "Has request body:",
+    Boolean(req.body)
+  );
+  console.log(
+    "Has transaction PIN:",
+    Boolean(
+      req.body?.transactionPin
+    )
+  );
   console.log(
     "Authenticated:",
-    Boolean(req.user?.uid || req.auth?.uid || req.user?.id)
+    Boolean(
+      req.user?.uid ||
+      req.auth?.uid ||
+      req.user?.id
+    )
   );
-  console.log("========================================\n");
+  console.log(
+    "========================================\n"
+  );
 
   let reference = null;
   let userId = null;
@@ -823,39 +1033,55 @@ exports.transferToBank = async (req, res) => {
       transactionPin,
     } = req.body;
 
-    userId = getUserIdFromRequest(req, requestUserId);
+    userId =
+      getUserIdFromRequest(
+        req,
+        requestUserId
+      );
 
     if (!userId) {
       return res.status(401).json({
         status: false,
-        message: "Authentication required",
+        message:
+          "Authentication required",
         code: "AUTH_REQUIRED",
       });
     }
 
-    if (!transactionPin || !/^\d{4}$/.test(String(transactionPin))) {
+    if (
+      !transactionPin ||
+      !/^\d{4}$/.test(
+        String(transactionPin)
+      )
+    ) {
       return res.status(401).json({
         status: false,
-        message: "Transaction PIN is required",
+        message:
+          "Transaction PIN is required",
         code: "PIN_REQUIRED",
       });
     }
 
-    // Verify before any wallet debit, transfer record, or Monnify call.
-    const pinResult = await verifyTransactionPin(
-      userId,
-      String(transactionPin)
-    );
+    // Verify before any wallet debit,
+    // transfer record, or Monnify call.
+    const pinResult =
+      await verifyTransactionPin(
+        userId,
+        String(transactionPin)
+      );
 
     if (!pinResult.ok) {
       return res.status(401).json({
         status: false,
         message:
-          pinResult.code === "PIN_LOCKED"
+          pinResult.code ===
+          "PIN_LOCKED"
             ? "Transaction PIN temporarily locked after too many failed attempts"
             : "Incorrect transaction PIN",
         code: pinResult.code,
-        lockedUntil: pinResult.lockedUntil || null,
+        lockedUntil:
+          pinResult.lockedUntil ||
+          null,
       });
     }
 
@@ -869,172 +1095,349 @@ exports.transferToBank = async (req, res) => {
     ) {
       return res.status(400).json({
         status: false,
-        message: "Missing required fields",
+        message:
+          "Missing required fields",
       });
     }
 
-    const withdrawalAmount = Number(Number(amount).toFixed(2));
-
-    if (!Number.isFinite(withdrawalAmount) || withdrawalAmount <= 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid amount",
-      });
-    }
-
-    const normalizedAccountNumber = String(accountNumber).trim();
-    const normalizedBankCode = String(bankCode).trim();
-    const normalizedAccountName = String(accountName).trim();
-
-    if (!/^\d{10}$/.test(normalizedAccountNumber)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid destination account number",
-      });
-    }
-
-    const feeResult = FeeEngine.withdrawal(withdrawalAmount);
-
-    const fee = Number(Number(feeResult.fee || 0).toFixed(2));
-    debitAmount = Number(
+    const withdrawalAmount =
       Number(
-        feeResult.debitAmount || withdrawalAmount + fee
-      ).toFixed(2)
-    );
+        Number(amount).toFixed(2)
+      );
 
-    reference = generateTransferReference();
+    if (
+      !Number.isFinite(
+        withdrawalAmount
+      ) ||
+      withdrawalAmount <= 0
+    ) {
+      return res.status(400).json({
+        status: false,
+        message:
+          "Invalid amount",
+      });
+    }
 
-    const records = await createTransferRecordsAtomically({
-      userId,
-      reference,
-      withdrawalAmount,
-      fee,
-      debitAmount,
-      bankCode: normalizedBankCode,
-      accountNumber: normalizedAccountNumber,
-      accountName: normalizedAccountName,
-      reason,
-    });
+    const normalizedAccountNumber =
+      String(accountNumber).trim();
 
-    walletRef = records.walletRef;
+    const normalizedBankCode =
+      String(bankCode).trim();
 
-    if (!MONNIFY_WALLET_ACCOUNT_NUMBER) {
+    const normalizedAccountName =
+      String(accountName).trim();
+
+    if (
+      !/^\d{10}$/.test(
+        normalizedAccountNumber
+      )
+    ) {
+      return res.status(400).json({
+        status: false,
+        message:
+          "Invalid destination account number",
+      });
+    }
+
+    const feeResult =
+      FeeEngine.withdrawal(
+        withdrawalAmount
+      );
+
+    const fee =
+      Number(
+        Number(
+          feeResult.fee || 0
+        ).toFixed(2)
+      );
+
+    debitAmount =
+      Number(
+        Number(
+          feeResult.debitAmount ||
+          withdrawalAmount + fee
+        ).toFixed(2)
+      );
+
+    reference =
+      generateTransferReference();
+
+    const records =
+      await createTransferRecordsAtomically({
+        userId,
+        reference,
+        withdrawalAmount,
+        fee,
+        debitAmount,
+        bankCode:
+          normalizedBankCode,
+        accountNumber:
+          normalizedAccountNumber,
+        accountName:
+          normalizedAccountName,
+        reason,
+      });
+
+    walletRef =
+      records.walletRef;
+
+    if (
+      !MONNIFY_WALLET_ACCOUNT_NUMBER
+    ) {
       await refundFailedTransfer({
         userId,
         reference,
-        reason: "MONNIFY_WALLET_ACCOUNT_NUMBER is not configured",
-        finalStatus: "FAILED",
+        reason:
+          "MONNIFY_WALLET_ACCOUNT_NUMBER is not configured",
+        finalStatus:
+          "FAILED",
       });
 
       return res.status(500).json({
         status: false,
-        message: "Monnify payout wallet is not configured",
+        message:
+          "Monnify payout wallet is not configured",
       });
     }
 
     const transferPayload = {
-      amount: withdrawalAmount,
+      amount:
+        withdrawalAmount,
+
       reference,
-      narration: reason,
-      destinationBankCode: normalizedBankCode,
-      destinationAccountNumber: normalizedAccountNumber,
-      destinationAccountName: normalizedAccountName,
-      currency: "NGN",
-      sourceAccountNumber: MONNIFY_WALLET_ACCOUNT_NUMBER,
+
+      narration:
+        reason,
+
+      destinationBankCode:
+        normalizedBankCode,
+
+      destinationAccountNumber:
+        normalizedAccountNumber,
+
+      destinationAccountName:
+        normalizedAccountName,
+
+      currency:
+        "NGN",
+
+      sourceAccountNumber:
+        MONNIFY_WALLET_ACCOUNT_NUMBER,
+
       async: true,
     };
 
     let response;
 
     // Log the request immediately before calling Monnify.
-    console.log("\n========================================");
-    console.log("🚀 GIFTPAY BANK TRANSFER: SENDING TO MONNIFY");
-    console.log("========================================");
-    console.log("Request reference:", reference);
-    console.log("User ID:", userId);
-    console.log("Amount:", withdrawalAmount);
-    console.log("Fee:", fee);
-    console.log("Total debit:", debitAmount);
-    console.log("Bank code:", normalizedBankCode);
-    console.log("Account name:", normalizedAccountName);
+    console.log(
+      "\n========================================"
+    );
+
+    console.log(
+      "🚀 GIFTPAY BANK TRANSFER: SENDING TO MONNIFY"
+    );
+
+    console.log(
+      "========================================"
+    );
+
+    console.log(
+      "Request reference:",
+      reference
+    );
+
+    console.log(
+      "User ID:",
+      userId
+    );
+
+    console.log(
+      "Amount:",
+      withdrawalAmount
+    );
+
+    console.log(
+      "Fee:",
+      fee
+    );
+
+    console.log(
+      "Total debit:",
+      debitAmount
+    );
+
+    console.log(
+      "Bank code:",
+      normalizedBankCode
+    );
+
+    console.log(
+      "Account name:",
+      normalizedAccountName
+    );
+
     console.log(
       "Destination account:",
-      "******" + normalizedAccountNumber.slice(-4)
+      "******" +
+        normalizedAccountNumber.slice(-4)
     );
+
     console.log(
       "Transfer payload:",
       JSON.stringify(
         {
           ...transferPayload,
-          sourceAccountNumber: "REDACTED",
+          sourceAccountNumber:
+            "REDACTED",
           destinationAccountNumber:
-            "******" + normalizedAccountNumber.slice(-4),
+            "******" +
+            normalizedAccountNumber.slice(-4),
         },
         null,
         2
       )
     );
+
     console.log(
       "Monnify endpoint:",
       `${MONNIFY_BASE_URL}/api/v2/disbursements/single`
     );
-    console.log("========================================");
+
+    console.log(
+      "========================================"
+    );
 
     try {
-      response = await monnifyRequest({
-        method: "POST",
-        url: "/api/v2/disbursements/single",
-        data: transferPayload,
-      });
+      response =
+        await monnifyRequest({
+          method: "POST",
+          url:
+            "/api/v2/disbursements/single",
+          data:
+            transferPayload,
+        });
 
-      console.log("\n========================================");
-      console.log("✅ MONNIFY TRANSFER HTTP RESPONSE");
-      console.log("========================================");
-      console.log("HTTP status:", response.status);
-      console.log("Request reference:", reference);
+      console.log(
+        "\n========================================"
+      );
+
+      console.log(
+        "✅ MONNIFY TRANSFER HTTP RESPONSE"
+      );
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "HTTP status:",
+        response.status
+      );
+
+      console.log(
+        "Request reference:",
+        reference
+      );
+
       console.log(
         "Monnify response body:",
-        JSON.stringify(response.data, null, 2)
+        JSON.stringify(
+          response.data,
+          null,
+          2
+        )
       );
-      console.log("========================================\n");
+
+      console.log(
+        "========================================\n"
+      );
     } catch (err) {
-      const providerData = err.response?.data || err.responseData;
-      const providerCode = getProviderCode(providerData);
+      const providerData =
+        err.response?.data ||
+        err.responseData;
+
+      const providerCode =
+        getProviderCode(
+          providerData
+        );
+
       const providerMessage =
         providerData?.responseMessage ||
-        providerData?.responseBody?.transactionDescription ||
+        providerData?.responseBody
+          ?.transactionDescription ||
         err.message;
 
-      console.error("\n========================================");
-      console.error("❌ MONNIFY TRANSFER REQUEST ERROR");
-      console.error("========================================");
-      console.error("Request reference:", reference);
+      console.error(
+        "\n========================================"
+      );
+
+      console.error(
+        "❌ MONNIFY TRANSFER REQUEST ERROR"
+      );
+
+      console.error(
+        "========================================"
+      );
+
+      console.error(
+        "Request reference:",
+        reference
+      );
+
       console.error(
         "HTTP status:",
-        err.response?.status ?? err.httpStatus ?? "No HTTP response"
+        err.response?.status ??
+          err.httpStatus ??
+          "No HTTP response"
       );
+
       console.error(
         "Monnify error response:",
-        JSON.stringify(providerData ?? null, null, 2)
+        JSON.stringify(
+          providerData ??
+            null,
+          null,
+          2
+        )
       );
-      console.error("Error message:", err.message);
-      console.error("========================================\n");
 
-      if (isSafeImmediateRefundCode(providerCode)) {
+      console.error(
+        "Error message:",
+        err.message
+      );
+
+      console.error(
+        "========================================\n"
+      );
+
+      if (
+        isSafeImmediateRefundCode(
+          providerCode
+        )
+      ) {
         await refundFailedTransfer({
           userId,
           reference,
-          reason: providerMessage,
-          finalStatus: "FAILED",
+          reason:
+            providerMessage,
+          finalStatus:
+            "FAILED",
         });
 
         return res.status(
-          providerCode === "D07" || providerCode === "D05" ? 409 : 400
+          providerCode === "D07" ||
+          providerCode === "D05"
+            ? 409
+            : 400
         ).json({
           status: false,
-          message: providerMessage,
-          code: `MONNIFY_${providerCode}`,
-          requestId: reference,
+          message:
+            providerMessage,
+          code:
+            `MONNIFY_${providerCode}`,
+          requestId:
+            reference,
         });
       }
 
@@ -1042,151 +1445,263 @@ exports.transferToBank = async (req, res) => {
       await updateLocalTransfer({
         userId,
         reference,
-        providerStatus: "PENDING",
-        providerData: providerData || {},
-        failureReason: providerMessage,
+        providerStatus:
+          "PENDING",
+        providerData:
+          providerData || {},
+        failureReason:
+          providerMessage,
       });
 
-      await db.collection("monnify_transfers").doc(reference).set(
-        {
-          reconciliationRequired: true,
-          updatedAt: admin.firestore.Timestamp.now(),
-        },
-        { merge: true }
-      );
+      await db
+        .collection(
+          "monnify_transfers"
+        )
+        .doc(reference)
+        .set(
+          {
+            reconciliationRequired:
+              true,
+
+            updatedAt:
+              admin.firestore.Timestamp.now(),
+          },
+          { merge: true }
+        );
 
       return res.status(202).json({
         status: false,
         message:
           "Transfer status is being verified. Please do not retry this withdrawal yet.",
-        requestId: reference,
-        transferStatus: "PENDING_RECONCILIATION",
+        requestId:
+          reference,
+        transferStatus:
+          "PENDING_RECONCILIATION",
       });
     }
 
-    const transferData = response.data?.responseBody;
+    const transferData =
+      response.data?.responseBody;
 
     if (!transferData) {
       await updateLocalTransfer({
         userId,
         reference,
-        providerStatus: "PENDING",
-        providerData: response.data || {},
-        failureReason: "Monnify returned no transfer data",
+        providerStatus:
+          "PENDING",
+        providerData:
+          response.data || {},
+        failureReason:
+          "Monnify returned no transfer data",
       });
 
-      await db.collection("monnify_transfers").doc(reference).set(
-        { reconciliationRequired: true },
-        { merge: true }
-      );
+      await db
+        .collection(
+          "monnify_transfers"
+        )
+        .doc(reference)
+        .set(
+          {
+            reconciliationRequired:
+              true,
+          },
+          { merge: true }
+        );
 
       return res.status(202).json({
         status: false,
         message:
           "Transfer status is being verified. Please do not retry this withdrawal yet.",
-        requestId: reference,
-        transferStatus: "PENDING_RECONCILIATION",
+        requestId:
+          reference,
+        transferStatus:
+          "PENDING_RECONCILIATION",
       });
     }
 
-    const providerStatus = normalizeProviderStatus(
-      transferData.status || "PENDING"
-    );
+    const providerStatus =
+      normalizeProviderStatus(
+        transferData.status ||
+          "PENDING"
+      );
 
-    const providerReference = transferData.reference || reference;
-    const monnifyReference = transferData.transactionReference || null;
+    const providerReference =
+      transferData.reference ||
+      reference;
+
+    const monnifyReference =
+      transferData.transactionReference ||
+      null;
 
     await updateLocalTransfer({
       userId,
       reference,
       providerStatus,
-      providerData: transferData,
-      failureReason: null,
+      providerData:
+        transferData,
+      failureReason:
+        null,
     });
 
-    if (isFailureStatus(providerStatus)) {
+    if (
+      isFailureStatus(
+        providerStatus
+      )
+    ) {
       await refundFailedTransfer({
         userId,
         reference,
-        reason: getFailureReason(
-          transferData,
-          `Monnify transfer ${providerStatus}`
-        ),
-        finalStatus: providerStatus,
+        reason:
+          getFailureReason(
+            transferData,
+            `Monnify transfer ${providerStatus}`
+          ),
+        finalStatus:
+          providerStatus,
       });
     }
 
-    const statusForClient = providerStatus;
+    const statusForClient =
+      providerStatus;
 
     return res.json({
       status: true,
+
       message:
-        statusForClient === "PENDING_AUTHORIZATION"
+        statusForClient ===
+        "PENDING_AUTHORIZATION"
           ? "Transfer created and awaiting Monnify authorization"
           : "Transfer initiated",
-      requestId: reference,
-      newBalance: records.newBalance,
-      amount: withdrawalAmount,
+
+      requestId:
+        reference,
+
+      newBalance:
+        records.newBalance,
+
+      amount:
+        withdrawalAmount,
+
       fee,
-      debited: debitAmount,
-      provider: "monnify",
+
+      debited:
+        debitAmount,
+
+      provider:
+        "monnify",
+
       providerReference,
+
       monnifyReference,
-      transferStatus: statusForClient,
+
+      transferStatus:
+        statusForClient,
     });
   } catch (err) {
-    console.error("\n========================================");
-    console.error("❌ GIFTPAY transferToBank CONTROLLER ERROR");
-    console.error("========================================");
-    console.error("Request reference:", reference || "Not generated");
-    console.error("User ID:", userId || "Not resolved");
+    console.error(
+      "\n========================================"
+    );
+
+    console.error(
+      "❌ GIFTPAY transferToBank CONTROLLER ERROR"
+    );
+
+    console.error(
+      "========================================"
+    );
+
+    console.error(
+      "Request reference:",
+      reference ||
+        "Not generated"
+    );
+
+    console.error(
+      "User ID:",
+      userId ||
+        "Not resolved"
+    );
+
     console.error(
       "HTTP status:",
-      err.response?.status ?? err.httpStatus ?? "No HTTP response"
+      err.response?.status ??
+        err.httpStatus ??
+        "No HTTP response"
     );
+
     console.error(
       "Error response:",
       JSON.stringify(
-        err.response?.data || err.responseData || null,
+        err.response?.data ||
+          err.responseData ||
+          null,
         null,
         2
       )
     );
-    console.error("Error message:", err.message);
-    console.error("Stack:", err.stack);
-    console.error("========================================\n");
 
-    if (err.message === "USER_ID_MISMATCH") {
+    console.error(
+      "Error message:",
+      err.message
+    );
+
+    console.error(
+      "Stack:",
+      err.stack
+    );
+
+    console.error(
+      "========================================\n"
+    );
+
+    if (
+      err.message ===
+      "USER_ID_MISMATCH"
+    ) {
       return res.status(403).json({
         status: false,
-        message: "User identity does not match the transfer request",
+        message:
+          "User identity does not match the transfer request",
       });
     }
 
-    if (err.message === "WALLET_NOT_FOUND") {
+    if (
+      err.message ===
+      "WALLET_NOT_FOUND"
+    ) {
       return res.status(404).json({
         status: false,
-        message: "Wallet not found",
+        message:
+          "Wallet not found",
       });
     }
 
-    if (err.message === "INSUFFICIENT_BALANCE") {
+    if (
+      err.message ===
+      "INSUFFICIENT_BALANCE"
+    ) {
       return res.status(400).json({
         status: false,
-        message: "Insufficient wallet balance",
+        message:
+          "Insufficient wallet balance",
       });
     }
 
-    if (err.message === "DUPLICATE_INTERNAL_REFERENCE") {
+    if (
+      err.message ===
+      "DUPLICATE_INTERNAL_REFERENCE"
+    ) {
       return res.status(409).json({
         status: false,
-        message: "Unable to create a unique transfer reference",
+        message:
+          "Unable to create a unique transfer reference",
       });
     }
 
     return res.status(500).json({
       status: false,
-      message: "Server error initiating transfer",
+      message:
+        "Server error initiating transfer",
     });
   }
 };
@@ -1195,253 +1710,377 @@ exports.transferToBank = async (req, res) => {
 // AUTHORIZE SINGLE TRANSFER (MFA / OTP)
 // ============================================================
 
-exports.authorizeTransfer = async (req, res) => {
-  try {
-    const { reference, authorizationCode } = req.body;
-
-    if (!reference || !authorizationCode) {
-      return res.status(400).json({
-        status: false,
-        message: "Missing reference or authorizationCode",
-      });
-    }
-
-    const lookupRef = db.collection("monnify_transfers").doc(reference);
-    const lookupDoc = await lookupRef.get();
-
-    if (!lookupDoc.exists) {
-      return res.status(404).json({
-        status: false,
-        message: "Transfer not found",
-      });
-    }
-
-    const transfer = lookupDoc.data();
-    const userId = getUserIdFromRequest(req, transfer.userId);
-
-    const response = await monnifyRequest({
-      method: "POST",
-      url: "/api/v2/disbursements/single/validate-otp",
-      data: {
+exports.authorizeTransfer =
+  async (req, res) => {
+    try {
+      const {
         reference,
-        authorizationCode: String(authorizationCode).trim(),
-      },
-    });
+        authorizationCode,
+      } = req.body;
 
-    const data = response.data?.responseBody || {};
+      if (
+        !reference ||
+        !authorizationCode
+      ) {
+        return res.status(400).json({
+          status: false,
+          message:
+            "Missing reference or authorizationCode",
+        });
+      }
 
-    await updateLocalTransfer({
-      userId,
-      reference,
-      providerStatus: data.status || "PENDING",
-      providerData: data,
-      failureReason: null,
-    });
+      const lookupRef =
+        db.collection(
+          "monnify_transfers"
+        ).doc(reference);
 
-    if (isFailureStatus(data.status)) {
-      await refundFailedTransfer({
+      const lookupDoc =
+        await lookupRef.get();
+
+      if (!lookupDoc.exists) {
+        return res.status(404).json({
+          status: false,
+          message:
+            "Transfer not found",
+        });
+      }
+
+      const transfer =
+        lookupDoc.data();
+
+      const userId =
+        getUserIdFromRequest(
+          req,
+          transfer.userId
+        );
+
+      const response =
+        await monnifyRequest({
+          method: "POST",
+          url:
+            "/api/v2/disbursements/single/validate-otp",
+          data: {
+            reference,
+            authorizationCode:
+              String(
+                authorizationCode
+              ).trim(),
+          },
+        });
+
+      const data =
+        response.data?.responseBody ||
+        {};
+
+      await updateLocalTransfer({
         userId,
         reference,
-        reason: getFailureReason(data),
-        finalStatus: data.status,
+        providerStatus:
+          data.status ||
+          "PENDING",
+        providerData:
+          data,
+        failureReason:
+          null,
+      });
+
+      if (
+        isFailureStatus(
+          data.status
+        )
+      ) {
+        await refundFailedTransfer({
+          userId,
+          reference,
+          reason:
+            getFailureReason(
+              data
+            ),
+          finalStatus:
+            data.status,
+        });
+      }
+
+      return res.json({
+        status: true,
+        message:
+          "Transfer authorization submitted",
+        data,
+      });
+    } catch (err) {
+      console.error(
+        "❌ Monnify authorizeTransfer error:",
+        err.response?.data ||
+          err.responseData ||
+          err.message
+      );
+
+      return res.status(400).json({
+        status: false,
+        message:
+          err.response?.data
+            ?.responseMessage ||
+          err.responseData
+            ?.responseMessage ||
+          err.message ||
+          "Unable to authorize transfer",
       });
     }
-
-    return res.json({
-      status: true,
-      message: "Transfer authorization submitted",
-      data,
-    });
-  } catch (err) {
-    console.error(
-      "❌ Monnify authorizeTransfer error:",
-      err.response?.data || err.responseData || err.message
-    );
-
-    return res.status(400).json({
-      status: false,
-      message:
-        err.response?.data?.responseMessage ||
-        err.responseData?.responseMessage ||
-        err.message ||
-        "Unable to authorize transfer",
-    });
-  }
-};
+  };
 
 // ============================================================
 // RESEND OTP
 // ============================================================
 
-exports.resendTransferOtp = async (req, res) => {
-  try {
-    const reference = req.body?.reference || req.params?.reference;
+exports.resendTransferOtp =
+  async (req, res) => {
+    try {
+      const reference =
+        req.body?.reference ||
+        req.params?.reference;
 
-    if (!reference) {
+      if (!reference) {
+        return res.status(400).json({
+          status: false,
+          message:
+            "Missing transfer reference",
+        });
+      }
+
+      const lookupRef =
+        db.collection(
+          "monnify_transfers"
+        ).doc(reference);
+
+      const lookupDoc =
+        await lookupRef.get();
+
+      if (!lookupDoc.exists) {
+        return res.status(404).json({
+          status: false,
+          message:
+            "Transfer not found",
+        });
+      }
+
+      getUserIdFromRequest(
+        req,
+        lookupDoc.data().userId
+      );
+
+      const response =
+        await monnifyRequest({
+          method: "POST",
+          url:
+            "/api/v2/disbursements/single/resend-otp",
+          data: {
+            reference,
+          },
+        });
+
+      return res.json({
+        status: true,
+        message:
+          "OTP resend requested",
+        data:
+          response.data
+            ?.responseBody ||
+          null,
+      });
+    } catch (err) {
+      console.error(
+        "❌ Monnify resend OTP error:",
+        err.response?.data ||
+          err.responseData ||
+          err.message
+      );
+
       return res.status(400).json({
         status: false,
-        message: "Missing transfer reference",
+        message:
+          err.response?.data
+            ?.responseMessage ||
+          err.responseData
+            ?.responseMessage ||
+          err.message ||
+          "Unable to resend OTP",
       });
     }
-
-    const lookupRef = db.collection("monnify_transfers").doc(reference);
-    const lookupDoc = await lookupRef.get();
-
-    if (!lookupDoc.exists) {
-      return res.status(404).json({
-        status: false,
-        message: "Transfer not found",
-      });
-    }
-
-    getUserIdFromRequest(req, lookupDoc.data().userId);
-
-    const response = await monnifyRequest({
-      method: "POST",
-      url: "/api/v2/disbursements/single/resend-otp",
-      data: { reference },
-    });
-
-    return res.json({
-      status: true,
-      message: "OTP resend requested",
-      data: response.data?.responseBody || null,
-    });
-  } catch (err) {
-    console.error(
-      "❌ Monnify resend OTP error:",
-      err.response?.data || err.responseData || err.message
-    );
-
-    return res.status(400).json({
-      status: false,
-      message:
-        err.response?.data?.responseMessage ||
-        err.responseData?.responseMessage ||
-        err.message ||
-        "Unable to resend OTP",
-    });
-  }
-};
+  };
 
 // ============================================================
 // MONNIFY PAYOUT WALLET BALANCE
 // ============================================================
 
-exports.getMonnifyWalletBalance = async (req, res) => {
-  try {
-    if (!MONNIFY_WALLET_ACCOUNT_NUMBER) {
+exports.getMonnifyWalletBalance =
+  async (req, res) => {
+    try {
+      if (
+        !MONNIFY_WALLET_ACCOUNT_NUMBER
+      ) {
+        return res.status(500).json({
+          status: false,
+          message:
+            "MONNIFY_WALLET_ACCOUNT_NUMBER is not configured",
+        });
+      }
+
+      const response =
+        await monnifyRequest({
+          method: "GET",
+          url:
+            "/api/v2/disbursements/wallet-balance",
+          params: {
+            accountNumber:
+              MONNIFY_WALLET_ACCOUNT_NUMBER,
+          },
+        });
+
+      return res.json({
+        status: true,
+        data:
+          response.data
+            ?.responseBody ||
+          null,
+      });
+    } catch (err) {
+      console.error(
+        "❌ Monnify wallet balance error:",
+        err.response?.data ||
+          err.responseData ||
+          err.message
+      );
+
       return res.status(500).json({
         status: false,
-        message: "MONNIFY_WALLET_ACCOUNT_NUMBER is not configured",
+        message:
+          "Failed to retrieve Monnify wallet balance",
       });
     }
-
-    const response = await monnifyRequest({
-      method: "GET",
-      url: "/api/v2/disbursements/wallet-balance",
-      params: {
-        accountNumber: MONNIFY_WALLET_ACCOUNT_NUMBER,
-      },
-    });
-
-    return res.json({
-      status: true,
-      data: response.data?.responseBody || null,
-    });
-  } catch (err) {
-    console.error(
-      "❌ Monnify wallet balance error:",
-      err.response?.data || err.responseData || err.message
-    );
-
-    return res.status(500).json({
-      status: false,
-      message: "Failed to retrieve Monnify wallet balance",
-    });
-  }
-};
+  };
 
 // ============================================================
 // TRANSFER STATUS / RECONCILIATION
 // ============================================================
 
-exports.getTransferStatus = async (req, res) => {
-  try {
-    const reference = String(req.params.reference || "").trim();
+exports.getTransferStatus =
+  async (req, res) => {
+    try {
+      const reference =
+        String(
+          req.params.reference ||
+            ""
+        ).trim();
 
-    if (!reference) {
-      return res.status(400).json({
-        status: false,
-        message: "Missing transfer reference",
+      if (!reference) {
+        return res.status(400).json({
+          status: false,
+          message:
+            "Missing transfer reference",
+        });
+      }
+
+      const lookupRef =
+        db.collection(
+          "monnify_transfers"
+        ).doc(reference);
+
+      const lookupDoc =
+        await lookupRef.get();
+
+      if (!lookupDoc.exists) {
+        return res.status(404).json({
+          status: false,
+          message:
+            "Transfer not found",
+        });
+      }
+
+      const lookup =
+        lookupDoc.data();
+
+      getUserIdFromRequest(
+        req,
+        lookup.userId
+      );
+
+      const response =
+        await monnifyRequest({
+          method: "GET",
+          url:
+            "/api/v2/disbursements/single/summary",
+          params: {
+            reference,
+          },
+        });
+
+      const data =
+        response.data?.responseBody;
+
+      if (!data) {
+        return res.status(400).json({
+          status: false,
+          message:
+            response.data
+              ?.responseMessage ||
+            "Unable to retrieve transfer status",
+        });
+      }
+
+      const providerStatus =
+        normalizeProviderStatus(
+          data.status
+        );
+
+      if (
+        isFailureStatus(
+          providerStatus
+        )
+      ) {
+        await refundFailedTransfer({
+          userId:
+            lookup.userId,
+          reference,
+          reason:
+            getFailureReason(
+              data
+            ),
+          finalStatus:
+            providerStatus,
+        });
+      } else {
+        await updateLocalTransfer({
+          userId:
+            lookup.userId,
+          reference,
+          providerStatus,
+          providerData:
+            data,
+          failureReason:
+            null,
+        });
+      }
+
+      return res.json({
+        status: true,
+        data,
       });
-    }
+    } catch (err) {
+      console.error(
+        "❌ Monnify transfer status error:",
+        err.response?.data ||
+          err.responseData ||
+          err.message
+      );
 
-    const lookupRef = db.collection("monnify_transfers").doc(reference);
-    const lookupDoc = await lookupRef.get();
-
-    if (!lookupDoc.exists) {
-      return res.status(404).json({
-        status: false,
-        message: "Transfer not found",
-      });
-    }
-
-    const lookup = lookupDoc.data();
-    getUserIdFromRequest(req, lookup.userId);
-
-    const response = await monnifyRequest({
-      method: "GET",
-      url: "/api/v2/disbursements/single/summary",
-      params: { reference },
-    });
-
-    const data = response.data?.responseBody;
-
-    if (!data) {
       return res.status(400).json({
         status: false,
         message:
-          response.data?.responseMessage ||
-          "Unable to retrieve transfer status",
+          err.response?.data
+            ?.responseMessage ||
+          err.responseData
+            ?.responseMessage ||
+          "Failed to retrieve transfer status",
       });
     }
-
-    const providerStatus = normalizeProviderStatus(data.status);
-
-    if (isFailureStatus(providerStatus)) {
-      await refundFailedTransfer({
-        userId: lookup.userId,
-        reference,
-        reason: getFailureReason(data),
-        finalStatus: providerStatus,
-      });
-    } else {
-      await updateLocalTransfer({
-        userId: lookup.userId,
-        reference,
-        providerStatus,
-        providerData: data,
-        failureReason: null,
-      });
-    }
-
-    return res.json({
-      status: true,
-      data,
-    });
-  } catch (err) {
-    console.error(
-      "❌ Monnify transfer status error:",
-      err.response?.data || err.responseData || err.message
-    );
-
-    return res.status(400).json({
-      status: false,
-      message:
-        err.response?.data?.responseMessage ||
-        err.responseData?.responseMessage ||
-        "Failed to retrieve transfer status",
-    });
-  }
-};
+  };

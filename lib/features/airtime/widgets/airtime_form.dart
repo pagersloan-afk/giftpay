@@ -17,7 +17,6 @@ class AirtimeForm extends StatelessWidget {
   final List<RecentAirtimeNumber> recentNumbers;
 
   final ValueChanged<RecentAirtimeNumber> onRecentNumberSelected;
-
   final ValueChanged<String> onRecentNumberRemoved;
 
   const AirtimeForm({
@@ -36,6 +35,11 @@ class AirtimeForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? validSelectedNetwork =
+        networkMap.values.contains(selectedNetworkCode)
+        ? selectedNetworkCode
+        : null;
+
     return Column(
       children: [
         // ======================================================
@@ -62,35 +66,27 @@ class AirtimeForm extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               itemCount: recentNumbers.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
-
               itemBuilder: (context, index) {
                 final recent = recentNumbers[index];
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(14),
-
                   onTap: () {
                     onRecentNumberSelected(recent);
                   },
-
                   child: Container(
                     width: 170,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 9,
                     ),
-
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: themeColor.withOpacity(0.25)),
                       color: themeColor.withOpacity(0.06),
                     ),
-
                     child: Stack(
                       children: [
-                        // ==================================================
-                        // PHONE ICON
-                        // ==================================================
                         Positioned(
                           left: 0,
                           top: 10,
@@ -109,9 +105,6 @@ class AirtimeForm extends StatelessWidget {
                           ),
                         ),
 
-                        // ==================================================
-                        // REMOVE BUTTON
-                        // ==================================================
                         Positioned(
                           right: -6,
                           top: -8,
@@ -136,9 +129,6 @@ class AirtimeForm extends StatelessWidget {
                           ),
                         ),
 
-                        // ==================================================
-                        // PHONE + NETWORK
-                        // ==================================================
                         Positioned(
                           left: 48,
                           right: 4,
@@ -156,9 +146,7 @@ class AirtimeForm extends StatelessWidget {
                                   fontSize: 13,
                                 ),
                               ),
-
                               const SizedBox(height: 4),
-
                               if (recent.network.isNotEmpty)
                                 Text(
                                   recent.network,
@@ -182,42 +170,81 @@ class AirtimeForm extends StatelessWidget {
 
           const SizedBox(height: 18),
         ],
+
         // ======================================================
         // NETWORK
         // ======================================================
         DropdownButtonFormField<String>(
-          initialValue: selectedNetworkCode.isEmpty
-              ? null
-              : selectedNetworkCode,
+          initialValue: validSelectedNetwork,
+
+          isExpanded: true,
+
+          menuMaxHeight: 300,
+
+          dropdownColor: const Color(0xFF1F2937),
+
+          iconEnabledColor: themeColor,
+
+          style: const TextStyle(color: Colors.white, fontSize: 16),
 
           items: networkMap.entries.map((entry) {
-            final name = entry.key;
-            final code = entry.value;
+            final String name = entry.key;
+            final String code = entry.value;
+
+            final String? logoPath = AirtimeTheme.networkLogos[name];
 
             return DropdownMenuItem<String>(
               value: code,
-
               child: Row(
+                mainAxisSize: MainAxisSize.max,
                 children: [
-                  Image.asset(
-                    AirtimeTheme.networkLogos[name]!,
-                    width: 24,
-                    height: 24,
-                  ),
+                  if (logoPath != null && logoPath.isNotEmpty)
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Image.asset(
+                        logoPath,
+                        width: 24,
+                        height: 24,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) {
+                          return Icon(
+                            Icons.sim_card,
+                            size: 24,
+                            color: themeColor,
+                          );
+                        },
+                      ),
+                    )
+                  else
+                    Icon(Icons.sim_card, size: 24, color: themeColor),
 
                   const SizedBox(width: 10),
 
-                  Text(name),
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
                 ],
               ),
             );
           }).toList(),
 
-          onChanged: onNetworkChanged,
+          onChanged: networkMap.isEmpty
+              ? null
+              : (value) {
+                  if (value == null) {
+                    return;
+                  }
+
+                  onNetworkChanged(value);
+                },
 
           decoration: const InputDecoration(labelText: "Network"),
-
-          dropdownColor: const Color(0xFF1F2937),
         ),
 
         const SizedBox(height: 16),
