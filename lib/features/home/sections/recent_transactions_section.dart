@@ -29,6 +29,60 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
     loadTx();
   }
 
+  // ============================================================
+  // REMOVE DUPLICATE SERVICE TRANSACTIONS
+  // ============================================================
+  // Wallet-funded services can exist in both wallet transactions
+  // and the service transaction collection. Both records use the
+  // same reference/id, so keep only one customer-facing entry.
+  // Prefer the record with a real title over the generic
+  // "Transaction" fallback.
+  // ============================================================
+  List<Map<String, dynamic>> _deduplicateTransactions(List<dynamic> source) {
+    final result = <Map<String, dynamic>>[];
+    final indexByKey = <String, int>{};
+
+    String keyOf(Map<String, dynamic> tx) {
+      return (tx["id"] ??
+              tx["reference"] ??
+              tx["requestReference"] ??
+              tx["requestId"] ??
+              "")
+          .toString()
+          .trim();
+    }
+
+    bool isGeneric(Map<String, dynamic> tx) {
+      final title = tx["title"]?.toString().trim().toLowerCase() ?? "";
+      return title.isEmpty || title == "transaction";
+    }
+
+    for (final raw in source) {
+      if (raw is! Map) continue;
+
+      final tx = Map<String, dynamic>.from(raw);
+      final key = keyOf(tx);
+
+      if (key.isEmpty || !indexByKey.containsKey(key)) {
+        if (key.isNotEmpty) {
+          indexByKey[key] = result.length;
+        }
+        result.add(tx);
+        continue;
+      }
+
+      final existingIndex = indexByKey[key]!;
+      final existing = result[existingIndex];
+
+      // Keep the detailed customer-facing transaction.
+      if (isGeneric(existing) && !isGeneric(tx)) {
+        result[existingIndex] = tx;
+      }
+    }
+
+    return result;
+  }
+
   Future<void> loadTx() async {
     try {
       final userId = FirebaseAuth.instance.currentUser!.uid;
@@ -41,8 +95,14 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
 
       if (data["status"] == true) {
         if (!mounted) return;
+        final rawTransactions = data["data"] is List
+            ? List<dynamic>.from(data["data"] as List)
+            : <dynamic>[];
+
+        final cleanedTransactions = _deduplicateTransactions(rawTransactions);
+
         setState(() {
-          recentTx = (data["data"] as List).take(4).toList();
+          recentTx = cleanedTransactions.take(4).toList();
           loading = false;
         });
       }

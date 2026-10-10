@@ -1,51 +1,98 @@
-// backend/src/controllers/electricityDiscos.controller.js
-const axios = require("axios");
+const {
+  getCategories,
+  getBillers,
+} = require("../services/monnifyBills.service.js");
 
-exports.getDiscosController = async (req, res) => {
+function unwrap(body) {
+  return body?.responseBody ?? body?.data ?? body ?? {};
+}
+
+function items(body) {
+  const value = unwrap(body);
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value.content)) return value.content;
+  if (Array.isArray(value.billers)) return value.billers;
+  if (Array.isArray(value.categories)) return value.categories;
+  return [];
+}
+
+exports.getDiscosController = async (_req, res) => {
   try {
-    const USER_ID = process.env.CLUBKONNECT_USERID;
+    const categoryResponse = await getCategories({ size: 100, page: 0 });
+    const categories = items(categoryResponse);
 
-    const url = `https://www.nellobytesystems.com/APIElectricityDiscosV2.asp?UserID=${USER_ID}`;
+    const electricityCategory = categories.find((category) => {
+      const name = String(
+        category?.name ??
+          category?.categoryName ??
+          category?.category_name ??
+          ""
+      ).trim().toUpperCase();
 
-    console.log("📡 Fetching CK Discos:", url);
+      const code = String(
+        category?.code ?? category?.categoryCode ?? category?.category_code ?? ""
+      ).trim().toUpperCase();
 
-    const response = await axios.get(url);
-    const raw = response.data;
+      return name === "ELECTRICITY" || code === "ELECTRICITY";
+    });
 
-    console.log("📨 CK Disco Response:", JSON.stringify(raw, null, 2));
-
-    if (!raw?.ELECTRIC_COMPANY) {
-      return res.status(400).json({
+    if (!electricityCategory) {
+      return res.status(404).json({
         status: false,
-        message: "Invalid response from ClubKonnect",
-        raw,
+        message: "Monnify electricity category was not returned",
+        categories,
       });
     }
 
-    const companies = raw.ELECTRIC_COMPANY;
-    const discos = [];
+    const categoryCode =
+      electricityCategory?.code ??
+      electricityCategory?.categoryCode ??
+      electricityCategory?.category_code;
 
-    for (const key in companies) {
-      const arr = companies[key];
-      if (!Array.isArray(arr) || arr.length === 0) continue;
-
-      const item = arr[0];
-
-      discos.push({
-        name: item.NAME,
-        code: item.ID, // ⭐ CK numeric code
+    if (!categoryCode) {
+      return res.status(502).json({
+        status: false,
+        message: "Monnify electricity category has no category code",
+        category: electricityCategory,
       });
     }
+
+    const billerResponse = await getBillers({
+      category_code: categoryCode,
+      size: 100,
+      page: 0,
+    });
+
+    const billers = items(billerResponse);
+
+    const data = billers
+      .map((biller) => ({
+        name:
+          biller?.name ??
+          biller?.billerName ??
+          biller?.biller_name ??
+          "",
+        code:
+          biller?.code ??
+          biller?.billerCode ??
+          biller?.biller_code ??
+          "",
+        categoryCode,
+        raw: biller,
+      }))
+      .filter((biller) => biller.name && biller.code);
 
     return res.json({
       status: true,
-      data: discos,
+      data,
+      categoryCode,
     });
   } catch (err) {
-    console.error("❌ Disco fetch error:", err.message);
-    return res.status(500).json({
+    console.error("Monnify electricity biller fetch error:", err);
+    return res.status(err.status || 502).json({
       status: false,
-      message: "Failed to fetch discos",
+      message: err.message || "Failed to fetch electricity billers",
+      provider: err.provider,
     });
   }
 };

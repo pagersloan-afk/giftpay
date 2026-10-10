@@ -1,31 +1,33 @@
 const express = require("express");
+
+const {
+  fetchDataNetworksController,
+  fetchDataPlansController,
+  walletPayData,
+  requeryDataController,
+} = require("../../controllers/data.controller");
+
 const router = express.Router();
 
-// OLD CONTROLLERS
-const {
-  buyDataController,
-  queryDataController,
-  cancelDataController,
-  fetchDataPlansController,
-} = require("../services/controllers/data.controller.js");
+// ============================================================
+// MONNIFY DATA DISCOVERY
+// ============================================================
 
-// NEW WALLET CONTROLLER
-const { walletPayData } = require("../../controllers/data.controller");
+// Monnify DATA billers currently available in the merchant account.
+router.get("/networks", fetchDataNetworksController);
 
-// ===============================
-// OLD ENDPOINTS (KEEP THEM)
-// ===============================
-router.get("/buy", buyDataController);
+// Monnify products for the selected DATA biller.
+// :billerCode is the actual Monnify biller code.
+router.get("/plans/:billerCode", fetchDataPlansController);
 
-// ⭐ FIXED: now accepts /plans/:network
-router.get("/plans/:network", fetchDataPlansController);
-
-router.get("/query", queryDataController);
-router.get("/cancel", cancelDataController);
-
-// ===============================
-// NEW WALLET ENDPOINT
-// ===============================
+// ============================================================
+// WALLET DATA PURCHASE
+// ============================================================
 router.post("/wallet/pay-data", walletPayData);
+
+// ============================================================
+// MONNIFY DATA REQUERY
+// ============================================================
+router.get("/requery/:requestId", requeryDataController);
 
 module.exports = router;

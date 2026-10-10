@@ -44,6 +44,10 @@ async function getAccessToken(forceRefresh = false) {
     `${API_KEY}:${SECRET_KEY}`
   ).toString("base64");
 
+  console.log(
+    "[MONNIFY AUTH] POST /api/v1/auth/login"
+  );
+
   const response = await axios.post(
     `${BASE_URL}/api/v1/auth/login`,
     {},
@@ -57,6 +61,14 @@ async function getAccessToken(forceRefresh = false) {
   );
 
   const body = response.data;
+
+  console.log(
+    "[MONNIFY AUTH] Response:",
+    response.status,
+    body?.requestSuccessful,
+    body?.responseCode,
+    body?.responseMessage
+  );
 
   if (
     !body?.requestSuccessful ||
@@ -82,19 +94,6 @@ async function getAccessToken(forceRefresh = false) {
 
 // ============================================================
 // PROVIDER ERROR NORMALIZATION
-//
-// IMPORTANT:
-// Axios rejects HTTP 400/401/etc. before returning response.data.
-// Monnify puts the useful error inside response.data:
-//
-// {
-//   requestSuccessful: false,
-//   responseMessage: "invalid customerId",
-//   responseCode: "99"
-// }
-//
-// Convert that into a normal Error while preserving the provider
-// details so controllers can return the real message to Flutter.
 // ============================================================
 
 function normalizeProviderError(error) {
@@ -125,11 +124,9 @@ function normalizeProviderError(error) {
       provider.message ||
       null;
 
-    normalized.provider =
-      provider;
+    normalized.provider = provider;
 
-    normalized.response =
-      error.response;
+    normalized.response = error.response;
 
     normalized.isMonnifyError = true;
 
@@ -137,6 +134,100 @@ function normalizeProviderError(error) {
   }
 
   return error;
+}
+
+// ============================================================
+// LOGGING HELPERS
+// ============================================================
+
+function logRequest(method, path, options = {}) {
+  console.log(
+    `[MONNIFY BILLS] ${method} ${path}`
+  );
+
+  if (options.params) {
+    console.log(
+      "[MONNIFY BILLS] Query Params:",
+      JSON.stringify(options.params)
+    );
+  }
+
+  if (options.data) {
+    console.log(
+      "[MONNIFY BILLS] Request Body:",
+      JSON.stringify(options.data)
+    );
+  }
+}
+
+function logResponse(method, path, response) {
+  const body = response?.data;
+
+  console.log(
+    `[MONNIFY BILLS] ${method} ${path} -> HTTP ${response?.status}`
+  );
+
+  if (body && typeof body === "object") {
+    console.log(
+      "[MONNIFY BILLS] requestSuccessful:",
+      body.requestSuccessful
+    );
+
+    console.log(
+      "[MONNIFY BILLS] responseCode:",
+      body.responseCode
+    );
+
+    console.log(
+      "[MONNIFY BILLS] responseMessage:",
+      body.responseMessage
+    );
+
+    if (body.responseBody !== undefined) {
+      console.log(
+        "[MONNIFY BILLS] responseBody:",
+        JSON.stringify(body.responseBody)
+      );
+    }
+  } else {
+    console.log(
+      "[MONNIFY BILLS] Raw response:",
+      String(body)
+    );
+  }
+}
+
+function logError(method, path, error) {
+  console.error(
+    `[MONNIFY BILLS] ${method} ${path} FAILED`
+  );
+
+  console.error(
+    "[MONNIFY BILLS] HTTP status:",
+    error?.response?.status
+  );
+
+  console.error(
+    "[MONNIFY BILLS] responseCode:",
+    error?.response?.data?.responseCode
+  );
+
+  console.error(
+    "[MONNIFY BILLS] responseMessage:",
+    error?.response?.data?.responseMessage
+  );
+
+  console.error(
+    "[MONNIFY BILLS] response body:",
+    typeof error?.response?.data === "string"
+      ? error.response.data
+      : JSON.stringify(error?.response?.data)
+  );
+
+  console.error(
+    "[MONNIFY BILLS] Error:",
+    error?.message
+  );
 }
 
 // ============================================================
@@ -151,6 +242,8 @@ async function request(
 ) {
   const token = await getAccessToken();
 
+  logRequest(method, path, options);
+
   try {
     const response = await axios({
       method,
@@ -162,14 +255,16 @@ async function request(
         "Content-Type": "application/json",
       },
       timeout: 30000,
-      // We deliberately allow Axios to reject HTTP errors.
-      // The catch block below converts them into useful Monnify errors.
     });
+
+    logResponse(method, path, response);
 
     const body = response.data;
 
-    // Some Monnify errors can arrive as HTTP 200 while
-    // requestSuccessful is false.
+    // --------------------------------------------------------
+    // Monnify can return HTTP 200 while requestSuccessful=false.
+    // --------------------------------------------------------
+
     if (
       body &&
       typeof body === "object" &&
@@ -182,11 +277,15 @@ async function request(
       );
 
       error.status = 400;
+
       error.responseCode =
         body.responseCode ?? null;
+
       error.responseMessage =
         body.responseMessage ?? null;
+
       error.provider = body;
+
       error.isMonnifyError = true;
 
       throw error;
@@ -194,11 +293,20 @@ async function request(
 
     return body;
   } catch (error) {
-    // Refresh once if the access token has expired.
+    logError(method, path, error);
+
+    // --------------------------------------------------------
+    // Refresh once if access token has expired.
+    // --------------------------------------------------------
+
     if (
       retry &&
       error?.response?.status === 401
     ) {
+      console.log(
+        "[MONNIFY AUTH] Token expired/unauthorized. Refreshing token..."
+      );
+
       await getAccessToken(true);
 
       return request(
@@ -215,6 +323,9 @@ async function request(
 
 // ============================================================
 // PAGINATION
+//
+// Monnify Bills Payment discovery calls are configured here
+// with page: 0 from the application layer.
 // ============================================================
 
 function pagination(query = {}) {
@@ -245,29 +356,75 @@ function pagination(query = {}) {
 
 // ============================================================
 // BILLER CATEGORIES
+//
+// GET /api/v1/vas/bills-payment/biller-categories
 // ============================================================
 
 async function getCategories(query = {}) {
+  const params = pagination({
+    size: query.size ?? 100,
+    page: query.page ?? 0,
+  });
+
+  console.log(
+    "[MONNIFY BILLS] ========================================"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Fetching BILLER CATEGORIES"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Endpoint: GET /api/v1/vas/bills-payment/biller-categories"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Pagination:",
+    JSON.stringify(params)
+  );
+
   return request(
     "GET",
     "/api/v1/vas/bills-payment/biller-categories",
     {
-      params: pagination(query),
+      params,
     }
   );
 }
 
 // ============================================================
 // BILLERS
+//
+// GET /api/v1/vas/bills-payment/billers
 // ============================================================
 
 async function getBillers(query = {}) {
-  const params = pagination(query);
+  const params = pagination({
+    size: query.size ?? 100,
+    page: query.page ?? 0,
+  });
 
   if (query.category_code) {
     params.category_code =
       String(query.category_code);
   }
+
+  console.log(
+    "[MONNIFY BILLS] ========================================"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Fetching BILLERS"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Endpoint: GET /api/v1/vas/bills-payment/billers"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Pagination:",
+    JSON.stringify(params)
+  );
 
   return request(
     "GET",
@@ -280,10 +437,15 @@ async function getBillers(query = {}) {
 
 // ============================================================
 // PRODUCTS
+//
+// GET /api/v1/vas/bills-payment/biller-products
 // ============================================================
 
 async function getProducts(query = {}) {
-  const params = pagination(query);
+  const params = pagination({
+    size: query.size ?? 100,
+    page: query.page ?? 0,
+  });
 
   if (!query.biller_code) {
     const error = new Error(
@@ -298,6 +460,23 @@ async function getProducts(query = {}) {
   params.biller_code =
     String(query.biller_code);
 
+  console.log(
+    "[MONNIFY BILLS] ========================================"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Fetching BILLER PRODUCTS"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Endpoint: GET /api/v1/vas/bills-payment/biller-products"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Pagination:",
+    JSON.stringify(params)
+  );
+
   return request(
     "GET",
     "/api/v1/vas/bills-payment/biller-products",
@@ -309,6 +488,8 @@ async function getProducts(query = {}) {
 
 // ============================================================
 // VALIDATE CUSTOMER
+//
+// POST /api/v1/vas/bills-payment/validate-customer
 // ============================================================
 
 async function validateCustomer(payload = {}) {
@@ -326,6 +507,18 @@ async function validateCustomer(payload = {}) {
 
     throw error;
   }
+
+  console.log(
+    "[MONNIFY BILLS] ========================================"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Validating CUSTOMER"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Endpoint: POST /api/v1/vas/bills-payment/validate-customer"
+  );
 
   return request(
     "POST",
@@ -345,14 +538,22 @@ async function validateCustomer(payload = {}) {
 // ============================================================
 // VEND
 //
-// Monnify Bills Payment documentation uses:
+// Monnify Bills Payment documentation uses the vend endpoint
+// after successful customer validation.
+//
+// Current application payload:
+//
 // amount
 // customerId
 // productCode
 // reference
 // emailAddress
+// phoneNumber (optional)
+// validationReference (optional)
 //
-// Do NOT change these back to vendAmount/vendReference.
+// IMPORTANT:
+// validationReference is only included when supplied by the
+// validation step.
 // ============================================================
 
 async function vend(payload = {}) {
@@ -412,6 +613,18 @@ async function vend(payload = {}) {
       String(validationReference);
   }
 
+  console.log(
+    "[MONNIFY BILLS] ========================================"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] VEND AIRTIME/BILL"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Endpoint: POST /api/v1/vas/bills-payment/vend"
+  );
+
   return request(
     "POST",
     "/api/v1/vas/bills-payment/vend",
@@ -423,6 +636,8 @@ async function vend(payload = {}) {
 
 // ============================================================
 // REQUERY
+//
+// GET /api/v1/vas/bills-payment/requery
 // ============================================================
 
 async function requery(reference) {
@@ -439,14 +654,28 @@ async function requery(reference) {
     throw error;
   }
 
+  const params = {
+    reference:
+      String(reference).trim(),
+  };
+
+  console.log(
+    "[MONNIFY BILLS] ========================================"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] REQUERY"
+  );
+
+  console.log(
+    "[MONNIFY BILLS] Endpoint: GET /api/v1/vas/bills-payment/requery"
+  );
+
   return request(
     "GET",
     "/api/v1/vas/bills-payment/requery",
     {
-      params: {
-        reference:
-          String(reference).trim(),
-      },
+      params,
     }
   );
 }

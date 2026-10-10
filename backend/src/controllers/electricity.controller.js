@@ -1,51 +1,73 @@
-// backend/src/controllers/electricity.controller.js
-const axios = require("axios");
+const { validateCustomer } = require("../services/monnifyBills.service.js");
 
 exports.verifyMeterController = async (req, res) => {
   try {
-    const { discoCode, meterNumber, meterType } = req.body;
+    const meterNumber = String(req.body?.meterNumber || "").trim();
+    const billerCode = String(req.body?.billerCode || req.body?.discoCode || "").trim();
+    const productCode = String(req.body?.productCode || "").trim();
+    const meterType = String(req.body?.meterType || "").trim();
 
-    if (!discoCode || !meterNumber || !meterType) {
+    if (!meterNumber || !billerCode || !productCode) {
       return res.status(400).json({
         status: false,
-        message: "Missing discoCode, meterNumber or meterType",
+        message: "meterNumber, billerCode and productCode are required",
       });
     }
 
-    const USER_ID = process.env.CLUBKONNECT_USERID;
-    const API_KEY = process.env.CLUBKONNECT_APIKEY;
+    const response = await validateCustomer({
+      productCode,
+      customerId: meterNumber,
+    });
 
-    const url =
-      `https://www.nellobytesystems.com/APIVerifyElectricityV1.asp?UserID=${USER_ID}&APIKey=${API_KEY}&ElectricCompany=${discoCode}&MeterNo=${meterNumber}&MeterType=${meterType}`;
+    const body = response?.responseBody ?? response?.data ?? {};
+    const vendInstruction = body?.vendInstruction ?? {};
+    const requireValidationRef = Boolean(vendInstruction?.requireValidationRef);
 
-    console.log("📡 VERIFY METER URL:", url);
-
-    const response = await axios.get(url);
-    const raw = response.data;
-
-    console.log("📨 VERIFY METER RESPONSE:", raw);
-
-    if (!raw || !raw.customer_name || raw.customer_name === "INVALID_METERNO") {
+    if (!response?.requestSuccessful || String(response?.responseCode) !== "0") {
       return res.status(400).json({
         status: false,
-        message: "Meter verification failed",
-        raw,
+        message: response?.responseMessage || "Meter verification failed",
+        raw: response,
+      });
+    }
+
+    const customerName =
+      body?.customerName ?? body?.customer_name ?? body?.name ?? "";
+
+    const address = body?.address ?? "";
+    const validationReference =
+      body?.validationReference ??
+      body?.validationRef ??
+      body?.reference ??
+      null;
+
+    if (requireValidationRef && !validationReference) {
+      return res.status(502).json({
+        status: false,
+        message: "Monnify requires a validation reference but did not return one",
+        raw: response,
       });
     }
 
     return res.json({
       status: true,
-      customerName: raw.customer_name,
-      address: raw.address ?? "",
+      customerName,
+      address,
       meterNumber,
-      discoCode,
+      billerCode,
+      discoCode: billerCode,
+      productCode,
       meterType,
+      requireValidationRef,
+      validationReference,
+      raw: response,
     });
   } catch (err) {
-    console.error("❌ VERIFY METER ERROR:", err.message);
-    return res.status(500).json({
+    console.error("Monnify electricity meter validation error:", err);
+    return res.status(err.status || 502).json({
       status: false,
-      message: "Server error verifying meter",
+      message: err.message || "Server error verifying meter",
+      provider: err.provider,
     });
   }
 };

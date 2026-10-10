@@ -668,45 +668,6 @@ app.get("/api/airtime/networks", async (req, res) => {
 });
 
 // ============================================================
-// Data Requery
-// ============================================================
-app.get(
-  "/api/data/requery/:requestId",
-  async (req, res) => {
-    try {
-      const requestId = req.params.requestId;
-
-      const USER_ID = process.env.CLUBKONNECT_USERID;
-      const API_KEY = process.env.CLUBKONNECT_APIKEY;
-
-      const url =
-        `https://www.nellobytesystems.com/` +
-        `APIQueryV1.asp?UserID=${USER_ID}` +
-        `&APIKey=${API_KEY}` +
-        `&RequestID=${requestId}`;
-
-      const response = await axios.get(url);
-      const raw = response.data;
-
-      return res.json({
-        status: true,
-        data: raw,
-      });
-    } catch (err) {
-      console.error(
-        "Data requery error:",
-        err.message || err
-      );
-
-      return res.json({
-        status: false,
-        message: "Requery failed",
-      });
-    }
-  }
-);
-
-// ============================================================
 // Save FCM Token
 // ============================================================
 app.post("/save-fcm-token", async (req, res) => {

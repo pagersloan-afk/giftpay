@@ -142,12 +142,58 @@ exports.getTransactionHistory = async (req, res) => {
       .filter((tx) => tx.amount > 0 && tx.timestamp > 0);
 
     // ---------------------------------------------------------
-    // 4. MERGE ALL SOURCES
+    // 4. REMOVE DUPLICATE SERVICE TRANSACTIONS
     // ---------------------------------------------------------
-    const all = [...walletTx, ...serviceTx, ...bulkTx];
+    // A wallet-funded service transaction is intentionally written
+    // to two places:
+    //   1. wallets/{uid}.transactions  -> debit + receipt details
+    //   2. users/{uid}/transactions     -> provider/service record
+    //
+    // Both records use the same reference/id. They are ONE customer
+    // transaction, so the history API must return only one copy.
+    // We keep the wallet record because it contains the customer-
+    // facing title such as "Airtime Purchase (080...)".
+    // ---------------------------------------------------------
+    // Keep the wallet record as the preferred customer-facing copy.
+    // Build a key set from wallet records and remove only the matching
+    // service duplicate.
+    const walletReferences = new Set();
+
+    for (const tx of walletTx) {
+      const key =
+        tx.id?.toString() ||
+        tx.reference?.toString() ||
+        tx.requestReference?.toString() ||
+        tx.requestId?.toString() ||
+        "";
+
+      if (key) {
+        walletReferences.add(key);
+      }
+    }
+
+    const uniqueServiceTx = serviceTx.filter((tx) => {
+      const key =
+        tx.id?.toString() ||
+        tx.reference?.toString() ||
+        tx.requestReference?.toString() ||
+        tx.requestId?.toString() ||
+        "";
+
+      return !key || !walletReferences.has(key);
+    });
 
     // ---------------------------------------------------------
-    // 5. SORT NEWEST → OLDEST
+    // 5. MERGE ALL SOURCES
+    // ---------------------------------------------------------
+    const all = [
+      ...walletTx,
+      ...uniqueServiceTx,
+      ...bulkTx,
+    ];
+
+    // ---------------------------------------------------------
+    // 6. SORT NEWEST → OLDEST
     // ---------------------------------------------------------
     all.sort((a, b) => b.timestamp - a.timestamp);
 
@@ -164,3 +210,4 @@ exports.getTransactionHistory = async (req, res) => {
     });
   }
 };
+

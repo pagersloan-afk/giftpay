@@ -11,6 +11,7 @@ import 'package:utilityhub/config/api.dart';
 
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/features/electricity/purchase_screen.dart';
+import 'package:utilityhub/features/electricity/verify_meter_screen.dart';
 
 class ElectricityHistoryScreen extends StatefulWidget {
   const ElectricityHistoryScreen({super.key});
@@ -404,11 +405,10 @@ class _ElectricityHistoryScreenState extends State<ElectricityHistoryScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => PurchaseElectricityScreen(
-                                  meterNumber: meter,
-                                  customerName: customerName,
+                                builder: (_) => VerifyMeterScreen(
                                   discoCode: discoCode,
-                                  meterType: meterType,
+                                  userId:
+                                      FirebaseAuth.instance.currentUser!.uid,
                                 ),
                               ),
                             );

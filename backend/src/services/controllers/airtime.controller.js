@@ -212,70 +212,108 @@ function getNetworkName(biller) {
 }
 
 // ============================================================
-// FIND AIRTIME CATEGORY
+// AIRTIME CATALOG CACHE
+// ============================================================
+//
+// The purchase path must NOT discover every network and every
+// product on every transaction. Monnify catalogue data changes
+// much less frequently than wallet transactions, so we keep a
+// short in-process cache to avoid repeated catalogue requests.
+//
+// This cache is only an optimization. A cache miss still uses
+// Monnify as the source of truth.
 // ============================================================
 
-async function findAirtimeCategoryCode() {
-  const result =
-    await monnifyBills.getCategories({
-      size: 100,
-      page: 0,
-    });
+const CATALOG_CACHE_TTL_MS = 2 * 60 * 1000;
 
-  const categories =
-    extractContent(result);
+let airtimeCategoryCache = null;
+let airtimeBillersCache = null;
+const airtimeProductsCache = new Map();
 
-  const category =
-    categories.find((item) => {
-      const code = normalizeName(
-        item?.code
-      );
-
-      const name = normalizeName(
-        item?.name
-      );
-
-      return (
-        code === "airtime" ||
-        name === "airtime"
-      );
-    });
-
-  if (!category) {
-    throw new Error(
-      "Monnify Airtime category was not found"
-    );
+function getFreshCacheValue(cacheEntry) {
+  if (!cacheEntry) {
+    return null;
   }
 
-  return (
-    category.code ||
-    category.name
-  )
-    .toString()
-    .trim();
+  if (Date.now() - cacheEntry.cachedAt > CATALOG_CACHE_TTL_MS) {
+    return null;
+  }
+
+  return cacheEntry.value;
+}
+
+async function findAirtimeCategoryCode() {
+  const cached = getFreshCacheValue(airtimeCategoryCache);
+
+  if (cached) {
+    return cached;
+  }
+
+  const result = await monnifyBills.getCategories({
+    size: 100,
+    page: 0,
+  });
+
+  const categories = extractContent(result);
+
+  const category = categories.find((item) => {
+    const code = normalizeName(item?.code);
+    const name = normalizeName(item?.name);
+
+    return code === "airtime" || name === "airtime";
+  });
+
+  if (!category) {
+    throw new Error("Monnify Airtime category was not found");
+  }
+
+  const categoryCode = String(
+    category.code || category.name || ""
+  ).trim();
+
+  airtimeCategoryCache = {
+    value: categoryCode,
+    cachedAt: Date.now(),
+  };
+
+  return categoryCode;
+}
+
+async function getAirtimeBillers() {
+  const cached = getFreshCacheValue(airtimeBillersCache);
+
+  if (cached) {
+    return cached;
+  }
+
+  const categoryCode = await findAirtimeCategoryCode();
+
+  const billerResult = await monnifyBills.getBillers({
+    category_code: categoryCode,
+    size: 100,
+    page: 0,
+  });
+
+  const billers = extractContent(billerResult);
+
+  airtimeBillersCache = {
+    value: billers,
+    cachedAt: Date.now(),
+  };
+
+  return billers;
 }
 
 // ============================================================
 // FIND AN ACTUAL AIRTIME PRODUCT
 // ============================================================
-//
-// IMPORTANT:
-// We never fall back to products[0].
-//
-// Monnify can return DATA_BUNDLE products for a biller that
-// also supports AIRTIME. The product's category must therefore
-// be checked explicitly.
-//
 
 function findAirtimeProduct(products) {
   if (!Array.isArray(products)) {
     return null;
   }
 
-  const airtimeProducts =
-    products.filter(
-      isAirtimeProduct
-    );
+  const airtimeProducts = products.filter(isAirtimeProduct);
 
   if (!airtimeProducts.length) {
     return null;
@@ -283,149 +321,51 @@ function findAirtimeProduct(products) {
 
   // Prefer OPEN products because they support arbitrary
   // Airtime amounts such as ₦100, ₦200, ₦500, etc.
-  const openProduct =
-    airtimeProducts.find(
-      (product) =>
-        String(
-          product?.priceType || ""
-        )
-          .trim()
-          .toUpperCase() === "OPEN"
-    );
+  const openProduct = airtimeProducts.find(
+    (product) =>
+      String(product?.priceType || "")
+        .trim()
+        .toUpperCase() === "OPEN"
+  );
 
-  if (openProduct) {
-    return openProduct;
-  }
-
-  // If there is no OPEN product, use an Airtime product.
-  // The important condition is that it MUST actually be
-  // classified as AIRTIME.
-  return airtimeProducts[0];
+  return openProduct || airtimeProducts[0];
 }
 
-// ============================================================
-// DISCOVER AIRTIME NETWORKS
-// ============================================================
-//
-// Returns:
-//
-// {
-//   Airtel: "AIRTEL",
-//   MTN: "MTN"
-// }
-//
-// These are BILLER CODES, not product codes.
-//
-// The actual product code is resolved separately.
-//
+async function getProductsForBiller(billerCode) {
+  const code = String(billerCode || "").trim();
 
-async function discoverAirtimeNetworks() {
-  const categoryCode =
-    await findAirtimeCategoryCode();
-
-  const billerResult =
-    await monnifyBills.getBillers({
-      category_code: categoryCode,
-      size: 100,
-      page: 0,
-    });
-
-  const billers =
-    extractContent(billerResult);
-
-  const networks = {};
-
-  for (const biller of billers) {
-    const networkName =
-      getNetworkName(biller);
-
-    if (!networkName) {
-      continue;
-    }
-
-    const billerCode =
-      getBillerCode(biller);
-
-    if (!billerCode) {
-      continue;
-    }
-
-    const productResult =
-      await monnifyBills.getProducts({
-        biller_code: billerCode,
-        size: 100,
-        page: 0,
-      });
-
-    const products =
-      extractContent(productResult);
-
-    const airtimeProduct =
-      findAirtimeProduct(products);
-
-    // Do not expose a network unless Monnify actually
-    // provides an Airtime product for it.
-    if (!airtimeProduct) {
-      console.log(
-        `[MONNIFY AIRTIME] No Airtime product available for ${networkName} (${billerCode}); network excluded`
-      );
-
-      continue;
-    }
-
-    const productCode =
-      getProductCode(
-        airtimeProduct
-      );
-
-    if (!productCode) {
-      console.log(
-        `[MONNIFY AIRTIME] Airtime product for ${networkName} has no product code; network excluded`
-      );
-
-      continue;
-    }
-
-    console.log(
-      `[MONNIFY AIRTIME] ${networkName} -> biller ${billerCode} -> product ${productCode} (${getProductName(
-        airtimeProduct
-      )})`
-    );
-
-    // IMPORTANT:
-    // Return BILLER CODE to Flutter, not product code.
-    networks[networkName] =
-      billerCode;
+  if (!code) {
+    throw new Error("A Monnify Airtime biller code is required");
   }
 
-  return networks;
+  const cacheKey = code.toUpperCase();
+  const cached = getFreshCacheValue(
+    airtimeProductsCache.get(cacheKey)
+  );
+
+  if (cached) {
+    return cached;
+  }
+
+  const productResult = await monnifyBills.getProducts({
+    biller_code: code,
+    size: 100,
+    page: 0,
+  });
+
+  const products = extractContent(productResult);
+
+  airtimeProductsCache.set(cacheKey, {
+    value: products,
+    cachedAt: Date.now(),
+  });
+
+  return products;
 }
 
-// ============================================================
-// RESOLVE AIRTIME PRODUCT FOR BILLER
-// ============================================================
-
-async function resolveAirtimeProduct(
-  billerCode
-) {
-  if (!billerCode) {
-    throw new Error(
-      "A Monnify Airtime biller code is required"
-    );
-  }
-
-  const productResult =
-    await monnifyBills.getProducts({
-      biller_code: billerCode,
-      size: 100,
-      page: 0,
-    });
-
-  const products =
-    extractContent(productResult);
-
-  const airtimeProduct =
-    findAirtimeProduct(products);
+async function resolveAirtimeProduct(billerCode) {
+  const products = await getProductsForBiller(billerCode);
+  const airtimeProduct = findAirtimeProduct(products);
 
   if (!airtimeProduct) {
     throw new Error(
@@ -433,10 +373,7 @@ async function resolveAirtimeProduct(
     );
   }
 
-  const productCode =
-    getProductCode(
-      airtimeProduct
-    );
+  const productCode = getProductCode(airtimeProduct);
 
   if (!productCode) {
     throw new Error(
@@ -451,104 +388,159 @@ async function resolveAirtimeProduct(
 }
 
 // ============================================================
-// RESOLVE NETWORK INPUT
+// DISCOVER AIRTIME NETWORKS
 // ============================================================
 //
-// Supports both the NEW format:
+// This endpoint is used by Flutter to populate the network
+// selector. It may inspect all known network billers because
+// the UI needs the complete list.
 //
-//   Airtel
-//   MTN
-//   GLO
-//   9mobile
-//
-// and the previous product-code format:
-//
-//   11
-//   13
-//
-// The product-code compatibility is kept so existing Flutter
-// clients do not immediately break during deployment.
-//
+// IMPORTANT:
+// wallet purchases DO NOT call this function. They use
+// resolveNetworkAndProduct() below and only inspect the selected
+// network.
+// ============================================================
 
-async function resolveNetworkToBiller(
-  network
-) {
-  const requested =
-    String(network || "")
-      .trim();
+async function discoverAirtimeNetworks() {
+  const billers = await getAirtimeBillers();
+  const networks = {};
 
-  if (!requested) {
-    throw new Error(
-      "Airtime network is required"
+  for (const biller of billers) {
+    const networkName = getNetworkName(biller);
+
+    if (!networkName) {
+      continue;
+    }
+
+    const billerCode = getBillerCode(biller);
+
+    if (!billerCode) {
+      continue;
+    }
+
+    const products = await getProductsForBiller(billerCode);
+    const airtimeProduct = findAirtimeProduct(products);
+
+    if (!airtimeProduct) {
+      console.log(
+        `[MONNIFY AIRTIME] No Airtime product available for ${networkName} (${billerCode}); network excluded`
+      );
+      continue;
+    }
+
+    const productCode = getProductCode(airtimeProduct);
+
+    if (!productCode) {
+      console.log(
+        `[MONNIFY AIRTIME] Airtime product for ${networkName} has no product code; network excluded`
+      );
+      continue;
+    }
+
+    console.log(
+      `[MONNIFY AIRTIME] ${networkName} -> biller ${billerCode} -> product ${productCode} (${getProductName(airtimeProduct)})`
     );
+
+    // IMPORTANT: return BILLER CODE to Flutter, not product code.
+    networks[networkName] = billerCode;
   }
 
-  const networks =
-    await discoverAirtimeNetworks();
+  return networks;
+}
 
-  // ----------------------------------------------------------
-  // Preferred: Flutter sends network name
-  // ----------------------------------------------------------
+// ============================================================
+// RESOLVE SELECTED NETWORK + PRODUCT
+// ============================================================
+//
+// Normal clients send a network name such as Airtel, MTN, GLO,
+// or 9mobile. We first find that one biller and then fetch only
+// that biller's products.
+//
+// This avoids the previous sequence:
+//   categories -> all billers -> products for every biller ->
+//   selected product again.
+//
+// Legacy clients that still send a numeric Monnify product code
+// retain compatibility and use the slower fallback search.
+// ============================================================
 
-  const directMatch =
-    Object.entries(
-      networks
-    ).find(
-      ([name, billerCode]) =>
-        normalizeName(name) ===
-          normalizeName(requested) ||
-        String(billerCode)
-          .trim()
-          .toUpperCase() ===
-          requested.toUpperCase()
+async function resolveNetworkAndProduct(network) {
+  const requested = String(network || "").trim();
+
+  if (!requested) {
+    throw new Error("Airtime network is required");
+  }
+
+  const billers = await getAirtimeBillers();
+
+  const directBiller = billers.find((biller) => {
+    const name = getNetworkName(biller);
+    const billerCode = getBillerCode(biller);
+
+    return (
+      (name && normalizeName(name) === normalizeName(requested)) ||
+      (billerCode &&
+        billerCode.toUpperCase() === requested.toUpperCase())
     );
+  });
 
-  if (directMatch) {
+  if (directBiller) {
+    const networkName = getNetworkName(directBiller);
+    const billerCode = getBillerCode(directBiller);
+    const airtime = await resolveAirtimeProduct(billerCode);
+
     return {
-      networkName:
-        directMatch[0],
-      billerCode:
-        directMatch[1],
+      networkName,
+      billerCode,
+      airtime,
     };
   }
 
-  // ----------------------------------------------------------
-  // Compatibility: old Flutter may still send a Monnify
+  // Legacy compatibility: old Flutter may still send a Monnify
   // product code such as "11" or "13".
-  //
-  // Resolve that product code back to its biller.
-  // ----------------------------------------------------------
+  if (/^\d+$/.test(requested)) {
+    for (const biller of billers) {
+      const networkName = getNetworkName(biller);
+      const billerCode = getBillerCode(biller);
 
-  for (const [
-    networkName,
-    billerCode,
-  ] of Object.entries(networks)) {
-    try {
-      const resolved =
-        await resolveAirtimeProduct(
-          billerCode
-        );
-
-      if (
-        resolved.productCode ===
-        requested
-      ) {
-        return {
-          networkName,
-          billerCode,
-        };
+      if (!networkName || !billerCode) {
+        continue;
       }
-    } catch (error) {
-      console.error(
-        `[MONNIFY AIRTIME] Failed compatibility lookup for ${networkName}:`,
-        error.message
-      );
+
+      try {
+        const airtime = await resolveAirtimeProduct(billerCode);
+
+        if (airtime.productCode === requested) {
+          return {
+            networkName,
+            billerCode,
+            airtime,
+          };
+        }
+      } catch (error) {
+        console.error(
+          `[MONNIFY AIRTIME] Failed compatibility lookup for ${networkName}:`,
+          error.message
+        );
+      }
     }
   }
 
   throw new Error(
     `No Monnify Airtime network is available for: ${requested}`
   );
+}
+
+// Kept as a compatibility helper for any internal caller that
+// only needs the biller. Normal purchases should use
+// resolveNetworkAndProduct() so the product lookup is not repeated.
+async function resolveNetworkToBiller(network) {
+  const resolved = await resolveNetworkAndProduct(network);
+
+  return {
+    networkName: resolved.networkName,
+    billerCode: resolved.billerCode,
+  };
 }
 
 // ============================================================
@@ -733,6 +725,42 @@ exports.walletPayAirtime = async (
       );
 
     // --------------------------------------------------------
+    // RESOLVE SELECTED NETWORK + AIRTIME PRODUCT
+    // --------------------------------------------------------
+    //
+    // Resolve the provider before debiting the wallet. This means
+    // a catalogue/provider-resolution failure does not require a
+    // wallet refund. For a normal network-name request this is
+    // only the selected biller/product lookup.
+
+    const resolvedPayment =
+      await resolveNetworkAndProduct(
+        network
+      );
+
+    const networkName =
+      resolvedPayment.networkName;
+
+    const billerCode =
+      resolvedPayment.billerCode;
+
+    const airtime =
+      resolvedPayment.airtime;
+
+    const productCode =
+      airtime.productCode;
+
+    console.log(
+      `[MONNIFY AIRTIME] Payment resolved: ${network} -> ${networkName} -> biller ${billerCode}`
+    );
+
+    console.log(
+      `[MONNIFY AIRTIME] Using product ${productCode} (${getProductName(
+        airtime.product
+      )}) for ${networkName}`
+    );
+
+    // --------------------------------------------------------
     // WALLET
     // --------------------------------------------------------
 
@@ -819,43 +847,6 @@ exports.walletPayAirtime = async (
       "Wallet debited",
       `₦${userPays} debited for Airtime purchase (${cleanedPhone})`,
       "airtime"
-    );
-
-    // --------------------------------------------------------
-    // RESOLVE BILLER
-    // --------------------------------------------------------
-
-    const resolvedNetwork =
-      await resolveNetworkToBiller(
-        network
-      );
-
-    const networkName =
-      resolvedNetwork.networkName;
-
-    const billerCode =
-      resolvedNetwork.billerCode;
-
-    console.log(
-      `[MONNIFY AIRTIME] Payment resolved: ${network} -> ${networkName} -> biller ${billerCode}`
-    );
-
-    // --------------------------------------------------------
-    // RESOLVE ACTUAL AIRTIME PRODUCT
-    // --------------------------------------------------------
-
-    const airtime =
-      await resolveAirtimeProduct(
-        billerCode
-      );
-
-    const productCode =
-      airtime.productCode;
-
-    console.log(
-      `[MONNIFY AIRTIME] Using product ${productCode} (${getProductName(
-        airtime.product
-      )}) for ${networkName}`
     );
 
     // --------------------------------------------------------

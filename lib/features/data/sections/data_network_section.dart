@@ -5,14 +5,6 @@ class DataNetworkSection extends StatelessWidget {
   final Map<String, String> networkNames;
   final ValueChanged<String?> onChanged;
 
-  // ⭐ Add logos map
-  final Map<String, String> networkLogos = const {
-    "01": "assets/networks/mtn.png",
-    "02": "assets/networks/glo.jpg",
-    "03": "assets/networks/9mobile.png",
-    "04": "assets/networks/airtel.png",
-  };
-
   const DataNetworkSection({
     super.key,
     required this.selectedNetworkCode,
@@ -20,10 +12,90 @@ class DataNetworkSection extends StatelessWidget {
     required this.onChanged,
   });
 
+  String _logoForNetwork(String name) {
+    final normalized = name.toLowerCase();
+
+    if (normalized.contains("mtn")) {
+      return "assets/networks/mtn.png";
+    }
+
+    if (normalized.contains("glo")) {
+      return "assets/networks/glo.jpg";
+    }
+
+    if (normalized.contains("airtel")) {
+      return "assets/networks/airtel.png";
+    }
+
+    if (normalized.contains("9mobile") ||
+        normalized.contains("9 mobile") ||
+        normalized.contains("etisalat")) {
+      return "assets/networks/9mobile.png";
+    }
+
+    return "";
+  }
+
+  Color _themeColorForNetwork(String name) {
+    final normalized = name.toLowerCase();
+
+    if (normalized.contains("mtn")) {
+      return const Color(0xFFFFCC00);
+    }
+
+    if (normalized.contains("glo")) {
+      return const Color(0xFF00A859);
+    }
+
+    if (normalized.contains("airtel")) {
+      return const Color(0xFFE60000);
+    }
+
+    if (normalized.contains("9mobile") ||
+        normalized.contains("9 mobile") ||
+        normalized.contains("etisalat")) {
+      return const Color(0xFF006E3A);
+    }
+
+    return Colors.blue;
+  }
+
+  Widget _networkVisual(String name) {
+    final logoPath = _logoForNetwork(name);
+    final themeColor = _themeColorForNetwork(name);
+
+    if (logoPath.isEmpty) {
+      return Icon(
+        Icons.sim_card,
+        size: 24,
+        color: themeColor,
+      );
+    }
+
+    return Image.asset(
+      logoPath,
+      width: 24,
+      height: 24,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) {
+        return Icon(
+          Icons.sim_card,
+          size: 24,
+          color: themeColor,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final selectedValue =
+        networkNames.containsKey(selectedNetworkCode)
+            ? selectedNetworkCode
+            : null;
+
     return DropdownButtonFormField<String>(
-      value: selectedNetworkCode,
+      value: selectedValue,
       isExpanded: true,
       dropdownColor: const Color(0xFF1F2937),
 
@@ -32,34 +104,49 @@ class DataNetworkSection extends StatelessWidget {
         border: OutlineInputBorder(),
       ),
 
-      // ⭐ Selected item UI (logo + name inline)
       selectedItemBuilder: (context) {
         return networkNames.entries.map((entry) {
           return Row(
             children: [
-              Image.asset(networkLogos[entry.key]!, width: 22, height: 22),
+              _networkVisual(entry.value),
               const SizedBox(width: 10),
-              Text(entry.value, style: const TextStyle(fontSize: 15)),
+              Expanded(
+                child: Text(
+                  entry.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ),
             ],
           );
         }).toList();
       },
 
-      // ⭐ Dropdown items (logo + name inline)
       items: networkNames.entries.map((entry) {
-        return DropdownMenuItem(
+        return DropdownMenuItem<String>(
           value: entry.key,
           child: Row(
             children: [
-              Image.asset(networkLogos[entry.key]!, width: 22, height: 22),
+              _networkVisual(entry.value),
               const SizedBox(width: 10),
-              Text(entry.value, style: const TextStyle(fontSize: 14)),
+              Expanded(
+                child: Text(
+                  entry.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
             ],
           ),
         );
       }).toList(),
 
-      onChanged: onChanged,
+      onChanged:
+          networkNames.isEmpty
+              ? null
+              : onChanged,
     );
   }
 }

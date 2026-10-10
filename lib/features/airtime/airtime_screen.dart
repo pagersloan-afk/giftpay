@@ -83,26 +83,27 @@ class _AirtimeScreenState extends State<AirtimeScreen> {
 
     String enteredPin = "";
 
-    // ----------------------------------------------------------
-    // STEP 1:
-    // Show the existing 4-digit PIN authentication dialog.
-    // ----------------------------------------------------------
-
     final pinResult = await showDialog<PinVerificationResult>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return PinEntryDialog(
           onCompleted: (pin) async {
-            // Keep the verified PIN so it can be supplied to
-            // the actual wallet purchase request.
             enteredPin = pin;
 
-            return controller.verifyTransactionPin(dialogContext, pin);
+            // The PIN dialog only collects the PIN here.
+            //
+            // The REAL verification happens inside:
+            //
+            // POST /api/airtime/wallet/pay-airtime
+            //
+            // The backend verifies the PIN BEFORE debiting
+            // the GiftPay wallet.
+            return const PinVerificationResult(
+              status: PinVerificationStatus.success,
+            );
           },
 
-          // Airtime currently supports PIN authentication only.
-          // The existing PinEntryDialog requires this callback.
           onChangeMethod: () {},
         );
       },
@@ -112,7 +113,6 @@ class _AirtimeScreenState extends State<AirtimeScreen> {
       return;
     }
 
-    // User closed the dialog without successful authentication.
     if (pinResult == null || !pinResult.isSuccess) {
       return;
     }
@@ -121,21 +121,11 @@ class _AirtimeScreenState extends State<AirtimeScreen> {
       return;
     }
 
-    // ----------------------------------------------------------
-    // STEP 2:
-    // Immediately show visible processing state.
-    // ----------------------------------------------------------
-
     setState(() {
       _processing = true;
     });
 
     try {
-      // --------------------------------------------------------
-      // STEP 3:
-      // Perform the actual wallet → Monnify Airtime purchase.
-      // --------------------------------------------------------
-
       await controller.payWithWallet(context, transactionPin: enteredPin);
     } finally {
       if (!mounted) {

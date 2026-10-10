@@ -192,18 +192,28 @@ class AirtimeReceiptScreen extends StatelessWidget {
 
   Widget _detailRow(String title, String value) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 15, color: Colors.white70),
+        SizedBox(
+          width: 100,
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 15, color: Colors.white70),
+          ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+
+        const SizedBox(width: 8),
+
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            softWrap: true,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
         ),
       ],

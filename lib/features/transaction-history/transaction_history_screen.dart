@@ -325,18 +325,53 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       }
 
       // ==========================================================
-      // 5. MERGE
+      // 5. REMOVE DUPLICATE SERVICE TRANSACTIONS
+      // ==========================================================
+      // Wallet-funded services are stored in both:
+      //   wallets/{uid}.transactions
+      //   users/{uid}/transactions
+      // using the same transaction reference/id.
+      // Keep the wallet copy because it contains the customer-facing
+      // title (for example: "Airtime Purchase (080...)").
+      // ==========================================================
+
+      String transactionKey(Map<String, dynamic> tx) {
+        return (tx["id"] ??
+                tx["reference"] ??
+                tx["requestReference"] ??
+                tx["requestId"] ??
+                "")
+            .toString()
+            .trim();
+      }
+
+      final walletReferences = <String>{};
+
+      for (final tx in walletTx) {
+        final key = transactionKey(tx);
+        if (key.isNotEmpty) {
+          walletReferences.add(key);
+        }
+      }
+
+      final uniqueServiceTx = elecTx.where((tx) {
+        final key = transactionKey(tx);
+        return key.isEmpty || !walletReferences.contains(key);
+      }).toList();
+
+      // ==========================================================
+      // 6. MERGE
       // ==========================================================
 
       final merged = <Map<String, dynamic>>[
         ...walletTx,
-        ...elecTx,
+        ...uniqueServiceTx,
         ...bulkTx,
         ...prestmitSellTx,
       ];
 
       // ==========================================================
-      // 6. REMOVE DUPLICATE COMPLETED SELL
+      // 7. REMOVE DUPLICATE COMPLETED SELL
       // ==========================================================
 
       final walletPrestmitReferences = <String>{};
@@ -383,7 +418,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       }
 
       // ==========================================================
-      // 7. SORT NEWEST FIRST
+      // 8. SORT NEWEST FIRST
       // ==========================================================
 
       deduplicated.sort((a, b) {

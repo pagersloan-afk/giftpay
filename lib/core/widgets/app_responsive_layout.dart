@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
+
 import 'package:utilityhub/core/widgets/sidebar/app_sidebar.dart';
+import 'package:utilityhub/core/widgets/responsive/responsive_content_width.dart';
 
 class AppResponsiveLayout extends StatelessWidget {
   final Widget child;
-  final double desktopMaxWidth;
 
-  const AppResponsiveLayout({
-    super.key,
-    required this.child,
-    this.desktopMaxWidth = 550,
-  });
+  const AppResponsiveLayout({super.key, required this.child});
 
   bool _isAuthOrLanding(BuildContext context) {
     final route = ModalRoute.of(context)?.settings.name ?? "";
@@ -22,7 +19,7 @@ class AppResponsiveLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     // ==============================================================
     // AUTH / LANDING
@@ -38,27 +35,30 @@ class AppResponsiveLayout extends StatelessWidget {
     }
 
     // ==============================================================
-    // DESKTOP
+    // DESKTOP / TABLET WEB
     // ==============================================================
 
-    if (width >= desktopMaxWidth + 200) {
+    if (screenWidth >= 750) {
       final activeRoute = ModalRoute.of(context)?.settings.name ?? "";
 
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ----------------------------------------------------------
+          // DESKTOP SIDEBAR
+          // ----------------------------------------------------------
           AppSidebar(activeRoute: activeRoute),
 
+          // ----------------------------------------------------------
+          // RESPONSIVE APPLICATION BODY
+          //
+          // The body is intentionally biased toward the sidebar
+          // rather than mathematically centered.
+          // ----------------------------------------------------------
           Expanded(
             child: Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 180),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: desktopMaxWidth),
-                  child: child,
-                ),
-              ),
+              alignment: const Alignment(-0.18, -1.0),
+              child: ResponsiveContentWidth(child: child),
             ),
           ),
         ],
@@ -67,10 +67,6 @@ class AppResponsiveLayout extends StatelessWidget {
 
     // ==============================================================
     // MOBILE / SMALL WEB
-    //
-    // IMPORTANT:
-    // Do NOT wrap child in SingleChildScrollView here.
-    // The individual screen handles its own scrolling.
     // ==============================================================
 
     return SafeArea(

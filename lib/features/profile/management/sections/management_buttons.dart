@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:utilityhub/core/security/device_trust.dart';
 
-class ManagementButtons extends StatelessWidget {
+class ManagementButtons extends StatefulWidget {
   final TextEditingController nameCtrl;
   final TextEditingController phoneCtrl;
   final TextEditingController addressCtrl;
@@ -21,27 +21,74 @@ class ManagementButtons extends StatelessWidget {
     required this.userId,
   });
 
+  @override
+  State<ManagementButtons> createState() => _ManagementButtonsState();
+}
+
+class _ManagementButtonsState extends State<ManagementButtons> {
+  bool _saving = false;
+  bool _loggingOut = false;
+
   Future<void> _save(BuildContext context) async {
-    await FirebaseFirestore.instance.collection("users").doc(userId).update({
-      "name": nameCtrl.text,
-      "phone": phoneCtrl.text,
-      "address": addressCtrl.text,
-      "nin": ninCtrl.text,
-      "bvn": bvnCtrl.text,
-    });
+    if (_saving) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Profile updated successfully")),
-    );
+    final name = widget.nameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your full name.')),
+      );
+      return;
+    }
 
-    // ⭐ Navigate back to ProfileScreen
-    Navigator.pushNamedAndRemoveUntil(context, "/profile", (route) => false);
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .update({
+        'name': name,
+        'phone': widget.phoneCtrl.text.trim(),
+        'address': widget.addressCtrl.text.trim(),
+        'nin': widget.ninCtrl.text.trim(),
+        'bvn': widget.bvnCtrl.text.trim(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully')),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/profile',
+        (route) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to update your profile. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _logout(BuildContext context) async {
-    await DeviceTrust.clearDeviceTrust();
-    await FirebaseAuth.instance.signOut();
-    Navigator.pushNamedAndRemoveUntil(context, "/login", (route) => false);
+    if (_loggingOut) return;
+    setState(() => _loggingOut = true);
+    try {
+      await DeviceTrust.clearDeviceTrust();
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to sign out. Please try again.')),
+      );
+      setState(() => _loggingOut = false);
+    }
   }
 
   @override
@@ -51,7 +98,7 @@ class ManagementButtons extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => _save(context),
+            onPressed: _saving || _loggingOut ? null : () => _save(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4FC3F7),
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -59,9 +106,9 @@ class ManagementButtons extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text(
-              "Save Changes",
-              style: TextStyle(
+            child: Text(
+              _saving ? 'Saving...' : 'Save Changes',
+              style: const TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.w700,
                 fontSize: 15,
@@ -73,7 +120,7 @@ class ManagementButtons extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => _logout(context),
+            onPressed: _saving || _loggingOut ? null : () => _logout(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -81,9 +128,9 @@ class ManagementButtons extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text(
-              "Logout",
-              style: TextStyle(
+            child: Text(
+              _loggingOut ? 'Signing out...' : 'Logout',
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: 15,

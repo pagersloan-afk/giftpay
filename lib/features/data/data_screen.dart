@@ -1,11 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_paystack_plus/flutter_paystack_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
-// ⭐ Web-only import (SAFE)
+// Web-only import (safe)
 import 'package:universal_html/html.dart' as html;
 import 'package:utilityhub/config/api.dart';
 
@@ -29,15 +30,24 @@ class DataScreen extends StatefulWidget {
 class _DataScreenState extends State<DataScreen> {
   final phoneCtrl = TextEditingController();
 
-  String selectedNetworkCode = "01";
+  // This is now a Monnify biller code, not a hard-coded
+  // ClubKonnect-style network code.
+  String selectedNetworkCode = "";
+
   String? selectedPlanId;
 
   bool loading = false;
+  bool loadingNetworks = false;
   bool loadingPlans = false;
   bool payWithWallet = true;
 
   List<dynamic> plans = [];
   List<dynamic> filteredPlans = [];
+
+  // Monnify DATA billers returned by the backend.
+  // key   = Monnify biller code
+  // value = Monnify biller name
+  Map<String, String> networkNames = {};
 
   String activeCategory = "All";
 
@@ -51,104 +61,290 @@ class _DataScreenState extends State<DataScreen> {
     "Direct",
   ];
 
-  final Map<String, String> networkNames = {
-    "01": "MTN",
-    "02": "GLO",
-    "03": "9mobile",
-    "04": "Airtel",
-  };
-
-  final Map<String, String> networkLogos = {
-    "01": "assets/networks/mtn.png",
-    "02": "assets/networks/glo.jpg",
-    "03": "assets/networks/9mobile.png",
-    "04": "assets/networks/airtel.png",
-  };
-
-  final Map<String, Color> networkColors = {
-    "01": Color(0xFFFFCC00),
-    "02": Color(0xFF00A859),
-    "03": Color(0xFF006E3A),
-    "04": Color(0xFFE60000),
-  };
-
   String get baseUrl => ApiConfig.baseUrl;
 
-  List<String> _getCategoriesForNetwork() {
-    if (selectedNetworkCode == "02") {
-      return ["All", "SME", "Awoof", "Direct"];
+  // ============================================================
+  // PRESENTATION ONLY
+  //
+  // These mappings do NOT decide which networks are available.
+  // Monnify decides availability. These are only used to retain
+  // the existing network-specific visual theme for known names.
+  // ============================================================
+
+  Color _themeColorForNetwork(String name) {
+    final normalized = name.toLowerCase();
+
+    if (normalized.contains("mtn")) {
+      return const Color(0xFFFFCC00);
     }
 
-    if (selectedNetworkCode == "04") {
-      return ["All", "Awoof", "Direct"];
+    if (normalized.contains("glo")) {
+      return const Color(0xFF00A859);
     }
 
-    return categories;
+    if (normalized.contains("airtel")) {
+      return const Color(0xFFE60000);
+    }
+
+    if (normalized.contains("9mobile") ||
+        normalized.contains("9 mobile") ||
+        normalized.contains("etisalat")) {
+      return const Color(0xFF006E3A);
+    }
+
+    // Generic fallback for a new Monnify biller.
+    return Colors.blue;
   }
 
+  String _networkNameForSelectedCode() {
+    return networkNames[selectedNetworkCode] ?? "";
+  }
+
+  Color get themeColor => _themeColorForNetwork(_networkNameForSelectedCode());
+
+  // ============================================================
+  // MONNIFY DATA BILLER DISCOVERY
+  // ============================================================
+  Future<void> fetchNetworks() async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      loadingNetworks = true;
+      loadingPlans = false;
+      selectedNetworkCode = "";
+      selectedPlanId = null;
+      plans = [];
+      filteredPlans = [];
+      networkNames = {};
+    });
+
+    try {
+      final url = Uri.parse("$baseUrl/api/data/networks");
+      final response = await http.get(url);
+
+      final data = jsonDecode(response.body);
+
+      if (data["status"] != true) {
+        throw Exception(data["message"] ?? "Unable to fetch DATA networks");
+      }
+
+      final rawNetworks = data["networks"];
+
+      if (rawNetworks is! List) {
+        throw Exception("Invalid DATA network response");
+      }
+
+      final parsed = <String, String>{};
+
+      for (final item in rawNetworks) {
+        if (item is! Map) {
+          continue;
+        }
+
+        final code = item["code"]?.toString().trim() ?? "";
+        final name = item["name"]?.toString().trim() ?? "";
+
+        if (code.isNotEmpty && name.isNotEmpty) {
+          parsed[code] = name;
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        networkNames = parsed;
+
+        if (parsed.isNotEmpty) {
+          selectedNetworkCode = parsed.keys.first;
+        }
+      });
+
+      if (parsed.isNotEmpty) {
+        await fetchPlans();
+      }
+    } catch (e) {
+      debugPrint("[DATA] Error fetching Monnify networks: $e");
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+      );
+    } finally {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loadingNetworks = false;
+      });
+    }
+  }
+
+  // ============================================================
+  // MONNIFY DATA PLANS
+  // ============================================================
   Future<void> fetchPlans() async {
+    if (selectedNetworkCode.isEmpty) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       loadingPlans = true;
       plans = [];
       filteredPlans = [];
+      selectedPlanId = null;
     });
 
-    final networkName = networkNames[selectedNetworkCode] ?? "MTN";
-    final url = Uri.parse("$baseUrl/api/data/plans/$networkName");
-
     try {
+      final url = Uri.parse(
+        "$baseUrl/api/data/plans/${Uri.encodeComponent(selectedNetworkCode)}",
+      );
+
       final response = await http.get(url);
       final data = jsonDecode(response.body);
 
-      if (data["status"] == true) {
-        plans = (data["plans"] as List).map((p) {
-          return {
-            "id": p["PRODUCT_CODE"].toString(),
-            "code": p["PRODUCT_CODE"].toString(),
-            "name": p["PRODUCT_NAME"].toString(),
-            "price": p["PRODUCT_AMOUNT"].toString(),
-          };
-        }).toList();
-
-        _applyCategoryFilter();
+      if (data["status"] != true) {
+        throw Exception(data["message"] ?? "Unable to fetch data plans");
       }
-    } catch (e) {
-      debugPrint("Error fetching plans: $e");
-    }
 
-    setState(() => loadingPlans = false);
+      final rawPlans = data["plans"];
+
+      if (rawPlans is! List) {
+        throw Exception("Invalid data plan response");
+      }
+
+      final parsedPlans = rawPlans
+          .whereType<Map>()
+          .map<Map<String, dynamic>>((p) {
+            return {
+              "id": p["id"]?.toString() ?? p["code"]?.toString() ?? "",
+              "code": p["code"]?.toString() ?? p["id"]?.toString() ?? "",
+              "name":
+                  p["name"]?.toString() ?? p["PRODUCT_NAME"]?.toString() ?? "",
+              "price":
+                  p["price"]?.toString() ??
+                  p["PRODUCT_AMOUNT"]?.toString() ??
+                  "",
+              "priceType": p["priceType"],
+              "metadata": p["metadata"] ?? {},
+            };
+          })
+          .where((p) => p["id"].toString().isNotEmpty)
+          .toList();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        plans = parsedPlans;
+      });
+
+      _applyCategoryFilter();
+    } catch (e) {
+      debugPrint("[DATA] Error fetching Monnify plans: $e");
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+      );
+    } finally {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loadingPlans = false;
+      });
+    }
   }
 
   void _applyCategoryFilter() {
-    if (activeCategory == "All") {
-      filteredPlans = List.from(plans);
-    } else {
-      filteredPlans = plans.where((p) {
-        final name = p["name"].toLowerCase();
-        return name.contains(activeCategory.toLowerCase());
-      }).toList();
+    if (!mounted) {
+      return;
     }
-    setState(() {});
+
+    if (activeCategory == "All") {
+      setState(() {
+        filteredPlans = List.from(plans);
+      });
+      return;
+    }
+
+    final category = activeCategory.toLowerCase();
+
+    final result = plans.where((p) {
+      final name = p["name"]?.toString().toLowerCase() ?? "";
+
+      final metadata = p["metadata"];
+      final metadataMap = metadata is Map
+          ? Map<String, dynamic>.from(metadata)
+          : {};
+
+      final productCategory =
+          metadataMap["productCategory"]?.toString().toLowerCase() ?? "";
+
+      final durationUnit =
+          metadataMap["durationUnit"]?.toString().toLowerCase() ?? "";
+
+      return name.contains(category) ||
+          productCategory.contains(category) ||
+          durationUnit.contains(category);
+    }).toList();
+
+    setState(() {
+      filteredPlans = result;
+    });
   }
 
   @override
   void initState() {
     super.initState();
-    fetchPlans();
+    fetchNetworks();
   }
 
+  // ============================================================
+  // WALLET PAYMENT
+  // ============================================================
   Future<void> _payWithWallet() async {
-    if (phoneCtrl.text.isEmpty || selectedPlanId == null) {
+    if (phoneCtrl.text.trim().isEmpty || selectedPlanId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Select a plan and enter phone number")),
       );
       return;
     }
 
+    if (selectedNetworkCode.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Select a network first")));
+      return;
+    }
+
     setState(() => loading = true);
 
     try {
-      final userId = FirebaseAuth.instance.currentUser!.uid;
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        throw Exception("Please sign in again");
+      }
+
+      final userId = currentUser.uid;
       final url = Uri.parse("$baseUrl/api/data/wallet/pay-data");
 
       final selectedPlan = filteredPlans.firstWhere(
@@ -161,7 +357,12 @@ class _DataScreenState extends State<DataScreen> {
         body: jsonEncode({
           "userId": userId,
           "phone": phoneCtrl.text.trim(),
-          "network": networkNames[selectedNetworkCode],
+
+          // IMPORTANT:
+          // This is the actual Monnify biller code.
+          "network": selectedNetworkCode,
+
+          // This is the actual Monnify product code.
           "planId": selectedPlan["code"],
         }),
       );
@@ -187,7 +388,7 @@ class _DataScreenState extends State<DataScreen> {
             phone: phoneCtrl.text.trim(),
             planName: selectedPlan["name"],
             amount: selectedPlan["price"],
-            message: "Data purchase successful",
+            message: data["message"]?.toString() ?? "Data purchase successful",
           );
         }
       } else {
@@ -196,9 +397,14 @@ class _DataScreenState extends State<DataScreen> {
         );
       }
     } catch (e) {
-      debugPrint("Wallet pay error: $e");
+      debugPrint("[DATA] Wallet pay error: $e");
+
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error processing wallet payment")),
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
       );
     } finally {
       if (mounted) {
@@ -207,8 +413,14 @@ class _DataScreenState extends State<DataScreen> {
     }
   }
 
+  // ============================================================
+  // CARD PAYMENT
+  //
+  // Existing card flow retained. The network saved to local
+  // storage is now the Monnify biller code.
+  // ============================================================
   Future<void> _payWithCard() async {
-    if (phoneCtrl.text.isEmpty || selectedPlanId == null) {
+    if (phoneCtrl.text.trim().isEmpty || selectedPlanId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Select a plan and enter phone number")),
       );
@@ -219,15 +431,26 @@ class _DataScreenState extends State<DataScreen> {
       (p) => p["id"] == selectedPlanId,
     );
 
-    final amount = double.tryParse(selectedPlan["price"]) ?? 0;
+    final amount =
+        double.tryParse(selectedPlan["price"]?.toString() ?? "") ?? 0;
+
     final amountKobo = (amount * 100).toInt();
 
-    // ⭐ WEB-ONLY PAYSTACK FLOW
+    if (amountKobo <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("This plan does not have a valid fixed price."),
+        ),
+      );
+      return;
+    }
+
+    // WEB-ONLY PAYSTACK FLOW
     if (kIsWeb) {
       html.window.localStorage["dataPhone"] = phoneCtrl.text.trim();
-      html.window.localStorage["dataNetwork"] =
-          networkNames[selectedNetworkCode]!;
-      html.window.localStorage["dataPlanId"] = selectedPlan["code"];
+      html.window.localStorage["dataNetwork"] = selectedNetworkCode;
+      html.window.localStorage["dataPlanId"] =
+          selectedPlan["code"]?.toString() ?? "";
       html.window.localStorage["dataAmount"] = amount.toString();
 
       final initUrl = Uri.parse("$baseUrl/paystack/init");
@@ -260,7 +483,7 @@ class _DataScreenState extends State<DataScreen> {
       return;
     }
 
-    // ⭐ MOBILE PAYSTACK FLOW
+    // MOBILE PAYSTACK FLOW
     bool paymentSuccess = false;
 
     await FlutterPaystackPlus.openPaystackPopup(
@@ -286,14 +509,23 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   @override
+  void dispose() {
+    phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final themeColor = networkColors[selectedNetworkCode]!;
+    final currentThemeColor = _themeColorForNetwork(
+      _networkNameForSelectedCode(),
+    );
+
     final isWeb = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Buy Data"),
-        backgroundColor: themeColor,
+        backgroundColor: currentThemeColor,
         foregroundColor: Colors.white,
       ),
       body: AppResponsiveLayout(
@@ -305,46 +537,85 @@ class _DataScreenState extends State<DataScreen> {
               DataNetworkSection(
                 selectedNetworkCode: selectedNetworkCode,
                 networkNames: networkNames,
-                onChanged: (v) {
+                onChanged: (value) async {
+                  if (value == null || value.isEmpty) {
+                    return;
+                  }
+
                   setState(() {
-                    selectedNetworkCode = v!;
+                    selectedNetworkCode = value;
                     selectedPlanId = null;
                     activeCategory = "All";
+                    plans = [];
+                    filteredPlans = [];
                   });
-                  fetchPlans();
+
+                  await fetchPlans();
                 },
               ),
 
               const SizedBox(height: 20),
 
-              if (loadingPlans || plans.isEmpty) ...[
+              if (loadingNetworks || loadingPlans) ...[
                 const Center(child: CircularProgressIndicator()),
                 const SizedBox(height: 20),
+              ] else if (networkNames.isEmpty) ...[
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      "No DATA billers are currently available from Monnify.",
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ] else if (plans.isEmpty) ...[
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      "No data plans are currently available for this biller.",
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
               ] else ...[
                 DataCategorySection(
                   activeCategory: activeCategory,
-                  categories: _getCategoriesForNetwork(),
-                  themeColor: themeColor,
+                  categories: categories,
+                  themeColor: currentThemeColor,
                   onSelect: (cat) {
                     setState(() {
                       activeCategory = cat;
                       selectedPlanId = null;
-                      _applyCategoryFilter();
                     });
+
+                    _applyCategoryFilter();
                   },
                 ),
 
                 const SizedBox(height: 20),
 
-                DataPlanGridSection(
-                  plans: filteredPlans,
-                  selectedPlanId: selectedPlanId,
-                  themeColor: themeColor,
-                  isWeb: isWeb,
-                  onSelect: (id) {
-                    setState(() => selectedPlanId = id);
-                  },
-                ),
+                if (filteredPlans.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        "No plans match this category.",
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                else
+                  DataPlanGridSection(
+                    plans: filteredPlans,
+                    selectedPlanId: selectedPlanId,
+                    themeColor: currentThemeColor,
+                    isWeb: isWeb,
+                    onSelect: (id) {
+                      setState(() => selectedPlanId = id);
+                    },
+                  ),
               ],
 
               const SizedBox(height: 20),
@@ -352,10 +623,11 @@ class _DataScreenState extends State<DataScreen> {
               DataPaymentSection(
                 phoneCtrl: phoneCtrl,
                 payWithWallet: payWithWallet,
-                themeColor: themeColor,
+                themeColor: currentThemeColor,
                 loading: loading,
-                onPaymentMethodChanged: (v) =>
-                    setState(() => payWithWallet = v),
+                onPaymentMethodChanged: (value) {
+                  setState(() => payWithWallet = value);
+                },
                 onPay: () {
                   if (payWithWallet) {
                     _payWithWallet();
