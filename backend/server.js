@@ -56,6 +56,7 @@ const prestmitSellRoutes = require("./src/routes/prestmit.sell.routes");
 const bulkTransferRoutes = require("./src/routes/bulkTransfer.routes");
 const depositRoutes = require("./src/routes/deposit.routes");
 const monnifyBillsRoutes = require("./src/routes/monnifyBills.routes");
+const foodRoutes = require("./src/routes/food.routes.js");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -103,7 +104,19 @@ app.use(
       "http://localhost",
       "http://127.0.0.1",
     ],
-    methods: ["GET", "POST"],
+    methods: [
+      "GET",
+      "HEAD",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
     credentials: true,
   })
 );
@@ -241,6 +254,7 @@ app.use("/api", identityRoutes);
 app.use("/api", contactRoutes);
 app.use("/api", profileRoutes);
 app.use("/api", securityRoutes);
+app.use("/api/food", foodRoutes);
 
 // ============================================================
 // Prestmit API routes

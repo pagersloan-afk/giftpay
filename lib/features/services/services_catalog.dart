@@ -38,6 +38,8 @@ class ServicesCatalog {
       route: "/aviation",
     ),
 
+    ServiceItem(title: "Food", icon: Icons.restaurant, route: "/food"),
+
     ServiceItem(
       title: "Government",
       icon: Icons.account_balance,

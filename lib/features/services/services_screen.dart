@@ -46,6 +46,7 @@ class ServicesScreen extends StatelessWidget {
           "icon": Icons.flight_takeoff,
           "route": "/aviation",
         },
+        {"title": "Food", "icon": Icons.restaurant, "route": "/food"},
         {"title": "Betting", "icon": Icons.sports_soccer, "route": "/betting"},
         {"title": "Gaming", "icon": Icons.sports_esports, "route": "/psgames"},
         {

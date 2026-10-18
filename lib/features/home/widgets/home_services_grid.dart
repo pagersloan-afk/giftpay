@@ -19,6 +19,7 @@ class HomeServicesGrid extends StatelessWidget {
       {"title": "Betting", "icon": Icons.sports_soccer, "route": "/betting"},
       {"title": "Savings", "icon": Icons.savings, "route": "/savings"},
       {"title": "Education", "icon": Icons.school, "route": "/education"},
+      {"title": "Food", "icon": Icons.restaurant, "route": "/food"},
       {"title": "More", "icon": Icons.apps, "route": "/services"},
     ];
 

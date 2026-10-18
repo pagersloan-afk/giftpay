@@ -16,6 +16,8 @@ import 'package:utilityhub/features/aviation/aviation_landing.dart';
 import 'package:utilityhub/features/aviation/aviation_results.dart';
 import 'package:utilityhub/features/aviation/aviation_search.dart';
 import 'package:utilityhub/features/aviation/aviation_ticket_view.dart';
+import 'package:utilityhub/features/food/food_merchant_screen.dart';
+import 'package:utilityhub/features/food/food_ordering_screen.dart';
 
 // Home
 import 'package:utilityhub/features/home/home_screen.dart';
@@ -135,6 +137,10 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // Electricity
   '/electricity': (_) => wrap(const ElectricityScreen()),
+
+  // Food-orders
+  '/food': (_) => wrap(const FoodOrderingScreen()),
+  '/food/merchant': (_) => wrap(const FoodMerchantScreen()),
 
   // Airtime
   '/airtime': (_) => wrap(const AirtimeScreen()),
