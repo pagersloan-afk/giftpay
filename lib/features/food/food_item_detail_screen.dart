@@ -41,6 +41,12 @@ class _FoodItemDetailScreenState extends State<FoodItemDetailScreen> {
 
   Future<void> _loadRestaurantProfile() async {
     try {
+      final merchantUid = '${widget.item['merchantUid'] ?? ''}'.trim();
+      if (merchantUid.isEmpty) {
+        throw Exception(
+          'This food item is missing its restaurant owner information.',
+        );
+      }
       final user = FirebaseAuth.instance.currentUser;
       if (user == null)
         throw Exception('Please sign in to view restaurant details.');
@@ -48,7 +54,11 @@ class _FoodItemDetailScreenState extends State<FoodItemDetailScreen> {
       if (token == null || token.isEmpty)
         throw Exception('Unable to authenticate. Please sign in again.');
       final response = await http.get(
-        Uri.parse(ApiConfig.api('/api/food/restaurant/profile')),
+        Uri.parse(ApiConfig.api('/api/food/restaurant/profile')).replace(
+          queryParameters: {
+            'merchantUid': '${widget.item['merchantUid'] ?? ''}'.trim(),
+          },
+        ),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -315,6 +325,107 @@ class _FoodItemDetailScreenState extends State<FoodItemDetailScreen> {
                         'Delivery / pickup',
                         _field('deliveryNotes'),
                       ),
+                      _socialLink(
+                        Icons.facebook,
+                        'Facebook',
+                        _field('facebookUrl'),
+                      ),
+                      _socialLink(
+                        Icons.camera_alt_outlined,
+                        'Instagram',
+                        _field('instagramUrl'),
+                      ),
+                      _socialLink(
+                        Icons.music_note_rounded,
+                        'TikTok',
+                        _field('tiktokUrl'),
+                      ),
+                      _socialLink(
+                        Icons.business_center_outlined,
+                        'LinkedIn',
+                        _field('linkedinUrl'),
+                      ),
+                      _socialLink(
+                        Icons.play_circle_outline_rounded,
+                        'YouTube',
+                        _field('youtubeUrl'),
+                      ),
+                      _socialLink(
+                        Icons.alternate_email_rounded,
+                        'X',
+                        _field('xUrl'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Restored customer entry point: this is the original Ask portal
+                // for asking the restaurant about this specific food item.
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _cyan.withOpacity(.35)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: _cyan.withOpacity(.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          color: _cyan,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Have a question?',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Ask the restaurant about this meal before ordering.',
+                              style: TextStyle(
+                                color: _muted,
+                                height: 1.35,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed:
+                            _loadingRestaurant || _field('merchantUid').isEmpty
+                            ? null
+                            : _openFoodChat,
+                        icon: const Icon(Icons.forum_outlined, size: 18),
+                        label: const Text('Ask'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _cyan,
+                          foregroundColor: const Color(0xFF08111C),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -404,6 +515,41 @@ class _FoodItemDetailScreenState extends State<FoodItemDetailScreen> {
     );
   }
 
+  Future<void> _openFoodChat() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in to ask the restaurant a question.'),
+        ),
+      );
+      return;
+    }
+    final merchantUid = _field('merchantUid');
+    if (merchantUid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Restaurant chat is unavailable right now. Please try again shortly.',
+          ),
+        ),
+      );
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => FoodItemChatScreen(
+          item: widget.item,
+          merchantUid: merchantUid,
+          merchantName: _field('restaurantName').isEmpty
+              ? 'GiftPay Food restaurant'
+              : _field('restaurantName'),
+          merchantLogoUrl: _field('logoUrl'),
+        ),
+      ),
+    );
+  }
+
   Widget _pill(String text, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
     decoration: BoxDecoration(
@@ -442,6 +588,61 @@ class _FoodItemDetailScreenState extends State<FoodItemDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _socialLink(IconData icon, String label, String url) {
+    if (url.isEmpty) return const SizedBox.shrink();
+    final uri = Uri.tryParse(url);
+    final valid =
+        uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.isNotEmpty;
+    if (!valid) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 11),
+      child: InkWell(
+        onTap: () async {
+          try {
+            await launchUrl(uri!, mode: LaunchMode.externalApplication);
+          } catch (_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Unable to open $label link.')),
+              );
+            }
+          }
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: _cyan, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(color: _muted, fontSize: 11),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    url,
+                    style: const TextStyle(
+                      color: _cyan,
+                      height: 1.4,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.open_in_new_rounded, color: _muted, size: 15),
+          ],
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:utilityhub/features/wallet/services/wallet_service.dart';
@@ -138,7 +139,7 @@ class _WalletCardState extends State<WalletCard>
                       ),
                       SizedBox(width: 6),
                       Text(
-                        "Wallet Balance",
+                        "Available Wallet Balance",
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 15,
@@ -208,6 +209,103 @@ class _WalletCardState extends State<WalletCard>
                           );
                         },
                       ),
+              ),
+
+              const SizedBox(height: 3),
+
+              // Reserved food funds are already recorded in the user's wallet
+              // transaction list. Read the same wallet document used by the
+              // balance/history UI so this does not depend on client access to
+              // the private foodOrders collection.
+              StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: FirebaseAuth.instance.currentUser == null
+                    ? null
+                    : FirebaseFirestore.instance
+                          .collection("wallets")
+                          .doc(FirebaseAuth.instance.currentUser!.uid)
+                          .snapshots(),
+                builder: (context, snapshot) {
+                  final rawTransactions = snapshot.data
+                      ?.data()?['transactions'];
+                  final txList = rawTransactions is List
+                      ? rawTransactions.whereType<Map>().toList()
+                      : <Map>[];
+                  final seenOrders = <String>{};
+                  var reserved = 0.0;
+
+                  for (final raw in txList) {
+                    final tx = Map<String, dynamic>.from(raw);
+                    final category = (tx['category'] ?? tx['type'] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    if (category != 'food_order') continue;
+
+                    final status = (tx['status'] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    final paymentStatus = (tx['paymentStatus'] ?? '')
+                        .toString()
+                        .toLowerCase();
+                    final orderStatus =
+                        (tx['orderStatus'] ?? tx['foodOrderStatus'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                    final isReserved =
+                        status == 'reserved' || paymentStatus == 'reserved';
+                    // Only funds that are still genuinely reserved count.
+                    // Cancelled orders must never remain in the locked total,
+                    // even if an old transaction has a stale paymentStatus.
+                    if (!isReserved ||
+                        status == 'completed' ||
+                        status == 'cancelled' ||
+                        status == 'refunded' ||
+                        status == 'failed' ||
+                        orderStatus == 'cancelled' ||
+                        orderStatus == 'delivered' ||
+                        paymentStatus == 'captured' ||
+                        paymentStatus == 'refunded' ||
+                        paymentStatus == 'cancelled' ||
+                        paymentStatus == 'failed') {
+                      continue;
+                    }
+
+                    final orderKey =
+                        (tx['reference'] ?? tx['orderId'] ?? tx['id'] ?? '')
+                            .toString();
+                    if (orderKey.isNotEmpty && !seenOrders.add(orderKey)) {
+                      continue;
+                    }
+                    final value = tx['amount'];
+                    final amount = value is num
+                        ? value.toDouble()
+                        : double.tryParse(value?.toString() ?? '') ?? 0;
+                    if (amount > 0) reserved += amount;
+                  }
+
+                  if (reserved <= 0) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_rounded,
+                          color: Colors.white.withOpacity(0.58),
+                          size: 13,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          ' ${_isHidden ? "••••••" : "₦${NumberFormat("#,##0.00").format(reserved)}"}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.62),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
 
               const SizedBox(height: 16),

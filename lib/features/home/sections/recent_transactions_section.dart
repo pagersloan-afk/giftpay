@@ -182,7 +182,20 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: recentTx.map((t) {
               final type = t["type"] ?? "unknown";
-              final title = t["title"] ?? "Transaction";
+              final category = (t["category"] ?? t["type"] ?? "")
+                  .toString()
+                  .toLowerCase();
+              final rawTitle = (t["title"] ?? t["description"] ?? "")
+                  .toString()
+                  .trim();
+              final title =
+                  category == "food_order_refund" || category == "food_refund"
+                  ? "Food Order Refund"
+                  : (rawTitle.isEmpty || rawTitle.toLowerCase() == "transaction"
+                        ? (category == "food_order"
+                              ? "GiftPay Food Order"
+                              : "Transaction")
+                        : rawTitle);
               final amount = t["amount"] ?? 0;
               final rawDate = t["date"] ?? t["timestamp"];
               final formattedDate = formatDate(rawDate);
@@ -204,6 +217,11 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
                 case "giftcard":
                   icon = Icons.card_giftcard;
                   color = Colors.amberAccent;
+                  break;
+
+                case "food_order":
+                  icon = Icons.restaurant_rounded;
+                  color = const Color(0xFFFFC66D);
                   break;
 
                 default:

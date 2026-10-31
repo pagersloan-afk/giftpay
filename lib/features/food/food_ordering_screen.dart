@@ -1,13 +1,16 @@
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:utilityhub/features/food/food_customer_messages_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:utilityhub/config/api.dart';
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/core/widgets/giftpay_background.dart';
 import 'package:utilityhub/features/food/food_merchant_access.dart';
 import 'package:utilityhub/features/food/food_merchant_screen.dart';
+import 'package:utilityhub/features/food/food_merchant_launcher.dart';
 
 part 'food_item_detail_screen.dart';
 part 'food_ordering_access_section.dart';
@@ -109,11 +112,35 @@ class _FoodOrderingScreenState extends State<FoodOrderingScreen>
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Messages with restaurants',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const FoodCustomerMessagesScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.forum_outlined, color: cyan),
+          ),
           if (_isFoodMerchant)
             IconButton(
-              tooltip: 'Merchant dashboard',
+              tooltip: 'Restaurant access',
               onPressed: _openMerchantDashboard,
               icon: const Icon(Icons.storefront_rounded, color: cyan),
+            )
+          else
+            IconButton(
+              tooltip: FoodMerchantAccess.applicationStatus == 'pending'
+                  ? 'Merchant application status'
+                  : 'Apply for restaurant access',
+              onPressed: () => openFoodMerchantDashboard(context),
+              icon: Icon(
+                FoodMerchantAccess.applicationStatus == 'pending'
+                    ? Icons.hourglass_top_rounded
+                    : Icons.add_business_rounded,
+                color: cyan,
+              ),
             ),
           IconButton(
             tooltip: 'Refresh',

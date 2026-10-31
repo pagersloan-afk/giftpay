@@ -32,8 +32,11 @@ exports.getTransactionHistory = async (req, res) => {
         timestamp:
           typeof tx.timestamp === "number"
             ? tx.timestamp
-            : Date.parse(tx.timestamp || tx.date) || 0,
-        type: tx.type || "wallet",
+            : (tx.createdAt && typeof tx.createdAt.toDate === "function")
+              ? tx.createdAt.toDate().getTime()
+              : Date.parse(tx.timestamp || tx.date || tx.createdAt) || 0,
+        type: tx.category === "food_order" ? "food_order" : (tx.type || "wallet"),
+        title: tx.title || (tx.category === "food_order" ? "GiftPay Food Order" : undefined),
       }))
       .filter((tx) => tx.amount && tx.timestamp);
 
@@ -66,7 +69,57 @@ exports.getTransactionHistory = async (req, res) => {
       .filter((tx) => tx.amount && tx.timestamp);
 
     // ---------------------------------------------------------
-    // 3. FETCH BULK TRANSFER BATCHES
+    // 3. ENRICH FOOD ORDER WALLET TRANSACTIONS WITH LIVE ORDER STATUS
+    // ---------------------------------------------------------
+    const foodOrderSnap = await db.collection("foodOrders")
+      .where("userId", "==", userId)
+      .limit(100)
+      .get();
+
+    const foodOrdersById = new Map();
+    for (const doc of foodOrderSnap.docs) {
+      const order = doc.data() || {};
+      foodOrdersById.set(doc.id, {
+        id: doc.id,
+        orderId: doc.id,
+        type: "food_order",
+        category: "food_order",
+        title: "GiftPay Food Order",
+        description: `Food order ${doc.id}`,
+        amount: Number(order.total) || 0,
+        currency: order.currency || "NGN",
+        timestamp: order.createdAt && typeof order.createdAt.toDate === "function"
+          ? order.createdAt.toDate().getTime()
+          : Date.parse(order.createdAt || "") || Date.now(),
+        status: order.status || "pending",
+        paymentStatus: order.paymentStatus || "reserved",
+        orderStatus: order.status || "pending",
+        statusHistory: Array.isArray(order.statusHistory) ? order.statusHistory : [],
+        reference: doc.id,
+        orderId: doc.id,
+      });
+    }
+
+    walletTx = walletTx.map((tx) => {
+      if (tx.category !== "food_order") return tx;
+      const orderId = String(tx.reference || "").trim();
+      const order = foodOrdersById.get(orderId);
+      if (!order) return tx;
+      return {
+        ...tx,
+        ...order,
+        id: tx.id || `${orderId}_debit`,
+        title: "GiftPay Food Order",
+        amount: Number(order.amount) || Number(tx.amount) || 0,
+        type: "food_order",
+        category: "food_order",
+        status: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+      };
+    });
+
+    // ---------------------------------------------------------
+    // 4. FETCH BULK TRANSFER BATCHES
     // ---------------------------------------------------------
     const bulkSnap = await db
       .collection("users")
@@ -210,4 +263,3 @@ exports.getTransactionHistory = async (req, res) => {
     });
   }
 };
-

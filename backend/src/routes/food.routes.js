@@ -5,9 +5,10 @@ const {
   getMenu, getMerchantAccess, getRestaurantSettings, updateRestaurantSettings,
   listMerchantMenu, uploadMenuImage, createMenuItem, updateMenuItem,
   placeOrder, listMyOrders, getMyOrder, listMerchantOrders,
-  updateOrderStatus, confirmDelivery,
+  updateOrderStatus, confirmDelivery, getDeliveryCode,
 } = require("../controllers/food.controller");
 const { getPublicRestaurantProfile } = require("../controllers/food.public.controller");
+const { applyForFoodMerchant } = require("../controllers/foodMerchantApplication.controller");
 const router = express.Router();
 
 const foodImageUpload = multer({
@@ -35,8 +36,10 @@ router.get("/restaurant/profile", getPublicRestaurantProfile);
 router.post("/orders", placeOrder);
 router.get("/orders", listMyOrders);
 router.get("/orders/:orderId", getMyOrder);
+router.get("/orders/:orderId/delivery-code", getDeliveryCode);
 router.post("/orders/:orderId/confirm-delivery", confirmDelivery);
 router.get("/merchant/access", getMerchantAccess);
+router.post("/merchant/apply", applyForFoodMerchant);
 router.get("/merchant/settings", getRestaurantSettings);
 router.patch("/merchant/settings", updateRestaurantSettings);
 router.get("/merchant/menu", listMerchantMenu);

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -7,6 +10,7 @@ import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/features/transaction-history/utils/history_date_formatter.dart';
 import 'package:utilityhub/features/transaction-history/widgets/history_tile.dart';
 import 'package:utilityhub/features/giftcards/services/giftcard_trade_service.dart';
+import 'package:utilityhub/config/api.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
   final bool fromBottomNav;
@@ -276,6 +280,105 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           .toList();
 
       // ==========================================================
+      // 1B. FOOD ORDERS FROM THE SAME API AS RECENT TRANSACTIONS
+      // ==========================================================
+      // The Recent Transactions widget successfully loads this endpoint.
+      // Read only food-order entries from it so the existing Firestore
+      // history sources below remain unchanged if the API is unavailable.
+      List<Map<String, dynamic>> foodOrderTx = [];
+      try {
+        final response = await http.get(
+          Uri.parse(ApiConfig.api("/transaction-history?userId=$userId")),
+          headers: const {"Accept": "application/json"},
+        );
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map &&
+              decoded["status"] == true &&
+              decoded["data"] is List) {
+            foodOrderTx = (decoded["data"] as List)
+                .whereType<Map>()
+                .map((raw) => Map<String, dynamic>.from(raw))
+                .where((tx) {
+                  final type = (tx["type"] ?? "").toString().toLowerCase();
+                  final category = (tx["category"] ?? "")
+                      .toString()
+                      .toLowerCase();
+                  return type == "food_order" ||
+                      category == "food_order" ||
+                      category == "food_order_refund" ||
+                      category == "food_refund";
+                })
+                .map((tx) {
+                  final rawTimestamp =
+                      tx["timestamp"] ?? tx["date"] ?? tx["createdAt"];
+                  final timestamp = _safeTimestamp(rawTimestamp);
+                  final orderId =
+                      (tx["orderId"] ?? tx["reference"] ?? tx["id"] ?? "")
+                          .toString()
+                          .replaceFirst(RegExp(r"_debit$"), "")
+                          .trim();
+                  return <String, dynamic>{
+                    ...tx,
+                    "id": tx["id"] ?? orderId,
+                    "orderId": orderId,
+                    "reference": tx["reference"] ?? orderId,
+                    "type": "food_order",
+                    "category": "food_order",
+                    "title":
+                        ((tx["category"] ?? tx["type"] ?? "")
+                                    .toString()
+                                    .toLowerCase() ==
+                                "food_order_refund" ||
+                            (tx["category"] ?? "").toString().toLowerCase() ==
+                                "food_refund")
+                        ? "Food Order Refund"
+                        : ((tx["title"]?.toString().trim().isNotEmpty == true)
+                              ? tx["title"]
+                              : "GiftPay Food Order"),
+                    "timestamp": timestamp,
+                    "date": tx["date"] ?? timestamp,
+                    "amount": tx["amount"] is num
+                        ? tx["amount"]
+                        : num.tryParse((tx["amount"] ?? "0").toString()) ?? 0,
+                    "status": tx["orderStatus"] ?? tx["status"] ?? "pending",
+                    "paymentStatus": tx["paymentStatus"] ?? "reserved",
+                  };
+                })
+                .where((tx) => (tx["orderId"] as String).isNotEmpty)
+                .toList();
+          }
+        } else {
+          debugPrint(
+            "[TRANSACTION HISTORY] Food-order API returned ${response.statusCode}",
+          );
+        }
+      } catch (e) {
+        debugPrint("[TRANSACTION HISTORY] Food-order fetch failed: $e");
+      }
+
+      // Replace any older wallet-only food-order row with its API-enriched
+      // counterpart. This keeps live order/payment status and avoids duplicates.
+      String foodOrderKey(Map<String, dynamic> tx) {
+        return (tx["orderId"] ?? tx["reference"] ?? tx["id"] ?? "")
+            .toString()
+            .replaceFirst(RegExp(r"_debit$"), "")
+            .trim();
+      }
+
+      final foodOrderIds = foodOrderTx
+          .map(foodOrderKey)
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final walletTxWithoutReplacedFoodOrders = walletTx.where((tx) {
+        final isFood =
+            tx["type"]?.toString().toLowerCase() == "food_order" ||
+            tx["category"]?.toString().toLowerCase() == "food_order";
+        return !isFood || !foodOrderIds.contains(foodOrderKey(tx));
+      }).toList();
+
+      // ==========================================================
       // 2. UTILITY TRANSACTIONS
       // ==========================================================
 
@@ -364,7 +467,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       // ==========================================================
 
       final merged = <Map<String, dynamic>>[
-        ...walletTx,
+        ...walletTxWithoutReplacedFoodOrders,
+        ...foodOrderTx,
         ...uniqueServiceTx,
         ...bulkTx,
         ...prestmitSellTx,

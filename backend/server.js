@@ -57,6 +57,9 @@ const bulkTransferRoutes = require("./src/routes/bulkTransfer.routes");
 const depositRoutes = require("./src/routes/deposit.routes");
 const monnifyBillsRoutes = require("./src/routes/monnifyBills.routes");
 const foodRoutes = require("./src/routes/food.routes.js");
+const foodChatRoutes = require("./src/routes/foodChat.routes.js");
+const foodMerchantAdminRoutes = require("./src/routes/foodMerchantAdmin.routes.js");
+const kycAdminRoutes = require("./src/routes/kycAdmin.routes.js");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -254,7 +257,10 @@ app.use("/api", identityRoutes);
 app.use("/api", contactRoutes);
 app.use("/api", profileRoutes);
 app.use("/api", securityRoutes);
+app.use("/api/admin", kycAdminRoutes);
 app.use("/api/food", foodRoutes);
+app.use("/api/food-admin", foodMerchantAdminRoutes);
+app.use("/api/food-chat", foodChatRoutes);
 
 // ============================================================
 // Prestmit API routes

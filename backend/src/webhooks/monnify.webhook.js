@@ -166,6 +166,15 @@ async function handleTransferStatusCallback(body) {
     };
   }
 
+  // Food merchant payouts are tracked separately from customer withdrawals.
+  // Their successful Reserved Account deposit is credited by the collection
+  // webhook; this transfer callback only updates payout/order status.
+  const foodPayoutResult = await require("../services/foodMerchantPayout.service")
+    .reconcileFoodMerchantPayoutStatus({ reference, providerData: data, status });
+  if (foodPayoutResult.handled) {
+    return { handled: true, reference, status, result: foodPayoutResult };
+  }
+
   const {
     reconcileMonnifyTransfer,
   } = require("../controllers/transfer.controller");
@@ -782,3 +791,5 @@ exports.monnifyWebhook = async (
       );
   }
 };
+
+

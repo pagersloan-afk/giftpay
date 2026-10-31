@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -17,6 +18,7 @@ part 'food_merchant_sections/food_merchant_api_section.dart';
 part 'food_merchant_sections/food_merchant_settings_section.dart';
 part 'food_merchant_sections/food_merchant_menu_section.dart';
 part 'food_merchant_sections/food_merchant_orders_section.dart';
+part 'food_merchant_sections/food_merchant_chat_section.dart';
 
 class FoodMerchantScreen extends StatefulWidget {
   const FoodMerchantScreen({super.key});
@@ -69,7 +71,7 @@ class _FoodMerchantScreenState extends State<FoodMerchantScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
     _initializeMerchantDashboard();
   }
 
@@ -223,6 +225,8 @@ class _FoodMerchantScreenState extends State<FoodMerchantScreen>
             ),
           ],
           bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             controller: _tabs,
             labelColor: Colors.white,
             unselectedLabelColor: muted,
@@ -236,6 +240,10 @@ class _FoodMerchantScreenState extends State<FoodMerchantScreen>
                 icon: const Icon(Icons.receipt_long_rounded),
                 text:
                     'Orders${pendingOrders > 0 ? ' ($pendingOrders new)' : ''}',
+              ),
+              const Tab(
+                icon: Icon(Icons.chat_bubble_outline_rounded),
+                text: 'Messages',
               ),
               const Tab(
                 icon: Icon(Icons.storefront_rounded),
@@ -279,7 +287,12 @@ class _FoodMerchantScreenState extends State<FoodMerchantScreen>
                 Expanded(
                   child: TabBarView(
                     controller: _tabs,
-                    children: [_menuTab(), _ordersTab(), _settingsTab()],
+                    children: [
+                      _menuTab(),
+                      _ordersTab(),
+                      _messagesTab(),
+                      _settingsTab(),
+                    ],
                   ),
                 ),
               ],

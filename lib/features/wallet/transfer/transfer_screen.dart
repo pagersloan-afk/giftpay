@@ -44,6 +44,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
   List<dynamic> banks = [];
   double? walletBalance;
+  String? _pendingOtpReference;
 
   @override
   void initState() {
@@ -449,17 +450,12 @@ class _TransferScreenState extends State<TransferScreen> {
         // MONNIFY PENDING AUTHORIZATION
         // ======================================================
 
-        if (transferStatus == "PENDING_AUTHORIZATION") {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Transfer is awaiting Monnify authorization. OTP should only appear if MFA is enabled on your Monnify account.",
-                ),
-              ),
-            );
+        if (transferStatus == "PENDING_AUTHORIZATION" ||
+            transferStatus == "OTP_EMAIL_DISPATCH_FAILED") {
+          final reference = responseData?["requestId"]?.toString();
+          if (reference != null && reference.isNotEmpty) {
+            _pendingOtpReference = reference;
           }
-
           return const PinVerificationResult(
             status: PinVerificationStatus.success,
           );
@@ -570,8 +566,8 @@ class _TransferScreenState extends State<TransferScreen> {
   // PIN DIALOG
   // ============================================================
 
-  void _showPinDialog() {
-    showDialog<PinVerificationResult>(
+  Future<void> _showPinDialog() async {
+    final result = await showDialog<PinVerificationResult>(
       context: context,
       barrierDismissible: false,
       builder: (_) => PinEntryDialog(
@@ -579,6 +575,289 @@ class _TransferScreenState extends State<TransferScreen> {
         onChangeMethod: _showAuthMethodDialog,
       ),
     );
+
+    if (!mounted) return;
+
+    final reference = _pendingOtpReference;
+    if (reference != null && reference.isNotEmpty) {
+      _pendingOtpReference = null;
+      await _showTransferOtpDialog(reference);
+    }
+  }
+
+  // ============================================================
+  // MONNIFY TRANSFER OTP
+  // ============================================================
+
+  Future<void> _showTransferOtpDialog(String reference) async {
+    final otpController = TextEditingController();
+    bool busy = false;
+    String? errorText;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF171A21),
+          title: const Text(
+            'Authorize bank transfer',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Enter the six-digit OTP Monnify emailed to the merchant account to authorize this transfer.',
+                  style: TextStyle(color: Color(0xFFCBD5E1)),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Reference: $reference',
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  autofocus: true,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    letterSpacing: 8,
+                    fontSize: 22,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: '6-digit OTP',
+                    labelStyle: const TextStyle(color: Color(0xFFCBD5E1)),
+                    counterText: '',
+                    errorText: errorText,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF475569)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF4FC3F7)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        busy = true;
+                        errorText = null;
+                      });
+                      try {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null)
+                          throw Exception('Please sign in again.');
+                        final token = await user.getIdToken(true);
+                        final response = await http.post(
+                          Uri.parse(
+                            ApiConfig.api('/api/transfer/transfer-resend-otp'),
+                          ),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer $token',
+                          },
+                          body: jsonEncode({'reference': reference}),
+                        );
+                        final body = jsonDecode(response.body);
+                        if (response.statusCode < 200 ||
+                            response.statusCode >= 300 ||
+                            body['status'] != true) {
+                          throw Exception(
+                            body['message'] ?? 'Could not resend OTP.',
+                          );
+                        }
+                        setDialogState(() {
+                          errorText = null;
+                        });
+                        if (mounted)
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'OTP resend requested from Monnify.',
+                              ),
+                            ),
+                          );
+                      } catch (e) {
+                        setDialogState(() {
+                          errorText = e.toString().replaceFirst(
+                            'Exception: ',
+                            '',
+                          );
+                        });
+                      } finally {
+                        setDialogState(() {
+                          busy = false;
+                        });
+                      }
+                    },
+              child: const Text('Resend OTP'),
+            ),
+            ElevatedButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      final otp = otpController.text.trim();
+                      if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
+                        setDialogState(() {
+                          errorText = 'Enter the six-digit OTP.';
+                        });
+                        return;
+                      }
+                      setDialogState(() {
+                        busy = true;
+                        errorText = null;
+                      });
+                      try {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null)
+                          throw Exception('Please sign in again.');
+                        final token = await user.getIdToken(true);
+                        final response = await http.post(
+                          Uri.parse(
+                            ApiConfig.api('/api/transfer/transfer-authorize'),
+                          ),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer $token',
+                          },
+                          body: jsonEncode({
+                            'reference': reference,
+                            'authorizationCode': otp,
+                          }),
+                        );
+                        dynamic decoded;
+                        try {
+                          decoded = jsonDecode(response.body);
+                        } catch (_) {
+                          decoded = null;
+                        }
+                        final body = decoded is Map
+                            ? Map<String, dynamic>.from(decoded)
+                            : <String, dynamic>{};
+                        if (response.statusCode < 200 ||
+                            response.statusCode >= 300 ||
+                            body['status'] != true) {
+                          throw Exception(
+                            body['message'] ?? 'OTP authorization failed.',
+                          );
+                        }
+                        if (dialogContext.mounted)
+                          Navigator.of(dialogContext).pop();
+                        if (mounted) {
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'OTP submitted. Checking transfer status…',
+                              ),
+                            ),
+                          );
+                          await _checkTransferStatus(reference);
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          errorText = e.toString().replaceFirst(
+                            'Exception: ',
+                            '',
+                          );
+                        });
+                      } finally {
+                        if (dialogContext.mounted)
+                          setDialogState(() {
+                            busy = false;
+                          });
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4FC3F7),
+                foregroundColor: Colors.black,
+              ),
+              child: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Authorize transfer'),
+            ),
+          ],
+        ),
+      ),
+    );
+    otpController.dispose();
+  }
+
+  Future<void> _checkTransferStatus(String reference) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      final token = await user.getIdToken(true);
+      final response = await http.get(
+        Uri.parse(
+          ApiConfig.api(
+            '/api/transfer/transfer-status/${Uri.encodeComponent(reference)}',
+          ),
+        ),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (_) {
+        decoded = null;
+      }
+      final body = decoded is Map
+          ? Map<String, dynamic>.from(decoded)
+          : <String, dynamic>{};
+      final data = body['data'] is Map
+          ? Map<String, dynamic>.from(body['data'])
+          : <String, dynamic>{};
+      final status = (data['status'] ?? '').toString().toUpperCase();
+      if (!mounted) return;
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          (status == 'SUCCESS' || status == 'COMPLETED')) {
+        final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+        showSuccessDialog(
+          context: context,
+          title: 'Transfer Successful',
+          message:
+              '₦${NumberFormat('#,##0.00').format(amount)} has been sent to $resolvedName (${accountCtrl.text}).',
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Current transfer status: ${status.isEmpty ? 'not confirmed yet' : status}. Check status before retrying.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'OTP was submitted, but status could not be refreshed. Do not retry the transfer yet.',
+            ),
+          ),
+        );
+    }
   }
 
   // ============================================================

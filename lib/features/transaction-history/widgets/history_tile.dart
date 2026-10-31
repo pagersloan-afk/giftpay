@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:utilityhub/config/api.dart';
 
 import '../utils/history_icon_mapper.dart';
 
@@ -90,6 +93,29 @@ class HistoryTile extends StatelessWidget {
   }
 
   // ============================================================
+  // FOOD ORDER DETECTION
+  // ============================================================
+
+  bool _isFoodOrder() {
+    final category = (transaction["category"] ?? "")
+        .toString()
+        .toLowerCase()
+        .trim();
+
+    final type = (transaction["type"] ?? "").toString().toLowerCase().trim();
+
+    final title = (transaction["title"] ?? "").toString().toLowerCase().trim();
+
+    return category == "food_order" ||
+        category == "food_order_refund" ||
+        category == "food_refund" ||
+        type == "food_order" ||
+        type == "food_order_refund" ||
+        type == "food_refund" ||
+        title.startsWith("giftpay food order");
+  }
+
+  // ============================================================
   // DISPLAY COLOR
   // ============================================================
 
@@ -147,8 +173,20 @@ class HistoryTile extends StatelessWidget {
 
     final bool isPrestmitSell = _isPrestmitSell();
     final bool isBulkTransfer = _isBulkTransfer();
+    final bool isFoodOrder = _isFoodOrder();
 
-    final dynamic iconData = isPrestmitSell
+    const foodGold = Color(0xFFFFC66D);
+
+    final dynamic iconData = isFoodOrder
+        ? {
+            "icon": const Icon(
+              Icons.restaurant_rounded,
+              color: foodGold,
+              size: 20,
+            ),
+            "color": foodGold,
+          }
+        : isPrestmitSell
         ? {
             "icon": Icon(_prestmitSellIcon(), color: Colors.white, size: 20),
             "color": _prestmitSellColor(),
@@ -164,20 +202,30 @@ class HistoryTile extends StatelessWidget {
           }
         : HistoryIconMapper.detect(title, type);
 
-    final icon = iconData["icon"];
-    final color = iconData["color"];
+    final icon = iconData["icon"] as Widget;
+    final color = iconData["color"] as Color;
 
     return ListTile(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade300),
       ),
-      leading: CircleAvatar(backgroundColor: color, child: icon),
+
+      // FOOD ORDER ICON:
+      // Same fork-and-spoon icon and warm-gold styling
+      // used in the Recent Transactions dashboard widget.
+      leading: CircleAvatar(
+        backgroundColor: isFoodOrder ? foodGold.withOpacity(0.15) : color,
+        child: icon,
+      ),
+
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(formattedDate, style: const TextStyle(fontSize: 12)),
+
           if (isPrestmitSell)
             Padding(
               padding: const EdgeInsets.only(top: 3),
@@ -190,6 +238,7 @@ class HistoryTile extends StatelessWidget {
                 ),
               ),
             ),
+
           if (isBulkTransfer)
             Padding(
               padding: const EdgeInsets.only(top: 3),
@@ -204,10 +253,12 @@ class HistoryTile extends StatelessWidget {
             ),
         ],
       ),
+
       trailing: Text(
         amount,
         style: TextStyle(color: color, fontWeight: FontWeight.bold),
       ),
+
       onTap: () {
         if (isBulkTransfer) {
           _showBulkTransferDetails(context);
@@ -578,10 +629,208 @@ class HistoryTile extends StatelessWidget {
   }
 
   // ============================================================
+  // FOOD ORDER RECEIPT
+  // ============================================================
+
+  Future<void> _showFoodOrderReceipt(BuildContext context) async {
+    final orderId =
+        (transaction["orderId"] ??
+                transaction["reference"] ??
+                transaction["id"]?.toString().replaceFirst(
+                  RegExp(r"_debit$"),
+                  "",
+                ) ??
+                "")
+            .toString()
+            .trim();
+
+    final status =
+        (transaction["orderStatus"] ?? transaction["status"] ?? "pending")
+            .toString()
+            .toLowerCase();
+
+    final paymentStatus = (transaction["paymentStatus"] ?? "reserved")
+        .toString()
+        .toLowerCase();
+
+    String? deliveryCode;
+    String? codeError;
+
+    // Retrieve the delivery code while the order is active.
+    // The backend enforces ownership, payment, and order status.
+    if (orderId.isNotEmpty && paymentStatus == "reserved") {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        final token = await user?.getIdToken();
+
+        if (token != null && token.isNotEmpty) {
+          final response = await http.get(
+            Uri.parse(ApiConfig.api("/api/food/orders/$orderId/delivery-code")),
+            headers: {
+              "Authorization": "Bearer $token",
+              "Accept": "application/json",
+            },
+          );
+
+          final body = jsonDecode(response.body);
+
+          if (response.statusCode >= 200 &&
+              response.statusCode < 300 &&
+              body is Map &&
+              body["status"] == true) {
+            deliveryCode = body["deliveryCode"]?.toString();
+          } else if (body is Map) {
+            codeError = body["message"]?.toString();
+          }
+        }
+      } catch (_) {
+        codeError = "Could not load the delivery code. Please try again.";
+      }
+    }
+
+    if (!context.mounted) return;
+
+    final history = transaction["statusHistory"] is List
+        ? List<dynamic>.from(transaction["statusHistory"] as List)
+        : <dynamic>[];
+
+    final amount = _formatAmount(transaction["amount"]);
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF101827),
+        title: const Text(
+          "Food order receipt",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Order: $orderId",
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                amount,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Order status: ${status.replaceAll("_", " ").toUpperCase()}",
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Payment: ${paymentStatus.toUpperCase()}",
+                style: const TextStyle(color: Colors.white70),
+              ),
+              if (deliveryCode != null) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  "Your delivery confirmation code",
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 6),
+                SelectableText(
+                  deliveryCode,
+                  style: const TextStyle(
+                    color: Color(0xFF4FC3F7),
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "Share this code only when your order arrives.",
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ] else if (codeError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  codeError!,
+                  style: const TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              if (history.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Text(
+                  "Order progress",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...history.map((entry) {
+                  final item = entry is Map ? entry : <dynamic, dynamic>{};
+
+                  final label = (item["status"] ?? "updated")
+                      .toString()
+                      .replaceAll("_", " ");
+
+                  final at = item["at"]?.toString() ?? "";
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.check_circle_outline,
+                          size: 16,
+                          color: Color(0xFF4FC3F7),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "${label.toUpperCase()}${at.isNotEmpty ? "\n$at" : ""}",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
   // OPEN RECEIPT
   // ============================================================
 
   Future<void> _openReceipt(BuildContext context) async {
+    if (transaction["category"]?.toString() == "food_order" ||
+        transaction["type"]?.toString() == "food_order") {
+      await _showFoodOrderReceipt(context);
+      return;
+    }
+
     // ==========================================================
     // PRESTMIT SELL
     // ==========================================================

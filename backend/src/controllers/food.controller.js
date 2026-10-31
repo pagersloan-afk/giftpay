@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const FeeEngine = require("../../core/fees/fee_engine");
 const { createClient } = require("@supabase/supabase-js");
 
 const db = admin.firestore();
@@ -37,21 +38,45 @@ function uidOf(req) {
   return req.user && req.user.uid ? String(req.user.uid) : "";
 }
 
-function isMerchant(req) {
-  const configuredUid = String(process.env.FOOD_MERCHANT_UID || "").trim();
-  return Boolean(configuredUid && uidOf(req) === configuredUid);
+async function isMerchant(req) {
+  const uid = uidOf(req);
+  if (!uid) return false;
+  try {
+    const merchantDoc = await db.collection("foodMerchants").doc(uid).get();
+    if (merchantDoc.exists) {
+      const merchant = merchantDoc.data() || {};
+      return merchant.status === "approved" && merchant.isActive !== false;
+    }
+  } catch (err) {
+    console.error("Food merchant lookup error:", err.message || err);
+    return false;
+  }
+  // Temporary compatibility for the existing merchant during migration.
+  const legacyUid = String(process.env.FOOD_MERCHANT_UID || "").trim();
+  return Boolean(legacyUid && uid === legacyUid);
 }
 
 async function getMerchantAccess(req, res) {
-  const merchant = isMerchant(req);
-
-  return res.json({
-    status: true,
-    hasAccess: merchant,
-    isMerchant: merchant,
-  });
+  const uid = uidOf(req);
+  let merchant = false;
+  let applicationStatus = "not_applied";
+  try {
+    const doc = uid ? await db.collection("foodMerchants").doc(uid).get() : null;
+    if (doc && doc.exists) {
+      const data = doc.data() || {};
+      applicationStatus = String(data.status || "pending");
+      merchant = data.status === "approved" && data.isActive !== false;
+    } else {
+      const legacyUid = String(process.env.FOOD_MERCHANT_UID || "").trim();
+      merchant = Boolean(uid && legacyUid && uid === legacyUid);
+      if (merchant) applicationStatus = "approved";
+    }
+  } catch (err) {
+    console.error("Food merchant access lookup error:", err.message || err);
+    return fail(res, 500, "Unable to check merchant access");
+  }
+  return res.json({ status: true, hasAccess: merchant, isMerchant: merchant, applicationStatus });
 }
-
 
 function safeOrderId(uid, idempotencyKey) {
   const key = String(idempotencyKey || "").trim();
@@ -87,7 +112,7 @@ async function getMenu(req, res) {
 }
 
 async function createMenuItem(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
 
   const name = String(req.body?.name || "").trim();
   const description = String(req.body?.description || "").trim();
@@ -117,6 +142,7 @@ async function createMenuItem(req, res) {
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       createdBy: uidOf(req),
+      merchantUid: uidOf(req),
     };
     await ref.set(item);
     return res.status(201).json({ status: true, item: { id: ref.id, ...item } });
@@ -127,7 +153,7 @@ async function createMenuItem(req, res) {
 }
 
 async function updateMenuItem(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
 
   const itemId = String(req.params.itemId || "").trim();
   if (!itemId) return fail(res, 400, "Menu item ID is required");
@@ -174,6 +200,13 @@ async function updateMenuItem(req, res) {
     const ref = db.collection(MENU_COLLECTION).doc(itemId);
     const doc = await ref.get();
     if (!doc.exists) return fail(res, 404, "Menu item not found");
+    const savedItem = doc.data() || {};
+    const ownerUid = String(savedItem.merchantUid || savedItem.createdBy || "").trim();
+    if (ownerUid !== uidOf(req)) return fail(res, 403, "You cannot edit another merchant's menu item");
+    // Promote a verified legacy record to the current ownership field.
+    if (!savedItem.merchantUid && savedItem.createdBy === uidOf(req)) {
+      update.merchantUid = uidOf(req);
+    }
     await ref.update(update);
     const saved = await ref.get();
     return res.json({ status: true, item: { id: saved.id, ...saved.data() } });
@@ -185,13 +218,23 @@ async function updateMenuItem(req, res) {
 
 
 async function listMerchantMenu(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
   try {
-    // Single-merchant implementation: this account manages the current menu.
-    // For multi-merchant support, scope this query by restaurantId/merchantUid.
-    const snapshot = await db.collection(MENU_COLLECTION).get();
-    const items = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
+    const uid = uidOf(req);
+    // During the multi-merchant migration, older menu documents may have
+    // createdBy but no merchantUid. Read both ownership fields and merge by ID.
+    const [merchantSnapshot, legacySnapshot] = await Promise.all([
+      db.collection(MENU_COLLECTION).where("merchantUid", "==", uid).get(),
+      db.collection(MENU_COLLECTION).where("createdBy", "==", uid).get(),
+    ]);
+    const byId = new Map();
+    for (const doc of merchantSnapshot.docs) {
+      byId.set(doc.id, { id: doc.id, ...doc.data() });
+    }
+    for (const doc of legacySnapshot.docs) {
+      if (!byId.has(doc.id)) byId.set(doc.id, { id: doc.id, ...doc.data() });
+    }
+    const items = Array.from(byId.values())
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
     return res.json({ status: true, items });
   } catch (err) {
@@ -201,7 +244,7 @@ async function listMerchantMenu(req, res) {
 }
 
 async function uploadMenuImage(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
   if (!req.file) return fail(res, 400, "Choose a food image to upload");
 
   const mimeType = String(req.file.mimetype || "").toLowerCase();
@@ -258,9 +301,8 @@ async function placeOrder(req, res) {
   const uid = uidOf(req);
   if (!uid) return fail(res, 401, "Authentication required");
 
-  const merchantUid = String(process.env.FOOD_MERCHANT_UID || "").trim();
   const deliveryCodeSecret = String(process.env.FOOD_DELIVERY_CODE_SECRET || "");
-  if (!merchantUid || deliveryCodeSecret.length < 32) {
+  if (deliveryCodeSecret.length < 32) {
     return fail(res, 503, "Food ordering is not fully configured");
   }
 
@@ -326,6 +368,29 @@ async function placeOrder(req, res) {
       menuDocs.forEach((doc) => {
         if (doc.exists) menuById.set(doc.id, doc.data());
       });
+
+      const merchantUids = new Set();
+      for (const [itemId] of quantities.entries()) {
+        const item = menuById.get(itemId);
+        if (!item || item.active !== true) {
+          const error = new Error("MENU_ITEM_UNAVAILABLE");
+          error.code = "MENU_ITEM_UNAVAILABLE";
+          throw error;
+        }
+        const owner = String(item.merchantUid || item.createdBy || process.env.FOOD_MERCHANT_UID || "").trim();
+        if (!owner) {
+          const error = new Error("MENU_MERCHANT_MISSING");
+          error.code = "MENU_MERCHANT_MISSING";
+          throw error;
+        }
+        merchantUids.add(owner);
+      }
+      if (merchantUids.size !== 1) {
+        const error = new Error("MULTIPLE_MERCHANTS");
+        error.code = "MULTIPLE_MERCHANTS";
+        throw error;
+      }
+      const merchantUid = [...merchantUids][0];
 
       const lineItems = [];
       let subtotalKobo = 0;
@@ -426,6 +491,8 @@ async function placeOrder(req, res) {
     if (code === "INSUFFICIENT_FUNDS") return fail(res, 402, "Insufficient available wallet balance");
     if (code === "WALLET_NOT_FOUND") return fail(res, 409, "Wallet was not found for this account");
     if (code === "MENU_ITEM_UNAVAILABLE") return fail(res, 409, "One or more selected food items are unavailable");
+    if (code === "MENU_MERCHANT_MISSING") return fail(res, 409, "A selected menu item has no merchant assigned. Please contact support.");
+    if (code === "MULTIPLE_MERCHANTS") return fail(res, 400, "Please place separate orders for items from different restaurants.");
     if (code === "MENU_PRICE_INVALID" || code === "WALLET_BALANCE_INVALID") {
       return fail(res, 409, "Unable to validate wallet or menu pricing");
     }
@@ -461,7 +528,7 @@ async function getMyOrder(req, res) {
     const doc = await db.collection(ORDERS_COLLECTION).doc(String(req.params.orderId)).get();
     if (!doc.exists) return fail(res, 404, "Order not found");
     const order = doc.data();
-    if (order.userId !== uid && !isMerchant(req)) return fail(res, 403, "Access denied");
+    if (order.userId !== uid && !(await isMerchant(req))) return fail(res, 403, "Access denied");
     return res.json({ status: true, order: publicOrder({ id: doc.id, ...order }) });
   } catch (err) {
     console.error("Get food order error:", err.message || err);
@@ -470,7 +537,7 @@ async function getMyOrder(req, res) {
 }
 
 async function listMerchantOrders(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
   try {
     const snapshot = await db.collection(ORDERS_COLLECTION)
       .where("merchantUid", "==", uidOf(req))
@@ -491,7 +558,7 @@ async function listMerchantOrders(req, res) {
 }
 
 async function updateOrderStatus(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
 
   const requestedStatus = String(req.body?.status || "").trim();
   if (!VALID_STATUSES.has(requestedStatus) || requestedStatus === "delivered") {
@@ -591,13 +658,89 @@ async function updateOrderStatus(req, res) {
   }
 }
 
+async function getDeliveryCode(req, res) {
+  const uid = uidOf(req);
+  const orderId = String(req.params.orderId || "").trim();
+  if (!uid) return fail(res, 401, "Authentication required");
+  if (!orderId) return fail(res, 400, "Order ID is required");
+
+  const secret = String(process.env.FOOD_DELIVERY_CODE_SECRET || "");
+  if (secret.length < 32) {
+    return fail(res, 503, "Delivery code recovery is not configured");
+  }
+
+  try {
+    const ref = db.collection(ORDERS_COLLECTION).doc(orderId);
+    const snapshot = await ref.get();
+    if (!snapshot.exists) return fail(res, 404, "Order not found");
+
+    const order = snapshot.data() || {};
+    if (order.userId !== uid) return fail(res, 403, "Access denied");
+
+    // Match the order lifecycle used by this controller. The customer can
+    // recover the code while the reserved order is active, including pending.
+    const status = String(order.status || "").toLowerCase();
+    const paymentStatus = String(order.paymentStatus || "").toLowerCase();
+    const recoverableStatuses = new Set([
+      "pending",
+      "confirmed",
+      "preparing",
+      "out_for_delivery",
+    ]);
+
+    if (!recoverableStatuses.has(status) || paymentStatus !== "reserved") {
+      return fail(
+        res,
+        409,
+        "The delivery code is available only for an active order with reserved payment"
+      );
+    }
+
+    // Re-derive the same code created by placeOrder; plaintext is never stored.
+    const digest = crypto
+      .createHmac("sha256", secret)
+      .update(orderId)
+      .digest();
+    const deliveryCode = String(100000 + (digest.readUInt32BE(0) % 900000));
+    const expectedHash = crypto
+      .createHash("sha256")
+      .update(deliveryCode)
+      .digest("hex");
+
+    // Confirm that the configured secret still reproduces this order's
+    // stored verifier before returning a code.
+    const storedHash = String(order.deliveryCodeHash || "");
+    const expectedBuffer = Buffer.from(expectedHash, "hex");
+    const storedBuffer = Buffer.from(storedHash, "hex");
+    if (
+      !/^[a-f0-9]{64}$/i.test(storedHash) ||
+      expectedBuffer.length !== storedBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, storedBuffer)
+    ) {
+      return fail(
+        res,
+        409,
+        "This order's delivery code cannot be recovered. Please contact support."
+      );
+    }
+
+    return res.json({ status: true, deliveryCode, maskedCode: "••••••" });
+  } catch (err) {
+    console.error("Recover food delivery code error:", err.message || err);
+    return fail(res, 500, "Unable to retrieve delivery code");
+  }
+}
 async function confirmDelivery(req, res) {
   const uid = uidOf(req);
   const suppliedCode = String(req.body?.deliveryCode || "").trim();
+  if (!uid) return fail(res, 401, "Authentication required");
   if (!/^\d{6}$/.test(suppliedCode)) return fail(res, 400, "Enter the six-digit delivery code");
 
-  const orderRef = db.collection(ORDERS_COLLECTION).doc(String(req.params.orderId));
-  const payableRef = db.collection(PAYABLES_COLLECTION).doc(String(req.params.orderId));
+  const orderId = String(req.params.orderId || "").trim();
+  if (!orderId) return fail(res, 400, "Order ID is required");
+  const orderRef = db.collection(ORDERS_COLLECTION).doc(orderId);
+  const payableRef = db.collection(PAYABLES_COLLECTION).doc(orderId);
+  const payoutService = require("../services/foodMerchantPayout.service");
 
   try {
     const result = await db.runTransaction(async (tx) => {
@@ -605,12 +748,19 @@ async function confirmDelivery(req, res) {
       if (!orderDoc.exists) {
         const error = new Error("ORDER_NOT_FOUND"); error.code = "ORDER_NOT_FOUND"; throw error;
       }
-      const order = orderDoc.data();
+      const order = orderDoc.data() || {};
       if (order.userId !== uid) {
         const error = new Error("FORBIDDEN"); error.code = "FORBIDDEN"; throw error;
       }
+
+      const payableDoc = await tx.get(payableRef);
       if (order.status === "delivered" && order.paymentStatus === "captured") {
-        return { duplicate: true, order: publicOrder({ id: orderDoc.id, ...order }) };
+        return {
+          duplicate: true,
+          order: publicOrder({ id: orderDoc.id, ...order }),
+          payoutStatus: payableDoc.exists ? (payableDoc.data().status || "pending") : "missing",
+          payoutReference: payableDoc.exists ? (payableDoc.data().payoutReference || null) : null,
+        };
       }
       if (order.status !== "out_for_delivery" || order.paymentStatus !== "reserved") {
         const error = new Error("NOT_READY"); error.code = "NOT_READY"; throw error;
@@ -620,52 +770,178 @@ async function confirmDelivery(req, res) {
         const error = new Error("INVALID_CODE"); error.code = "INVALID_CODE"; throw error;
       }
 
+      const merchantUid = String(order.merchantUid || "").trim();
+      if (!merchantUid) {
+        const error = new Error("MERCHANT_UID_MISSING"); error.code = "MERCHANT_UID_MISSING"; throw error;
+      }
+      const subtotal = money(order.subtotal);
+      const deliveryFee = money(order.deliveryFee ?? 0);
+      const total = money(order.total);
+      if (subtotal === null || deliveryFee === null || total === null) {
+        const error = new Error("ORDER_AMOUNT_INVALID"); error.code = "ORDER_AMOUNT_INVALID"; throw error;
+      }
+      if (amountToKobo(subtotal) + amountToKobo(deliveryFee) !== amountToKobo(total)) {
+        const error = new Error("ORDER_TOTAL_MISMATCH"); error.code = "ORDER_TOTAL_MISMATCH"; throw error;
+      }
+
+      const fee = FeeEngine.foodOrder(subtotal);
+      const commissionAmount = money(fee.commissionAmount);
+      const merchantFoodEarnings = money(subtotal - commissionAmount);
+      const merchantCredit = money(merchantFoodEarnings + deliveryFee);
+      if (commissionAmount === null || merchantFoodEarnings === null || merchantCredit === null || merchantCredit <= 0) {
+        const error = new Error("SETTLEMENT_AMOUNT_INVALID"); error.code = "SETTLEMENT_AMOUNT_INVALID"; throw error;
+      }
+
+      const customerWalletRef = db.collection("wallets").doc(order.userId);
+      const customerWalletDoc = await tx.get(customerWalletRef);
+      if (!customerWalletDoc.exists) {
+        const error = new Error("CUSTOMER_WALLET_NOT_FOUND"); error.code = "CUSTOMER_WALLET_NOT_FOUND"; throw error;
+      }
+      if (payableDoc.exists && ["settled", "successful", "success"].includes(String(payableDoc.data()?.status || "").toLowerCase())) {
+        const error = new Error("ALREADY_SETTLED"); error.code = "ALREADY_SETTLED"; throw error;
+      }
+
+      const customerWallet = customerWalletDoc.data() || {};
+      const customerTransactions = Array.isArray(customerWallet.transactions) ? customerWallet.transactions : [];
+      const debitId = `${orderDoc.id}_debit`;
+      let foundCustomerDebit = false;
+      const updatedCustomerTransactions = customerTransactions.map((item) => {
+        if (!item || typeof item !== "object" || String(item.id || "") !== debitId) return item;
+        foundCustomerDebit = true;
+        return {
+          ...item,
+          status: "completed",
+          paymentStatus: "captured",
+          orderStatus: "delivered",
+          foodOrderStatus: "delivered",
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      if (!foundCustomerDebit) {
+        const error = new Error("CUSTOMER_DEBIT_NOT_FOUND"); error.code = "CUSTOMER_DEBIT_NOT_FOUND"; throw error;
+      }
+
       const now = FieldValue.serverTimestamp();
+      const nowIso = new Date().toISOString();
+      const payoutReference = payoutService.referenceForOrder(orderDoc.id);
       const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
-      const updated = {
+      const updatedOrder = {
         status: "delivered",
         paymentStatus: "captured",
         deliveryCodeHash: FieldValue.delete(),
         deliveredAt: now,
         updatedAt: now,
-        statusHistory: [...history, { status: "delivered", at: new Date().toISOString(), actorUid: uid }],
+        commissionRate: fee.commissionRate,
+        commissionAmount,
+        merchantFoodEarnings,
+        merchantDeliveryEarnings: deliveryFee,
+        merchantSettlementAmount: merchantCredit,
+        settlementStatus: "pending",
+        payoutReference,
+        statusHistory: [...history, { status: "delivered", at: nowIso, actorUid: uid }],
       };
 
-      tx.update(orderRef, updated);
-      tx.create(payableRef, {
+      // IMPORTANT: do not credit the merchant's GiftPay wallet here.
+      // Monnify sends the actual funds to USER_<merchantUid>; the existing
+      // SUCCESSFUL_TRANSACTION collection webhook credits that wallet once.
+      tx.update(customerWalletRef, { transactions: updatedCustomerTransactions, updatedAt: now });
+      tx.update(orderRef, updatedOrder);
+      tx.set(payableRef, {
         orderId: orderDoc.id,
-        merchantUid: order.merchantUid,
+        merchantUid,
         customerUid: order.userId,
-        amount: order.total,
+        foodSubtotal: subtotal,
+        deliveryFee,
+        orderTotal: total,
+        commissionRate: fee.commissionRate,
+        commissionAmount,
+        merchantFoodEarnings,
+        merchantDeliveryEarnings: deliveryFee,
+        amount: merchantCredit,
         currency: "NGN",
-        status: "payable",
-        createdAt: now,
-      });
+        status: "pending",
+        payoutStatus: "pending",
+        payoutReference,
+        payoutDestinationReference: `USER_${merchantUid}`,
+        createdAt: payableDoc.exists ? (payableDoc.data().createdAt || now) : now,
+        updatedAt: now,
+      }, { merge: true });
 
-      return { duplicate: false, order: publicOrder({ id: orderDoc.id, ...order, status: "delivered", paymentStatus: "captured" }) };
+      return {
+        duplicate: false,
+        order: publicOrder({ id: orderDoc.id, ...order, ...updatedOrder }),
+        payoutStatus: "pending",
+        payoutReference,
+        merchantUid,
+        merchantCredit,
+        settlement: {
+          foodSubtotal: subtotal,
+          deliveryFee,
+          orderTotal: total,
+          commissionRate: fee.commissionRate,
+          commissionAmount,
+          merchantFoodEarnings,
+          merchantDeliveryEarnings: deliveryFee,
+          merchantCredit,
+          status: "pending",
+          payoutReference,
+        },
+      };
     });
 
+    // A duplicate delivery request never submits a second transfer. The payout
+    // service claims a deterministic reference before making the provider call.
+    let payoutResult = null;
+    if (!result.duplicate) {
+      try {
+        payoutResult = await payoutService.submitFoodMerchantPayout({ orderId, merchantUid: result.merchantUid });
+      } catch (payoutError) {
+        console.error("Food merchant payout submission error:", payoutError.response?.data || payoutError.message || payoutError);
+        // Keep the payout record pending/needs-attention. Do not credit the
+        // merchant wallet and do not blindly retry an ambiguous provider call.
+        payoutResult = { status: "pending", message: "Delivery confirmed; payout is being reconciled" };
+      }
+    }
+
+    const latestPayable = await payableRef.get();
+    const payable = latestPayable.exists ? latestPayable.data() : {};
+    const payoutStatus = String(payable.payoutStatus || payable.status || result.payoutStatus || "pending");
     return res.json({
       status: true,
       duplicate: result.duplicate,
-      message: result.duplicate ? "Delivery was already confirmed" : "Delivery confirmed; merchant payable recorded",
+      message: payoutStatus === "settled" || payoutStatus === "successful"
+        ? (result.duplicate ? "Delivery and payout were already completed" : "Delivery confirmed and Monnify payout completed")
+        : "Delivery confirmed; merchant payout is pending Monnify confirmation",
       order: result.order,
+      payout: {
+        reference: payable.payoutReference || result.payoutReference || null,
+        status: payoutStatus,
+        providerStatus: payable.monnifyStatus || null,
+        ...(payoutResult?.message ? { message: payoutResult.message } : {}),
+      },
+      ...(result.settlement ? { settlement: result.settlement } : {}),
     });
   } catch (err) {
     if (err.code === "ORDER_NOT_FOUND") return fail(res, 404, "Order not found");
     if (err.code === "FORBIDDEN") return fail(res, 403, "Only the customer can confirm delivery");
     if (err.code === "NOT_READY") return fail(res, 409, "This order is not ready for delivery confirmation");
     if (err.code === "INVALID_CODE") return fail(res, 400, "Delivery code is incorrect");
+    if (err.code === "MERCHANT_UID_MISSING") return fail(res, 409, "This order has no merchant account configured");
+    if (["ORDER_AMOUNT_INVALID", "ORDER_TOTAL_MISMATCH", "SETTLEMENT_AMOUNT_INVALID"].includes(err.code)) {
+      return fail(res, 409, "Order or settlement amounts are invalid; no payout was initiated");
+    }
+    if (err.code === "CUSTOMER_WALLET_NOT_FOUND") return fail(res, 409, "Customer wallet was not found");
+    if (err.code === "CUSTOMER_DEBIT_NOT_FOUND") return fail(res, 409, "Customer order debit transaction was not found");
+    if (err.code === "ALREADY_SETTLED") return fail(res, 409, "This order's merchant payout has already been settled");
     console.error("Confirm food delivery error:", err.message || err);
-    return fail(res, 500, "Unable to confirm delivery");
+    return fail(res, 500, "Unable to confirm delivery and initiate merchant payout");
   }
 }
-
 
 // Restaurant settings are stored separately from menu and order records.
 // Document ID is the configured merchant's Firebase UID, preserving a single-restaurant setup.
 async function getRestaurantSettings(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
 
   try {
     const snapshot = await db.collection(RESTAURANT_SETTINGS_COLLECTION).doc(uidOf(req)).get();
@@ -678,6 +954,12 @@ async function getRestaurantSettings(req, res) {
       openingHours: "",
       deliveryNotes: "",
       logoUrl: "",
+      facebookUrl: "",
+      instagramUrl: "",
+      tiktokUrl: "",
+      linkedinUrl: "",
+      youtubeUrl: "",
+      xUrl: "",
       acceptingOrders: true,
     };
     const settings = snapshot.exists ? { ...defaults, ...snapshot.data() } : defaults;
@@ -689,7 +971,7 @@ async function getRestaurantSettings(req, res) {
 }
 
 async function updateRestaurantSettings(req, res) {
-  if (!isMerchant(req)) return fail(res, 403, "Merchant access required");
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
 
   const body = req.body || {};
   const allowedTextFields = {
@@ -701,6 +983,12 @@ async function updateRestaurantSettings(req, res) {
     openingHours: 500,
     deliveryNotes: 1000,
     logoUrl: 2048,
+    facebookUrl: 2048,
+    instagramUrl: 2048,
+    tiktokUrl: 2048,
+    linkedinUrl: 2048,
+    youtubeUrl: 2048,
+    xUrl: 2048,
   };
   const update = {};
 
@@ -729,6 +1017,17 @@ async function updateRestaurantSettings(req, res) {
   }
   if (update.logoUrl && !/^https:\/\/\S+$/i.test(update.logoUrl)) {
     return fail(res, 400, "logoUrl must be an HTTPS URL");
+  }
+  for (const field of ["facebookUrl", "instagramUrl", "tiktokUrl", "linkedinUrl", "youtubeUrl", "xUrl"]) {
+    const value = update[field];
+    if (!value) continue;
+    let parsed;
+    try { parsed = new URL(value); } catch (_) {
+      return fail(res, 400, `${field} must be a valid HTTPS URL`);
+    }
+    if (parsed.protocol !== "https:" || !parsed.hostname || /\s/.test(value)) {
+      return fail(res, 400, `${field} must be a valid HTTPS URL`);
+    }
   }
   if (!Object.keys(update).length) return fail(res, 400, "No valid settings supplied");
 
@@ -759,6 +1058,7 @@ module.exports = {
   getMyOrder,
   listMerchantOrders,
   updateOrderStatus,
+  getDeliveryCode,
   confirmDelivery,
   getRestaurantSettings,
   updateRestaurantSettings,

@@ -1,6 +1,88 @@
 part of 'food_ordering_screen.dart';
 
 extension _FoodOrderingOrdersSection on _FoodOrderingScreenState {
+  Future<void> _viewDeliveryCode(Map<String, dynamic> order) async {
+    final id = '${order['id'] ?? ''}';
+    if (id.isEmpty) {
+      _toast(
+        'Unable to retrieve the delivery code because the order ID is missing.',
+      );
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        _uri('/api/food/orders/$id/delivery-code'),
+        headers: await _headers(),
+      );
+      final data = _decode(response);
+      final code = data['deliveryCode']?.toString() ?? '';
+
+      if (!RegExp(r'^\\d{6}$').hasMatch(code)) {
+        throw Exception(
+          'The server did not return a valid six-digit delivery code.',
+        );
+      }
+      if (!mounted) return;
+
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF111B29),
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Your delivery code',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Keep this code private. Share it only with the delivery person when your order arrives.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: _FoodOrderingScreenState.muted),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(.055),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: SelectableText(
+                  code,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 30,
+                    letterSpacing: 8,
+                    fontWeight: FontWeight.w900,
+                    color: _FoodOrderingScreenState.cyan,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: FilledButton.styleFrom(
+                backgroundColor: _FoodOrderingScreenState.blue,
+              ),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _toast(_error(e));
+    }
+  }
+
   Future<void> _confirmDelivery(Map<String, dynamic> order) async {
     final ctrl = TextEditingController();
     final id = '${order['id'] ?? ''}';
@@ -527,6 +609,20 @@ extension _FoodOrderingOrdersSection on _FoodOrderingScreenState {
                         ),
                       ),
                     ),
+                    if (canConfirm)
+                      OutlinedButton.icon(
+                        onPressed: () => _viewDeliveryCode(order),
+                        icon: const Icon(Icons.password_rounded, size: 17),
+                        label: const Text('View delivery code'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _FoodOrderingScreenState.cyan,
+                          side: BorderSide(
+                            color: _FoodOrderingScreenState.cyan.withOpacity(
+                              .35,
+                            ),
+                          ),
+                        ),
+                      ),
                     if (canConfirm)
                       FilledButton.icon(
                         style: FilledButton.styleFrom(

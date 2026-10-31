@@ -45,7 +45,15 @@ extension _FoodOrderingCartSection on _FoodOrderingScreenState {
     return kobo / 100;
   }
 
-  String _money(num n) => '₦${n.toStringAsFixed(2)}';
+  String _money(num n) {
+    final fixed = n.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    final whole = parts[0].replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => ',',
+    );
+    return '₦$whole.${parts[1]}';
+  }
 
   void _qty(String id, int delta) {
     if (id.isEmpty) {
