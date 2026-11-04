@@ -60,6 +60,8 @@ const foodRoutes = require("./src/routes/food.routes.js");
 const foodChatRoutes = require("./src/routes/foodChat.routes.js");
 const foodMerchantAdminRoutes = require("./src/routes/foodMerchantAdmin.routes.js");
 const kycAdminRoutes = require("./src/routes/kycAdmin.routes.js");
+const virtualAccountRoutes = require("./src/routes/virtualAccount.routes");
+const { paystackWebhook } = require("./src/webhooks/paystack.webhook");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -222,6 +224,11 @@ app.post(
 // ============================================================
 // Normal body parsing
 // ============================================================
+app.post(
+  "/api/paystack/webhook",
+  express.raw({ type: "application/json", limit: "1mb" }),
+  paystackWebhook
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -249,6 +256,7 @@ app.use("/v1/statement", authMiddleware, statementRoute);
 
 app.use("/api/giftcard", giftcardRoutes);
 
+app.use("/api/virtual-account", virtualAccountRoutes);
 app.use("/api/monnify", monnifyRoutes);
 app.use("/api/deposits", depositRoutes);
 app.use("/api/monnify/bills", monnifyBillsRoutes);

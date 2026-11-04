@@ -46,3 +46,15 @@ app.*.map.json
 
 # Backend secrets
 backend/firebase-service-account.json
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Project archives
+backend.zip
+lib.zip

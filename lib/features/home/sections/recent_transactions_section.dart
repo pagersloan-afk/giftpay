@@ -188,8 +188,14 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
               final rawTitle = (t["title"] ?? t["description"] ?? "")
                   .toString()
                   .trim();
-              final title =
-                  category == "food_order_refund" || category == "food_refund"
+              final senderName = (t["senderName"] ?? "").toString().trim();
+              final isPaystackFunding =
+                  (t["provider"] ?? "").toString().toLowerCase() == "paystack" &&
+                  (t["channel"] ?? "").toString().toLowerCase() == "dedicated_nuban" &&
+                  (t["type"] ?? "").toString().toLowerCase() == "credit";
+              final title = isPaystackFunding
+                  ? (senderName.isNotEmpty ? "from – $senderName" : "Wallet Funding")
+                  : category == "food_order_refund" || category == "food_refund"
                   ? "Food Order Refund"
                   : (rawTitle.isEmpty || rawTitle.toLowerCase() == "transaction"
                         ? (category == "food_order"

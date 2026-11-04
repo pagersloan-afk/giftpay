@@ -16,6 +16,7 @@ import 'package:utilityhub/features/airtime/airtime_receipt_screen.dart';
 import 'package:utilityhub/features/data/data_receipt_screen.dart';
 import 'package:utilityhub/features/cable/cable_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/wallet_receipt_screen.dart';
+import 'package:utilityhub/features/transaction-history/screens/paystack_wallet_receipt_screen.dart';
 import 'package:utilityhub/features/betting/betting_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/giftcard_receipt_screen.dart';
 
@@ -115,6 +116,21 @@ class HistoryTile extends StatelessWidget {
         title.startsWith("giftpay food order");
   }
 
+  bool _isPaystackDvaCredit([Map<String, dynamic>? source]) {
+    final tx = source ?? transaction;
+    return (tx["provider"] ?? "").toString().toLowerCase() == "paystack" &&
+        (tx["channel"] ?? "").toString().toLowerCase() == "dedicated_nuban" &&
+        (tx["type"] ?? "").toString().toLowerCase() == "credit";
+  }
+
+  String _displayTitle() {
+    if (_isPaystackDvaCredit()) {
+      final sender = (transaction["senderName"] ?? "").toString().trim();
+      return sender.isNotEmpty ? "from – $sender" : "Wallet Funding";
+    }
+    return transaction["title"]?.toString() ?? "Transaction";
+  }
+
   // ============================================================
   // DISPLAY COLOR
   // ============================================================
@@ -167,7 +183,7 @@ class HistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = transaction["title"]?.toString() ?? "Transaction";
+    final title = _displayTitle();
     final type = transaction["type"]?.toString() ?? "transaction";
     final amount = _formatAmount(transaction["amount"]);
 
@@ -914,6 +930,57 @@ class HistoryTile extends StatelessWidget {
           break;
         }
       }
+    }
+
+    // ==========================================================
+    // PAYSTACK DEDICATED-ACCOUNT WALLET CREDIT
+    // ==========================================================
+
+    final paystackTx = realTx.isNotEmpty ? realTx : transaction;
+    if (_isPaystackDvaCredit(paystackTx)) {
+      final reference = (paystackTx["reference"] ?? paystackTx["id"] ?? "")
+          .toString()
+          .trim();
+      var details = Map<String, dynamic>.from(paystackTx);
+
+      // The backend verifies that this reference belongs to the signed-in user.
+      if (reference.isNotEmpty) {
+        try {
+          final idToken = await user.getIdToken();
+          final uri = Uri.parse(
+            ApiConfig.api(
+              "/api/virtual-account/transactions/${Uri.encodeComponent(reference)}",
+            ),
+          );
+          final response = await http.get(
+            uri,
+            headers: {
+              "Accept": "application/json",
+              if (idToken != null) "Authorization": "Bearer $idToken",
+            },
+          );
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map && decoded["status"] == true && decoded["data"] is Map) {
+              details = {
+                ...details,
+                ...Map<String, dynamic>.from(decoded["data"] as Map),
+              };
+            }
+          }
+        } catch (error) {
+          debugPrint("Paystack receipt detail lookup failed: $error");
+        }
+      }
+
+      if (!context.mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaystackWalletReceiptScreen(transaction: details),
+        ),
+      );
+      return;
     }
 
     // ==========================================================

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:utilityhub/features/auth/login/signup/controllers/signup_identity_controller.dart';
 import 'package:utilityhub/features/auth/login/signup/screens/signup_pin_screen.dart';
+import 'package:utilityhub/features/auth/login/signup/screens/signup_bank_account_screen.dart';
+import 'package:utilityhub/features/wallet/services/virtual_account_service.dart';
 import 'package:utilityhub/features/auth/login/signup/widgets/nin_bvn_section.dart';
 
 class SignupIdentityScreen extends StatefulWidget {
@@ -49,14 +51,25 @@ class _SignupIdentityScreenState extends State<SignupIdentityScreen> {
 
     setState(() => verifying = false);
 
-    if (success) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          settings: const RouteSettings(name: "/signup-pin"),
-          builder: (_) => const SignupPinScreen(),
-        ),
-      );
+    if (success && mounted) {
+      try {
+        final config = await VirtualAccountService().getConfig();
+        if (!mounted) return;
+        if (config['provider'] == 'paystack' && config['requiresBankVerification'] == true) {
+          Navigator.push(context, MaterialPageRoute(
+            settings: const RouteSettings(name: '/signup-bank-account'),
+            builder: (_) => SignupBankAccountScreen(initialBvn: widget.bvnCtrl.text.trim()),
+          ));
+        } else {
+          Navigator.push(context, MaterialPageRoute(
+            settings: const RouteSettings(name: '/signup-pin'),
+            builder: (_) => const SignupPinScreen(),
+          ));
+        }
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))));
+      }
     }
   }
 
