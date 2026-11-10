@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const admin = require("firebase-admin");
 const { getJwtToken, getReservedAccountDetails } = require("./monnify.service");
 const { monnifyJwtClient } = require("../clients/monnify.client");
+const { request: flutterwaveRequest } = require("./flutterwave.transfer.client");
 
 const db = admin.firestore();
 const PAYABLES = "foodMerchantPayables";
@@ -13,11 +14,17 @@ const ORDERS = "foodOrders";
 const TRANSFERS = "monnify_transfers";
 const SOURCE_ACCOUNT = String(process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || "").trim();
 
-function referenceForOrder(orderId) {
-  const digest = crypto.createHash("sha256").update(String(orderId)).digest("hex").slice(0, 24).toUpperCase();
-  return `GPFOOD_${digest}`;
+function referenceForOrder(orderId, provider = "monnify") {
+  const digest = crypto.createHash("sha256").update(String(orderId)).digest("hex").slice(0, 20).toUpperCase();
+  return `GPFOOD_${provider === "flutterwave" ? "FLW" : "MON"}_${digest}`;
 }
-function cleanStatus(value) { return String(value || "").trim().toUpperCase(); }
+function cleanStatus(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/^TRANSFER[._\s-]+/, "")
+    .replace(/[.\s-]+/g, "_");
+}
 function accountNumberFrom(account) { return String(account?.accountNumber || account?.accountNo || "").trim(); }
 function bankCodeFrom(account) { return String(account?.bankCode || account?.destinationBankCode || account?.bank?.code || account?.bank?.bankCode || "").trim(); }
 function accountNameFrom(account) { return String(account?.accountName || account?.accountHolderName || account?.name || "").trim(); }
@@ -51,7 +58,10 @@ async function getDestination(merchantUid) {
 async function submitFoodMerchantPayout({ orderId, merchantUid }) {
   const orderRef = db.collection(ORDERS).doc(orderId);
   const payableRef = db.collection(PAYABLES).doc(orderId);
-  const reference = referenceForOrder(orderId);
+  const provider = String(process.env.FOOD_SETTLEMENT_PROVIDER || "monnify").trim().toLowerCase();
+  if (!["monnify", "flutterwave", "manual"].includes(provider)) throw new Error(`Unsupported FOOD_SETTLEMENT_PROVIDER: ${provider}`);
+  if (provider === "manual") return { status: "MANUAL_REQUIRED", reference: null };
+  const reference = referenceForOrder(orderId, provider);
   const transferRef = db.collection(TRANSFERS).doc(reference);
 
   // Claim the deterministic payout before making any external request. A retry
@@ -65,9 +75,23 @@ async function submitFoodMerchantPayout({ orderId, merchantUid }) {
     if (["settled", "successful", "success"].includes(String(payable.status || "").toLowerCase())) {
       return { submit: false, status: "SUCCESS" };
     }
+    const previousReference = String(payable.payoutReference || "").trim();
+    if (previousReference && previousReference !== reference) {
+      const previousTransferSnap = await tx.get(db.collection(TRANSFERS).doc(previousReference));
+      if (previousTransferSnap.exists) {
+        const previousTransfer = previousTransferSnap.data() || {};
+        const previousStatus = String(previousTransfer.status || "").toLowerCase();
+        if (["submitting", "pending", "processing", "success", "successful"].includes(previousStatus)) {
+          return { submit: false, status: previousStatus, reference: previousReference };
+        }
+      }
+    }
+    if (String(payable.payoutStatus || "").toLowerCase() === "processing") {
+      return { submit: false, status: payable.payoutStatus, reference: previousReference || reference };
+    }
     if (transferSnap.exists) {
       const existing = transferSnap.data() || {};
-      return { submit: false, status: existing.monnifyStatus || existing.status || "PENDING" };
+      return { submit: false, status: existing.flutterwaveStatus || existing.monnifyStatus || existing.status || "PENDING", reference };
     }
     const now = admin.firestore.FieldValue.serverTimestamp();
     tx.create(transferRef, {
@@ -79,7 +103,8 @@ async function submitFoodMerchantPayout({ orderId, merchantUid }) {
       amount: Number(payable.amount),
       currency: "NGN",
       status: "submitting",
-      monnifyStatus: "PENDING",
+      provider,
+      ...(provider === "flutterwave" ? { flutterwaveStatus: "PENDING" } : { monnifyStatus: "PENDING" }),
       destinationAccountReference: `USER_${merchantUid}`,
       createdAt: now,
       updatedAt: now,
@@ -88,58 +113,75 @@ async function submitFoodMerchantPayout({ orderId, merchantUid }) {
     tx.set(orderRef, { payoutReference: reference, settlementStatus: "processing", updatedAt: now }, { merge: true });
     return { submit: true, amount: Number(payable.amount) };
   });
-  if (!claim.submit) return { status: claim.status, reference };
+  if (!claim.submit) return { status: claim.status, reference: claim.reference || reference };
 
   try {
-    if (!SOURCE_ACCOUNT) throw new Error("MONNIFY_WALLET_ACCOUNT_NUMBER is not configured");
     const amount = Number(claim.amount);
     if (!Number.isFinite(amount) || amount <= 0) throw new Error("Food payout amount is invalid");
-    const destination = await getDestination(merchantUid);
-    const token = await getJwtToken();
-    const client = monnifyJwtClient(token);
-    const payload = {
-      amount: Number(amount.toFixed(2)),
-      reference,
-      narration: `GiftPay food order settlement ${orderId}`.slice(0, 100),
-      destinationBankCode: destination.bankCode,
-      destinationAccountNumber: destination.accountNumber,
-      destinationAccountName: destination.accountName,
-      currency: "NGN",
-      sourceAccountNumber: SOURCE_ACCOUNT,
-      async: true,
-    };
+    let data = {};
+    let body = {};
+    let status = "PENDING";
+    let destination = {};
 
-    const response = await client.post("/api/v2/disbursements/single", payload, { timeout: 30000 });
-    const data = response.data || {};
-    if (data.requestSuccessful === false) {
-      const e = new Error(data.responseMessage || "Monnify rejected the food payout");
-      e.providerRejected = true;
-      e.providerData = data;
-      throw e;
+    if (provider === "monnify") {
+      if (!SOURCE_ACCOUNT) { const e = new Error("MONNIFY_WALLET_ACCOUNT_NUMBER is not configured"); e.providerRejected = true; throw e; }
+      destination = await getDestination(merchantUid);
+      const token = await getJwtToken();
+      const client = monnifyJwtClient(token);
+      const payload = {
+        amount: Number(amount.toFixed(2)), reference,
+        narration: `GiftPay food order settlement ${orderId}`.slice(0, 100),
+        destinationBankCode: destination.bankCode,
+        destinationAccountNumber: destination.accountNumber,
+        destinationAccountName: destination.accountName,
+        currency: "NGN", sourceAccountNumber: SOURCE_ACCOUNT, async: true,
+      };
+      const response = await client.post("/api/v2/disbursements/single", payload, { timeout: 30000 });
+      data = response.data || {};
+      if (data.requestSuccessful === false) {
+        const e = new Error(data.responseMessage || "Monnify rejected the food payout");
+        e.providerRejected = true; e.providerData = data; throw e;
+      }
+      body = data.responseBody || {};
+      status = cleanStatus(body.status || body.transactionStatus || "PENDING");
+    } else if (provider === "flutterwave") {
+      const settingsSnap = await db.collection("foodRestaurantSettings").doc(merchantUid).get();
+      const settings = settingsSnap.exists ? settingsSnap.data() || {} : {};
+      const bankCode = String(settings.payoutBankCode || "").trim();
+      const accountNumber = String(settings.payoutAccountNumber || "").trim();
+      const accountName = String(settings.payoutAccountName || "").trim();
+      if (!bankCode || !/^\d{10}$/.test(accountNumber) || !accountName || settings.payoutAccountVerified !== true) {
+        const e = new Error("Merchant must add and verify a Flutterwave settlement bank account in Restaurant Settings before automatic payout can run"); e.providerRejected = true; throw e;
+      }
+      if (!Number.isInteger(amount)) { const e = new Error("Flutterwave NGN settlements require whole-naira amounts; this payable contains a fractional naira amount."); e.providerRejected = true; throw e; }
+      const callbackUrl = String(process.env.FLUTTERWAVE_TRANSFER_CALLBACK_URL || process.env.FLW_TRANSFER_CALLBACK_URL || "").trim();
+      data = await flutterwaveRequest("post", "/transfers", {
+        account_bank: bankCode, account_number: accountNumber, amount: Number(amount.toFixed(2)),
+        currency: "NGN", reference, narration: `GiftPay food order settlement ${orderId}`.slice(0, 100),
+        beneficiary_name: accountName, ...(callbackUrl ? { callback_url: callbackUrl } : {}),
+      });
+      body = data || {};
+      status = cleanStatus(body.status || "NEW");
+      destination = { accountNumber, accountName, bankCode, bankName: settings.payoutBankName || null };
     }
-    const body = data.responseBody || {};
-    const status = cleanStatus(body.status || body.transactionStatus || data.responseMessage || "PENDING");
+
     const now = admin.firestore.FieldValue.serverTimestamp();
     await db.runTransaction(async (tx) => {
       tx.set(transferRef, {
-        status: status === "SUCCESS" || status === "COMPLETED" ? "success" : "pending",
-        monnifyStatus: status,
-        providerTransactionReference: body.transactionReference || body.reference || null,
+        provider,
+        status: ["SUCCESS", "SUCCESSFUL", "COMPLETED"].includes(status) ? "success" : "pending",
+        ...(provider === "flutterwave" ? { flutterwaveStatus: status, providerTransferId: body.id || null } : { monnifyStatus: status, providerTransactionReference: body.transactionReference || body.reference || null }),
         providerData: data,
-        destinationAccountReference: destination.accountReference,
-        destinationAccountNumberMasked: `******${destination.accountNumber.slice(-4)}`,
-        destinationBankName: destination.bankName,
-        submittedAt: now,
-        updatedAt: now,
+        destinationAccountNumberMasked: destination.accountNumber ? `******${destination.accountNumber.slice(-4)}` : null,
+        destinationBankName: destination.bankName || null,
+        submittedAt: now, updatedAt: now,
       }, { merge: true });
-      tx.set(payableRef, { payoutStatus: "processing", monnifyStatus: status, updatedAt: now }, { merge: true });
-      tx.set(orderRef, { settlementStatus: "processing", monnifyStatus: status, updatedAt: now }, { merge: true });
+      tx.set(payableRef, { payoutStatus: "processing", ...(provider === "flutterwave" ? { flutterwaveStatus: status } : { monnifyStatus: status }), updatedAt: now }, { merge: true });
+      tx.set(orderRef, { settlementStatus: "processing", ...(provider === "flutterwave" ? { flutterwaveStatus: status } : { monnifyStatus: status }), updatedAt: now }, { merge: true });
     });
 
-    // Some responses can be final immediately. Route through the same
-    // reconciliation helper used by webhooks; it never credits the wallet.
-    if (["SUCCESS", "COMPLETED", "FAILED", "REVERSED", "EXPIRED"].includes(status)) {
-      await reconcileFoodMerchantPayoutStatus({ reference, status, providerData: body });
+    if (["SUCCESS", "SUCCESSFUL", "COMPLETED", "FAILED", "REVERSED", "EXPIRED"].includes(status)) {
+      await reconcileFoodMerchantPayoutStatus({ reference, status, providerData: body, provider });
     }
     return { status, reference };
   } catch (err) {
@@ -151,7 +193,7 @@ async function submitFoodMerchantPayout({ orderId, merchantUid }) {
     await db.runTransaction(async (tx) => {
       tx.set(transferRef, {
         status: explicitlyRejected ? "failed" : "pending",
-        monnifyStatus: explicitlyRejected ? "FAILED" : "PENDING",
+        ...(provider === "flutterwave" ? { flutterwaveStatus: explicitlyRejected ? "FAILED" : "PENDING" } : { monnifyStatus: explicitlyRejected ? "FAILED" : "PENDING" }),
         submissionError: String(err.message || "Transfer submission outcome is unknown").slice(0, 500),
         providerData,
         updatedAt: now,
@@ -172,11 +214,11 @@ async function submitFoodMerchantPayout({ orderId, merchantUid }) {
   }
 }
 
-async function reconcileFoodMerchantPayoutStatus({ reference, status, providerData = {} }) {
+async function reconcileFoodMerchantPayoutStatus({ reference, status, providerData = {}, provider = "monnify" }) {
   const normalized = cleanStatus(status || providerData.status || providerData.transactionStatus);
-  const finalSuccess = ["SUCCESS", "COMPLETED"].includes(normalized);
+  const finalSuccess = ["SUCCESS", "SUCCESSFUL", "COMPLETED"].includes(normalized);
   const finalFailure = ["FAILED", "REVERSED", "EXPIRED"].includes(normalized);
-  const finalPending = ["PENDING", "AWAITING_PROCESSING", "IN_PROGRESS", "PENDING_AUTHORIZATION", "OTP_EMAIL_DISPATCH_FAILED"].includes(normalized);
+  const finalPending = ["NEW", "QUEUED", "PENDING", "AWAITING_PROCESSING", "IN_PROGRESS", "PENDING_AUTHORIZATION", "OTP_EMAIL_DISPATCH_FAILED"].includes(normalized);
   if (!reference || (!finalSuccess && !finalFailure && !finalPending)) return { handled: false, reason: "UNKNOWN_STATUS" };
 
   const transferRef = db.collection(TRANSFERS).doc(String(reference));
@@ -195,32 +237,41 @@ async function reconcileFoodMerchantPayoutStatus({ reference, status, providerDa
     ]);
     if (!currentTransfer.exists) return;
     const current = currentTransfer.data() || {};
-    const oldStatus = cleanStatus(current.monnifyStatus || current.status);
-    if (["SUCCESS", "COMPLETED"].includes(oldStatus) && !finalSuccess) return;
-    if (["FAILED", "REVERSED", "EXPIRED"].includes(oldStatus) && !finalFailure && !finalPending) return;
+    // Provider-specific reconciliation must only touch records belonging to
+    // that provider; this protects Monnify payouts from Flutterwave callbacks.
+    if (current.provider && String(current.provider).toLowerCase() !== String(provider).toLowerCase()) return;
+
+    const oldStatus = cleanStatus(current[provider === "flutterwave" ? "flutterwaveStatus" : "monnifyStatus"] || current.status);
+    const oldSuccess = ["SUCCESS", "SUCCESSFUL", "COMPLETED"].includes(oldStatus);
+    const oldFailure = ["FAILED", "REVERSED", "EXPIRED"].includes(oldStatus);
+
+    // Final payout states are immutable. Contradictory later callbacks need
+    // provider-side/manual reconciliation rather than automatic state flips.
+    if (oldSuccess && !finalSuccess) return;
+    if (oldFailure && !finalFailure) return;
 
     const payableStatus = finalSuccess ? "settled" : finalFailure ? "failed" : "pending";
     const payoutStatus = finalSuccess ? "successful" : finalFailure ? "failed" : "processing";
     tx.set(transferRef, {
       status: finalSuccess ? "success" : finalFailure ? "failed" : "pending",
-      monnifyStatus: normalized,
+      [provider === "flutterwave" ? "flutterwaveStatus" : "monnifyStatus"]: normalized,
       providerFinalData: providerData,
-      ...(finalFailure ? { failureReason: providerData?.message || providerData?.responseMessage || `Monnify transfer ${normalized.toLowerCase()}` } : {}),
+      ...(finalFailure ? { failureReason: providerData?.message || providerData?.responseMessage || `${provider} transfer ${normalized.toLowerCase()}` } : {}),
       updatedAt: now,
     }, { merge: true });
     if (payableSnap.exists) tx.set(payableRef, {
       status: payableStatus,
       payoutStatus,
-      monnifyStatus: normalized,
+      [provider === "flutterwave" ? "flutterwaveStatus" : "monnifyStatus"]: normalized,
       ...(finalSuccess ? { settledAt: now, payoutError: admin.firestore.FieldValue.delete() } : {}),
-      ...(finalFailure ? { failedAt: now, payoutError: providerData?.message || providerData?.responseMessage || `Monnify transfer ${normalized.toLowerCase()}` } : {}),
+      ...(finalFailure ? { failedAt: now, payoutError: providerData?.message || providerData?.responseMessage || `${provider} transfer ${normalized.toLowerCase()}` } : {}),
       updatedAt: now,
     }, { merge: true });
     if (orderSnap.exists) tx.set(orderRef, {
       settlementStatus: finalSuccess ? "settled" : finalFailure ? "failed" : "pending",
-      monnifyStatus: normalized,
+      [provider === "flutterwave" ? "flutterwaveStatus" : "monnifyStatus"]: normalized,
       ...(finalSuccess ? { settledAt: now, payoutError: admin.firestore.FieldValue.delete() } : {}),
-      ...(finalFailure ? { payoutError: providerData?.message || providerData?.responseMessage || `Monnify transfer ${normalized.toLowerCase()}` } : {}),
+      ...(finalFailure ? { payoutError: providerData?.message || providerData?.responseMessage || `${provider} transfer ${normalized.toLowerCase()}` } : {}),
       updatedAt: now,
     }, { merge: true });
   });

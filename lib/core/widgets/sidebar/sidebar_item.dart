@@ -176,6 +176,8 @@ class _SidebarItemState extends State<SidebarItem> {
                         ? cyan
                         : baseText,
                     fontSize: 15,
+                    decoration: TextDecoration.none,
+                    decorationColor: Colors.transparent,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),

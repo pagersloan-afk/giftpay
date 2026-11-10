@@ -62,6 +62,7 @@ const foodMerchantAdminRoutes = require("./src/routes/foodMerchantAdmin.routes.j
 const kycAdminRoutes = require("./src/routes/kycAdmin.routes.js");
 const virtualAccountRoutes = require("./src/routes/virtualAccount.routes");
 const { paystackWebhook } = require("./src/webhooks/paystack.webhook");
+const { flutterwaveTransferWebhook } = require("./src/webhooks/flutterwave.transfer.webhook");
 const clubkonnectProductsRoutes = require("./src/routes/clubkonnectProducts.routes");
 
 // IMPORTANT:
@@ -138,6 +139,7 @@ app.use(
 // Therefore this route MUST be registered BEFORE:
 //
 //     app.use(express.json());
+
 //
 // Do not move it below express.json().
 //
@@ -166,6 +168,7 @@ app.post(
 // Therefore this route MUST also be registered BEFORE:
 //
 //     app.use(express.json());
+
 //
 // Endpoint:
 //
@@ -231,6 +234,8 @@ app.post(
   paystackWebhook
 );
 app.use(express.json());
+app.post("/api/flutterwave/webhook", flutterwaveTransferWebhook);
+
 app.use(express.urlencoded({ extended: true }));
 
 // ============================================================

@@ -191,6 +191,7 @@ class AppSidebar extends StatelessWidget {
           color: Colors.white.withOpacity(0.45),
           fontSize: 13,
           fontWeight: FontWeight.w600,
+          decoration: TextDecoration.none,
           letterSpacing: 0.3,
         ),
       ),

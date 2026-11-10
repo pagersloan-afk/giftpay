@@ -50,13 +50,34 @@ class _SignupBankAccountScreenState extends State<SignupBankAccountScreen> {
       setState(() {
         _banks = banks;
         _loadingBanks = false;
-        if (banks.isNotEmpty) _bankCode = banks.first['code'];
+        // Do not preselect a bank: the customer must choose their own bank.
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loadingBanks = false;
         _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  String get _selectedBankName {
+    for (final bank in _banks) {
+      if (bank['code'] == _bankCode) return bank['name'] ?? 'Select your bank';
+    }
+    return 'Select your bank';
+  }
+
+  Future<void> _selectBank() async {
+    final selected = await showDialog<Map<String, String>>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.82),
+      builder: (_) => _BankSearchDialog(banks: _banks),
+    );
+    if (selected != null && mounted) {
+      setState(() {
+        _bankCode = selected['code'];
+        _error = null;
       });
     }
   }
@@ -149,24 +170,22 @@ class _SignupBankAccountScreenState extends State<SignupBankAccountScreen> {
               if (_loadingBanks)
                 const LinearProgressIndicator()
               else
-                DropdownButtonFormField<String>(
-                  value: _bankCode,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Select your bank',
-                    border: OutlineInputBorder(),
+                InkWell(
+                  onTap: _submitting || _banks.isEmpty ? null : _selectBank,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Select your bank',
+                      suffixIcon: Icon(Icons.search_rounded),
+                    ),
+                    child: Text(
+                      _selectedBankName,
+                      style: TextStyle(
+                        color: _bankCode == null ? Colors.white54 : Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  items: _banks
-                      .map(
-                        (bank) => DropdownMenuItem<String>(
-                          value: bank['code'],
-                          child: Text(bank['name'] ?? ''),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _submitting
-                      ? null
-                      : (value) => setState(() => _bankCode = value),
                 ),
               const SizedBox(height: 12),
               TextField(
@@ -212,6 +231,115 @@ class _SignupBankAccountScreenState extends State<SignupBankAccountScreen> {
               const Text(
                 'Your BVN is submitted securely to Paystack for dedicated-account verification. GiftPay stores only the verification result and masked bank-account details, not your full BVN or account number.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _BankSearchDialog extends StatefulWidget {
+  final List<Map<String, String>> banks;
+  const _BankSearchDialog({required this.banks});
+
+  @override
+  State<_BankSearchDialog> createState() => _BankSearchDialogState();
+}
+
+class _BankSearchDialogState extends State<_BankSearchDialog> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, String>> get _filtered {
+    final query = _query.trim().toLowerCase();
+    final result = widget.banks.where((bank) {
+      final name = (bank['name'] ?? '').toLowerCase();
+      return query.isEmpty || name.contains(query);
+    }).toList();
+    result.sort((a, b) {
+      final an = (a['name'] ?? '').toLowerCase();
+      final bn = (b['name'] ?? '').toLowerCase();
+      if (query.isNotEmpty) {
+        final aStarts = an.startsWith(query);
+        final bStarts = bn.startsWith(query);
+        if (aStarts != bStarts) return aStarts ? -1 : 1;
+        final aWord = an.split(RegExp(r'\s+')).any((part) => part.startsWith(query));
+        final bWord = bn.split(RegExp(r'\s+')).any((part) => part.startsWith(query));
+        if (aWord != bWord) return aWord ? -1 : 1;
+      }
+      return an.compareTo(bn);
+    });
+    return result;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final banks = _filtered;
+    return Dialog(
+      backgroundColor: const Color(0xFF05070A),
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.white.withOpacity(.14)),
+      ),
+      child: SizedBox(
+        width: 480,
+        height: MediaQuery.sizeOf(context).height * .72,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Expanded(child: Text('Choose your bank', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700))),
+                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.white70)),
+              ]),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                onChanged: (value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  hintText: 'Type bank name',
+                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                  suffixIcon: _query.isEmpty ? null : IconButton(
+                    onPressed: () { _searchController.clear(); setState(() => _query = ''); },
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF111827),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white24)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white24)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: banks.isEmpty
+                    ? const Center(child: Text('No matching bank found', style: TextStyle(color: Colors.white70)))
+                    : ListView.separated(
+                        itemCount: banks.length,
+                        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withOpacity(.08)),
+                        itemBuilder: (context, index) {
+                          final bank = banks[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(bank['name'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                            trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                            onTap: () => Navigator.pop(context, bank),
+                          );
+                        },
+                      ),
               ),
             ],
           ),

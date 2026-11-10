@@ -10,6 +10,7 @@ const MENU_COLLECTION = "foodMenu";
 const ORDERS_COLLECTION = "foodOrders";
 const PAYABLES_COLLECTION = "foodMerchantPayables";
 const RESTAURANT_SETTINGS_COLLECTION = "foodRestaurantSettings";
+const { request: flutterwaveRequest } = require("../services/flutterwave.transfer.client");
 
 const VALID_STATUSES = new Set([
   "pending",
@@ -858,7 +859,8 @@ async function confirmDelivery(req, res) {
 
       const now = FieldValue.serverTimestamp();
       const nowIso = new Date().toISOString();
-      const payoutReference = payoutService.referenceForOrder(orderDoc.id);
+      const payoutProvider = String(process.env.FOOD_SETTLEMENT_PROVIDER || "monnify").trim().toLowerCase();
+      const payoutReference = payoutService.referenceForOrder(orderDoc.id, payoutProvider);
       const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
       const updatedOrder = {
         status: "delivered",
@@ -877,8 +879,8 @@ async function confirmDelivery(req, res) {
       };
 
       // IMPORTANT: do not credit the merchant's GiftPay wallet here.
-      // Monnify sends the actual funds to USER_<merchantUid>; the existing
-      // SUCCESSFUL_TRANSACTION collection webhook credits that wallet once.
+      // The selected settlement provider sends funds to the merchant destination;
+      // this controller must never credit the merchant wallet itself.
       tx.update(customerWalletRef, { transactions: updatedCustomerTransactions, updatedAt: now });
       tx.update(orderRef, updatedOrder);
       tx.set(payableRef, {
@@ -945,13 +947,13 @@ async function confirmDelivery(req, res) {
       status: true,
       duplicate: result.duplicate,
       message: payoutStatus === "settled" || payoutStatus === "successful"
-        ? (result.duplicate ? "Delivery and payout were already completed" : "Delivery confirmed and Monnify payout completed")
-        : "Delivery confirmed; merchant payout is pending Monnify confirmation",
+        ? (result.duplicate ? "Delivery and payout were already completed" : "Delivery confirmed and merchant payout completed")
+        : "Delivery confirmed; merchant payout is pending provider confirmation",
       order: result.order,
       payout: {
         reference: payable.payoutReference || result.payoutReference || null,
         status: payoutStatus,
-        providerStatus: payable.monnifyStatus || null,
+        providerStatus: payable.flutterwaveStatus || payable.monnifyStatus || null,
         ...(payoutResult?.message ? { message: payoutResult.message } : {}),
       },
       ...(result.settlement ? { settlement: result.settlement } : {}),
@@ -996,6 +998,7 @@ async function getRestaurantSettings(req, res) {
       youtubeUrl: "",
       xUrl: "",
       acceptingOrders: true,
+      payoutBankCode: "", payoutBankName: "", payoutAccountNumber: "", payoutAccountName: "", payoutAccountVerified: false,
     };
     const settings = snapshot.exists ? { ...defaults, ...snapshot.data() } : defaults;
     return res.json({ status: true, settings });
@@ -1064,6 +1067,35 @@ async function updateRestaurantSettings(req, res) {
       return fail(res, 400, `${field} must be a valid HTTPS URL`);
     }
   }
+
+  // Settlement details are only stored after Flutterwave confirms the account name.
+  if (body.payoutBankCode !== undefined || body.payoutAccountNumber !== undefined) {
+    const bankCode = String(body.payoutBankCode || "").trim();
+    const accountNumber = String(body.payoutAccountNumber || "").trim();
+    if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
+      return fail(res, 400, "Select a settlement bank and enter a valid 10-digit account number");
+    }
+    try {
+      const resolved = await flutterwaveRequest("post", "/accounts/resolve", {
+        account_number: accountNumber, account_bank: bankCode,
+      });
+      const accountName = String(resolved?.account_name || "").trim();
+      if (!accountName) return fail(res, 400, "Flutterwave could not verify this settlement account");
+      const banks = await flutterwaveRequest("get", "/banks/NG", null, { include_provider_type: 1 });
+      const bank = (banks || []).find((item) => String(item.code) === bankCode);
+      if (!bank) return fail(res, 400, "Select a valid Nigerian bank from the Flutterwave bank list");
+      update.payoutBankCode = bankCode;
+      update.payoutBankName = String(bank.name || "").trim();
+      update.payoutAccountNumber = accountNumber;
+      update.payoutAccountName = accountName;
+      update.payoutAccountVerified = true;
+      update.payoutAccountVerifiedAt = FieldValue.serverTimestamp();
+    } catch (e) {
+      console.error("Food merchant payout account verification failed:", e.response?.data || e.message);
+      return fail(res, 400, e.response?.data?.message || e.providerData?.message || e.message || "Unable to verify settlement bank account");
+    }
+  }
+
   if (!Object.keys(update).length) return fail(res, 400, "No valid settings supplied");
 
   try {
@@ -1078,6 +1110,18 @@ async function updateRestaurantSettings(req, res) {
   } catch (err) {
     console.error("Update restaurant settings error:", err.message || err);
     return fail(res, 500, "Unable to save restaurant settings");
+  }
+}
+
+
+async function getFoodPayoutBanks(req, res) {
+  if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
+  try {
+    const banks = await flutterwaveRequest("get", "/banks/NG", null, { include_provider_type: 1 });
+    return res.json({ status: true, data: (banks || []).filter((b) => !b.provider_type || String(b.provider_type).toLowerCase() === "bank").map((b) => ({ name: b.name, code: String(b.code) })) });
+  } catch (e) {
+    console.error("Food payout bank list failed:", e.response?.data || e.message);
+    return fail(res, 502, e.response?.data?.message || e.message || "Unable to load settlement banks");
   }
 }
 
@@ -1097,4 +1141,5 @@ module.exports = {
   confirmDelivery,
   getRestaurantSettings,
   updateRestaurantSettings,
+  getFoodPayoutBanks,
 };

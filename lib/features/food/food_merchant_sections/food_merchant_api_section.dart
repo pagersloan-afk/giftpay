@@ -151,3 +151,19 @@ extension _FoodMerchantApiSection on _FoodMerchantScreenState {
     }
   }
 }
+
+
+extension _FoodMerchantPayoutApi on _FoodMerchantScreenState {
+  Future<List<Map<String, String>>> _loadFoodPayoutBanks() async {
+    final response = await http.get(
+      _uri('/api/food/merchant/payout-banks'),
+      headers: await _headers(),
+    );
+    final raw = _decode(response)['data'];
+    if (raw is! List) throw Exception('Flutterwave bank list is unavailable.');
+    return raw.whereType<Map>().map((e) => {
+      'name': '${e['name'] ?? ''}',
+      'code': '${e['code'] ?? ''}',
+    }).where((e) => e['name']!.isNotEmpty && e['code']!.isNotEmpty).toList();
+  }
+}

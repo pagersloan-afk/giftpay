@@ -1,12 +1,8 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // ⭐ Web-safe HTML API
-import 'package:universal_html/html.dart' as html;
-import 'package:utilityhub/config/api.dart';
 
 import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 
@@ -22,9 +18,6 @@ class FundWalletScreen extends StatefulWidget {
 }
 
 class _FundWalletScreenState extends State<FundWalletScreen> {
-  final amountCtrl = TextEditingController();
-  bool loading = false;
-
   // ⭐ Virtual Account
   VirtualAccount? virtualAccount;
   bool vaLoading = true;
@@ -38,163 +31,90 @@ class _FundWalletScreenState extends State<FundWalletScreen> {
   Future<void> loadVirtualAccount() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      setState(() => vaLoading = false);
+      if (mounted) setState(() => vaLoading = false);
       return;
     }
-
-    final va = await VirtualAccountService().getVirtualAccount(user.uid);
-
-    setState(() {
-      virtualAccount = va;
-      vaLoading = false;
-    });
-  }
-
-  Future<void> startPayment() async {
-    final rawAmount = amountCtrl.text.trim();
-
-    if (rawAmount.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Enter an amount")));
-      return;
-    }
-
-    if (int.tryParse(rawAmount) == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Enter a valid number")));
-      return;
-    }
-
-    final amount = int.parse(rawAmount);
-    final amountInKobo = (amount * 100).toString();
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-
-    setState(() => loading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.api("/paystack/initialize")),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "email": "gift@example.com",
-          "amount": amountInKobo,
-          "userId": userId,
-        }),
-      );
-
-      final data = jsonDecode(response.body);
-
-      if (data["status"] == true) {
-        final url = data["authorization_url"];
-
-        // ⭐ WEB ONLY — open Paystack checkout
-        if (kIsWeb) {
-          html.window.open(url, "_blank");
-        }
-
-        // ⭐ MOBILE — placeholder
-        if (!kIsWeb) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Paystack web checkout only works on Web for now."),
-            ),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${data['message']}")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Payment error: $e")));
+      final va = await VirtualAccountService().getVirtualAccount(user.uid);
+      if (!mounted) return;
+      setState(() {
+        virtualAccount = va;
+        vaLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => vaLoading = false);
     }
-
-    setState(() => loading = false);
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Fund Wallet")),
       body: AppResponsiveLayout(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ⭐ MONIEPOINT VIRTUAL ACCOUNT SECTION
-              if (vaLoading) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: LinearProgressIndicator(),
-                ),
-              ] else if (virtualAccount != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.12)),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF142B46), Color(0xFF0B1524), Color(0xFF101827)],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Bank Transfer",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFF4FC3F7).withOpacity(.28)),
+                  boxShadow: [BoxShadow(color: const Color(0xFF1478C8).withOpacity(.13), blurRadius: 28, offset: const Offset(0, 12))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Container(width: 46, height: 46, decoration: BoxDecoration(color: Colors.white.withOpacity(.09), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.account_balance_rounded, color: Color(0xFF7DD3FC))),
+                      const SizedBox(width: 14),
+                      const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Add money to GiftPay', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)), SizedBox(height: 4), Text('Fund your wallet with a bank transfer', style: TextStyle(color: Colors.white70, fontSize: 13))])),
+                    ]),
+                    const SizedBox(height: 24),
+                    if (vaLoading)
+                      const Center(child: Padding(padding: EdgeInsets.all(22), child: CircularProgressIndicator(color: Color(0xFF7DD3FC))))
+                    else if (virtualAccount != null) ...[
+                      const Text('YOUR DEDICATED GIFTpay ACCOUNT', style: TextStyle(color: Color(0xFF93C5FD), fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 14),
+                      _accountRow('Bank', virtualAccount!.bankName),
+                      const SizedBox(height: 12),
+                      _accountRow('Account name', virtualAccount!.accountName),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(color: Colors.black.withOpacity(.24), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(.10))),
+                        child: Row(children: [
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('ACCOUNT NUMBER', style: TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 1.1)), const SizedBox(height: 6), SelectableText(virtualAccount!.accountNumber, style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: 1.2))])),
+                          IconButton(tooltip: 'Copy account number', onPressed: () => Clipboard.setData(ClipboardData(text: virtualAccount!.accountNumber)).then((_) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account number copied'))); }), icon: const Icon(Icons.copy_rounded, color: Color(0xFF7DD3FC))),
+                        ]),
                       ),
+                    ] else ...[
+                      const Text('Your dedicated bank account is not available yet.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
-                      Text(
-                        "Bank: ${virtualAccount!.bankName}",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        "Account Name: ${virtualAccount!.accountName}",
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        "Account Number: ${virtualAccount!.accountNumber}",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      const Text('Please contact GiftPay support if you believe your account should already be active.', style: TextStyle(color: Colors.white70, height: 1.5)),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(onPressed: loadVirtualAccount, icon: const Icon(Icons.refresh), label: const Text('Try again')),
                     ],
-                  ),
-                ),
-              ],
-
-              // ⭐ PAYSTACK CARD PAYMENT SECTION
-              TextField(
-                controller: amountCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: "Amount (NGN)",
-                  border: OutlineInputBorder(),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: loading ? null : startPayment,
-                  child: loading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Pay with Paystack"),
-                ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(.045), borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withOpacity(.09))),
+                child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.shield_outlined, color: Color(0xFF7DD3FC)),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('Transfer from any bank using the account details above. Your wallet is credited automatically after the transfer is received and confirmed. You do not need to enter an amount or start a card payment here.', style: TextStyle(color: Colors.white70, height: 1.55, fontSize: 13))),
+                ]),
               ),
             ],
           ),
@@ -202,4 +122,12 @@ class _FundWalletScreenState extends State<FundWalletScreen> {
       ),
     );
   }
+  Widget _accountRow(String label, String value) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 112, child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13))),
+      Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
+    ],
+  );
+
 }

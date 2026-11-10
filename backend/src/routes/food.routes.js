@@ -2,7 +2,7 @@ const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
 const multer = require("multer");
 const {
-  getMenu, getMerchantAccess, getRestaurantSettings, updateRestaurantSettings,
+  getMenu, getMerchantAccess, getRestaurantSettings, updateRestaurantSettings, getFoodPayoutBanks,
   listMerchantMenu, uploadMenuImage, createMenuItem, updateMenuItem,
   placeOrder, listMyOrders, getMyOrder, listMerchantOrders,
   updateOrderStatus, confirmDelivery, getDeliveryCode,
@@ -41,6 +41,7 @@ router.post("/orders/:orderId/confirm-delivery", confirmDelivery);
 router.get("/merchant/access", getMerchantAccess);
 router.post("/merchant/apply", applyForFoodMerchant);
 router.get("/merchant/settings", getRestaurantSettings);
+router.get("/merchant/payout-banks", getFoodPayoutBanks);
 router.patch("/merchant/settings", updateRestaurantSettings);
 router.get("/merchant/menu", listMerchantMenu);
 router.post("/merchant/menu-image", parseFoodImage, uploadMenuImage);

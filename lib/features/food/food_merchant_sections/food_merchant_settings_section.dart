@@ -29,6 +29,11 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
     );
     final youtubeUrl = TextEditingController(text: '${s['youtubeUrl'] ?? ''}');
     final xUrl = TextEditingController(text: '${s['xUrl'] ?? ''}');
+    final payoutAccountNumber = TextEditingController(text: '${s['payoutAccountNumber'] ?? ''}');
+    List<Map<String, String>> payoutBanks = [];
+    String? selectedPayoutBankCode = '${s['payoutBankCode'] ?? ''}'.isEmpty ? null : '${s['payoutBankCode']}';
+    try { payoutBanks = await _loadFoodPayoutBanks(); } catch (_) { /* Show an empty list with an explanatory form error below. */ }
+    if (!payoutBanks.any((bank) => bank['code'] == selectedPayoutBankCode)) selectedPayoutBankCode = null;
     bool accepting = s['acceptingOrders'] != false;
     XFile? selectedLogo;
     Uint8List? selectedBytes;
@@ -198,6 +203,42 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
                     'Service area, pickup instructions, etc.',
                     maxLines: 3,
                   ),
+                  const SizedBox(height: 22),
+                  const Text(
+                    'Merchant settlement account',
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Add the bank account where GiftPay should send your restaurant earnings when Flutterwave is selected for automatic settlement. The account name is verified with Flutterwave before saving.',
+                    style: TextStyle(color: _FoodMerchantScreenState.muted, fontSize: 12, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedPayoutBankCode,
+                    dropdownColor: _FoodMerchantScreenState.surface,
+                    decoration: const InputDecoration(
+                      labelText: 'Settlement bank',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: payoutBanks.map((bank) => DropdownMenuItem<String>(
+                      value: bank['code'],
+                      child: Text(bank['name']!, overflow: TextOverflow.ellipsis),
+                    )).toList(),
+                    onChanged: (value) => refresh(() => selectedPayoutBankCode = value),
+                  ),
+                  const SizedBox(height: 12),
+                  _textField(
+                    payoutAccountNumber,
+                    'Settlement account number',
+                    '10-digit bank account number',
+                    keyboard: TextInputType.number,
+                  ),
+                  if (payoutBanks.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text('Bank list could not be loaded. Check your Flutterwave API credentials and try again.', style: TextStyle(color: Color(0xFFFFC66D), fontSize: 12)),
+                    ),
                   const SizedBox(height: 18),
                   const Text(
                     'Social media links',
@@ -329,6 +370,8 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
                                     'youtubeUrl': youtubeUrl.text.trim(),
                                     'xUrl': xUrl.text.trim(),
                                     'acceptingOrders': accepting,
+                                    if (selectedPayoutBankCode != null && payoutAccountNumber.text.trim().isNotEmpty) 'payoutBankCode': selectedPayoutBankCode,
+                                    if (selectedPayoutBankCode != null && payoutAccountNumber.text.trim().isNotEmpty) 'payoutAccountNumber': payoutAccountNumber.text.trim(),
                                   }),
                                 );
                                 _decode(response);
@@ -372,6 +415,7 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
     linkedinUrl.dispose();
     youtubeUrl.dispose();
     xUrl.dispose();
+    payoutAccountNumber.dispose();
   }
 
   Widget _settingsTab() {
@@ -384,6 +428,8 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
     final s = _restaurantSettings;
     final logo = '${s['logoUrl'] ?? ''}';
     final accepting = s['acceptingOrders'] != false;
+    final payoutAccount = '${s['payoutAccountNumber'] ?? ''}';
+    final payoutAccountMasked = payoutAccount.length >= 4 ? '******${payoutAccount.substring(payoutAccount.length - 4)}' : '';
     return RefreshIndicator(
       color: _FoodMerchantScreenState.cyan,
       backgroundColor: _FoodMerchantScreenState.surface,
@@ -501,6 +547,11 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
             Icons.schedule_rounded,
             'Opening hours',
             '${s['openingHours'] ?? ''}',
+          ),
+          _settingsInfoCard(
+            Icons.account_balance_rounded,
+            'Settlement bank',
+            '${s['payoutBankName'] ?? ''}${payoutAccountMasked.isNotEmpty ? ' • $payoutAccountMasked' : ''}${s['payoutAccountVerified'] == true ? ' • Verified' : ''}',
           ),
           _settingsInfoCard(
             Icons.delivery_dining_outlined,

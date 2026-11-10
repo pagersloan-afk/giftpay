@@ -8,9 +8,7 @@ class AppResponsiveLayout extends StatelessWidget {
 
   const AppResponsiveLayout({super.key, required this.child});
 
-  bool _isAuthOrLanding(BuildContext context) {
-    final route = ModalRoute.of(context)?.settings.name ?? "";
-
+  bool _isAuthOrLanding(String route) {
     return route == "/login" ||
         route == "/signup" ||
         route == "/reset" ||
@@ -20,15 +18,19 @@ class AppResponsiveLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final route = ModalRoute.of(context)?.settings.name ?? "";
 
     // ==============================================================
     // AUTH / LANDING
     // ==============================================================
 
-    if (_isAuthOrLanding(context)) {
+    if (_isAuthOrLanding(route)) {
+      final isSignup = route == "/signup";
+      final maxWidth = isSignup && screenWidth >= 750 ? 860.0 : 420.0;
+
       return Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
+          constraints: BoxConstraints(maxWidth: maxWidth),
           child: child,
         ),
       );
@@ -39,22 +41,13 @@ class AppResponsiveLayout extends StatelessWidget {
     // ==============================================================
 
     if (screenWidth >= 750) {
-      final activeRoute = ModalRoute.of(context)?.settings.name ?? "";
+      final activeRoute = route;
 
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ----------------------------------------------------------
-          // DESKTOP SIDEBAR
-          // ----------------------------------------------------------
           AppSidebar(activeRoute: activeRoute),
 
-          // ----------------------------------------------------------
-          // RESPONSIVE APPLICATION BODY
-          //
-          // The body is intentionally biased toward the sidebar
-          // rather than mathematically centered.
-          // ----------------------------------------------------------
           Expanded(
             child: Align(
               alignment: const Alignment(-0.18, -1.0),

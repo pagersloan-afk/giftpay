@@ -206,6 +206,8 @@ class SidebarUserHeader extends StatelessWidget {
                         color: Colors.white.withOpacity(0.95),
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
+                        decoration: TextDecoration.none,
+                        decorationColor: Colors.transparent,
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -229,6 +231,8 @@ class SidebarUserHeader extends StatelessWidget {
                         style: TextStyle(
                           color: Color(0x8CFFFFFF),
                           fontSize: 11,
+                          decoration: TextDecoration.none,
+                          decorationColor: Colors.transparent,
                           fontWeight: FontWeight.w400,
                         ),
                       ),
