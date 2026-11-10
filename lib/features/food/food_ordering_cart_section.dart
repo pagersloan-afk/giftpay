@@ -13,15 +13,24 @@ extension _FoodOrderingCartSection on _FoodOrderingScreenState {
     return ['All', ...list.where((e) => e != 'All')];
   }
 
-  List<Map<String, dynamic>> get _visibleMenu => _menu.where((item) {
+  List<Map<String, dynamic>> get _visibleMenu {
     final q = _search.toLowerCase().trim();
-    final name = '${item['name'] ?? ''}'.toLowerCase();
-    final desc = '${item['description'] ?? ''}'.toLowerCase();
-
-    return (_category == 'All' ||
-            '${item['category'] ?? 'Meals'}' == _category) &&
-        (q.isEmpty || name.contains(q) || desc.contains(q));
-  }).toList();
+    final items = _menu.where((item) {
+      final name = '${item['name'] ?? ''}'.toLowerCase();
+      final desc = '${item['description'] ?? ''}'.toLowerCase();
+      final restaurant = '${item['restaurantName'] ?? ''}'.toLowerCase();
+      final category = '${item['category'] ?? 'Meals'}';
+      return (_category == 'All' || category == _category) &&
+          (q.isEmpty || name.contains(q) || desc.contains(q) || restaurant.contains(q));
+    }).toList();
+    int stamp(dynamic value) {
+      if (value is num) return value.toInt();
+      if (value is Map && value['_seconds'] is num) return (value['_seconds'] as num).toInt();
+      return DateTime.tryParse('$value')?.millisecondsSinceEpoch ?? 0;
+    }
+    items.sort((a, b) => stamp(b['createdAt']).compareTo(stamp(a['createdAt'])));
+    return items;
+  }
 
   Map<String, dynamic>? _item(String id) {
     for (final item in _menu) {
@@ -61,6 +70,19 @@ extension _FoodOrderingCartSection on _FoodOrderingScreenState {
       return;
     }
 
+    if (delta > 0) {
+      final selectedItem = _item(id);
+      final selectedMerchant = '${selectedItem?['merchantUid'] ?? ''}';
+      final cartMerchantIds = _cart.keys
+          .map((cartId) => '${_item(cartId)?['merchantUid'] ?? ''}')
+          .where((merchantId) => merchantId.isNotEmpty)
+          .toSet();
+      if (cartMerchantIds.isNotEmpty &&
+          (selectedMerchant.isEmpty || !cartMerchantIds.contains(selectedMerchant))) {
+        _toast('Your cart contains meals from another restaurant. Complete or clear that restaurant order before choosing this one.');
+        return;
+      }
+    }
     setState(() {
       final next = (_cart[id] ?? 0) + delta;
 
@@ -222,6 +244,29 @@ extension _FoodOrderingCartSection on _FoodOrderingScreenState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          if ('${item['restaurantLogoUrl'] ?? ''}'.startsWith('https://'))
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(7),
+                              child: Image.network(
+                                '${item['restaurantLogoUrl']}', width: 22, height: 22, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.storefront_rounded, color: _FoodOrderingScreenState.cyan, size: 16),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.storefront_rounded, color: _FoodOrderingScreenState.cyan, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${item['restaurantName'] ?? 'GiftPay Food restaurant'}',
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: _FoodOrderingScreenState.cyan, fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
                       Text(
                         '${item['name'] ?? 'Food item'}',
                         style: const TextStyle(

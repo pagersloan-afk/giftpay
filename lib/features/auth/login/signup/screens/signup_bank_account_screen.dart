@@ -133,7 +133,7 @@ class _SignupBankAccountScreenState extends State<SignupBankAccountScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'To complete your account setup, please provide the details of your personal bank account. We’ll use these details to verify your identity and help protect your GiftPay account.',
+                'Paystack requires your BVN and personal bank-account details to validate your identity and assign your dedicated GiftPay account. Enter details that belong to you.',
               ),
               const SizedBox(height: 24),
               TextField(
@@ -210,7 +210,7 @@ class _SignupBankAccountScreenState extends State<SignupBankAccountScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Your BVN and bank account details are used only for verification. We do not store your full bank account number or BVN in your GiftPay profile.',
+                'Your BVN is submitted securely to Paystack for dedicated-account verification. GiftPay stores only the verification result and masked bank-account details, not your full BVN or account number.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],

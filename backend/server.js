@@ -62,6 +62,7 @@ const foodMerchantAdminRoutes = require("./src/routes/foodMerchantAdmin.routes.j
 const kycAdminRoutes = require("./src/routes/kycAdmin.routes.js");
 const virtualAccountRoutes = require("./src/routes/virtualAccount.routes");
 const { paystackWebhook } = require("./src/webhooks/paystack.webhook");
+const clubkonnectProductsRoutes = require("./src/routes/clubkonnectProducts.routes");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -284,6 +285,7 @@ app.use("/api/airtime", airtimeRoutes);
 app.use("/api/data", dataRoutes);
 app.use("/api/cable", cableRoutes);
 app.use("/api/betting", bettingRoutes);
+app.use("/api/clubkonnect-products", clubkonnectProductsRoutes);
 
 // ============================================================
 // Transfers

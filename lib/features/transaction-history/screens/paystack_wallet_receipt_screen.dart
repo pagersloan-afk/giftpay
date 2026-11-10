@@ -5,10 +5,7 @@ import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 class PaystackWalletReceiptScreen extends StatelessWidget {
   final Map<String, dynamic> transaction;
 
-  const PaystackWalletReceiptScreen({
-    super.key,
-    required this.transaction,
-  });
+  const PaystackWalletReceiptScreen({super.key, required this.transaction});
 
   String _text(dynamic value) {
     final result = value?.toString().trim() ?? "";
@@ -38,7 +35,9 @@ class PaystackWalletReceiptScreen extends StatelessWidget {
         parsed = DateTime.fromMillisecondsSinceEpoch(numeric);
       }
     }
-    return parsed == null ? value.toString() : DateFormat("MMM d, yyyy • h:mm a").format(parsed);
+    return parsed == null
+        ? value.toString()
+        : DateFormat("MMM d, yyyy • h:mm a").format(parsed);
   }
 
   @override
@@ -46,11 +45,15 @@ class PaystackWalletReceiptScreen extends StatelessWidget {
     final sender = _text(transaction["senderName"]);
     final title = sender.isNotEmpty ? "from – $sender" : "Wallet Funding";
     final amount = _money(transaction["amount"]);
-    final date = _date(transaction["paidAt"] ?? transaction["date"] ?? transaction["timestamp"]);
-    final senderAccount = _text(transaction["senderAccountNumberLast4"]).isNotEmpty
+    final date = _date(
+      transaction["paidAt"] ?? transaction["date"] ?? transaction["timestamp"],
+    );
+    final senderAccount =
+        _text(transaction["senderAccountNumberLast4"]).isNotEmpty
         ? "•••• ${_text(transaction["senderAccountNumberLast4"])}"
         : _text(transaction["senderAccountNumber"]);
-    final receiverAccount = _text(transaction["receiverAccountNumberLast4"]).isNotEmpty
+    final receiverAccount =
+        _text(transaction["receiverAccountNumberLast4"]).isNotEmpty
         ? "•••• ${_text(transaction["receiverAccountNumberLast4"])}"
         : _text(transaction["receiverAccountNumber"]);
     final fees = transaction["fees"];
@@ -63,21 +66,46 @@ class PaystackWalletReceiptScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.green, size: 64),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.green,
+                size: 64,
+              ),
               const SizedBox(height: 12),
-              const Text("Successful", textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.w700)),
+              const Text(
+                "Successful",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(amount, textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+              Text(
+                amount,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(title, textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 24),
               _section("Payment details", [
                 _detail("Date", date),
                 _detail("Status", "Successful"),
-                _detail("Reference", _text(transaction["reference"] ?? transaction["id"])),
+                _detail(
+                  "Reference",
+                  _text(transaction["reference"] ?? transaction["id"]),
+                ),
                 _detail("Narration", _text(transaction["narration"])),
                 if (fees != null) _detail("Transaction fee", _money(fees)),
               ]),
@@ -115,7 +143,10 @@ class PaystackWalletReceiptScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             ...visible,
           ],
@@ -126,15 +157,32 @@ class PaystackWalletReceiptScreen extends StatelessWidget {
 
   Widget _detail(String label, String value) {
     if (value.trim().isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label, style: const TextStyle(color: Colors.black54))),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
           const SizedBox(width: 12),
-          Flexible(child: Text(value, textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w600))),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );

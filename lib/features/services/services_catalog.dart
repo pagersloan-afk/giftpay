@@ -26,6 +26,16 @@ class ServicesCatalog {
     ServiceItem(title: "Savings", icon: Icons.savings, route: "/savings"),
     ServiceItem(title: "Education", icon: Icons.school, route: "/education"),
     ServiceItem(
+      title: "Airtime PIN",
+      icon: Icons.confirmation_number,
+      route: "/recharge-airtime-pin",
+    ),
+    ServiceItem(
+      title: "Data PIN",
+      icon: Icons.sim_card,
+      route: "/recharge-data-pin",
+    ),
+    ServiceItem(
       title: "Gift Cards",
       icon: Icons.card_giftcard,
       route: "/giftcards",

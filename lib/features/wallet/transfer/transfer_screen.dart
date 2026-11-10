@@ -610,7 +610,7 @@ class _TransferScreenState extends State<TransferScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Enter the six-digit OTP Monnify emailed to the merchant account to authorize this transfer.',
+                  'Enter the transfer authorization code sent to your registered business contact to approve this transfer.',
                   style: TextStyle(color: Color(0xFFCBD5E1)),
                 ),
                 const SizedBox(height: 12),
@@ -689,7 +689,7 @@ class _TransferScreenState extends State<TransferScreen> {
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'OTP resend requested from Monnify.',
+                                'Transfer authorization code resend requested.',
                               ),
                             ),
                           );

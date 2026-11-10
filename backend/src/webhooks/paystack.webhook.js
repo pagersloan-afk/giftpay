@@ -89,6 +89,12 @@ async function handleDvaAssignment(eventName, data) {
     virtualAccountProvider: "paystack",
     virtualAccountStatus: "ready",
     virtualAccountError: admin.firestore.FieldValue.delete(),
+    // Treat Paystack's confirmed dedicated-account assignment as completion
+    // of the Paystack onboarding identity step. No raw BVN is persisted.
+    kycStatus: "tier1",
+    onboardingStatus: "identity_verified",
+    identityVerificationProvider: "paystack",
+    identityVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
   if (customerCode) {
@@ -212,6 +218,12 @@ exports.paystackWebhook = async (req, res) => {
   try {
     const eventName = String(event.event || "");
     const data = event.data || {};
+
+    // The same Paystack webhook URL handles DVA collection and transfer events.
+    if (["transfer.success", "transfer.failed", "transfer.reversed"].includes(eventName)) {
+      const { paystackTransferWebhook } = require("./paystack.transfer.webhook");
+      return paystackTransferWebhook(req, res);
+    }
 
     if (eventName === "customeridentification.failed" || eventName === "assigndedicatedaccount.failed" || eventName === "dedicatedaccount.assign.failed") {
       await handleDvaAssignment("dedicatedaccount.assign.failed", data);

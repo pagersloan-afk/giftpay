@@ -486,35 +486,60 @@ class HistoryTile extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text("Bulk Transfer Details"),
+          backgroundColor: const Color(0xFF101827),
+          surfaceTintColor: Colors.transparent,
+          title: const Text(
+            "Bulk Transfer Details",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          ),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _detailRow("Status", status.toUpperCase()),
+                  _detailRow("Status", status.toUpperCase(), dark: true),
                   if (reference.isNotEmpty)
-                    _detailRow("Batch Reference", reference),
-                  _detailRow("Recipients", itemCount.toString()),
-                  _detailRow("Transfer Amount", _formatAmount(totalAmount)),
-                  _detailRow("Fees", _formatAmount(totalFees)),
-                  _detailRow("Total Debited", _formatAmount(totalDebited)),
+                    _detailRow("Batch Reference", reference, dark: true),
+                  _detailRow("Recipients", itemCount.toString(), dark: true),
+                  _detailRow(
+                    "Transfer Amount",
+                    _formatAmount(totalAmount),
+                    dark: true,
+                  ),
+                  _detailRow("Fees", _formatAmount(totalFees), dark: true),
+                  _detailRow(
+                    "Total Debited",
+                    _formatAmount(totalDebited),
+                    dark: true,
+                  ),
                   if (refunded)
                     _detailRow(
                       "Refund Amount",
                       _formatAmount(transaction["refundAmount"]),
+                      dark: true,
                     ),
                   if ((transaction["refundReason"] ?? "").toString().isNotEmpty)
-                    _detailRow("Refund Reason", transaction["refundReason"]),
+                    _detailRow(
+                      "Refund Reason",
+                      transaction["refundReason"],
+                      dark: true,
+                    ),
                   const SizedBox(height: 16),
                   const Text(
                     "Recipients",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   if (items.isEmpty)
-                    const Text("No recipient details available.")
+                    const Text(
+                      "No recipient details available.",
+                      style: TextStyle(color: Colors.white70),
+                    )
                   else
                     ...items.asMap().entries.map((entry) {
                       final index = entry.key;
@@ -566,12 +591,24 @@ class HistoryTile extends StatelessWidget {
                               Text(
                                 "${index + 1}. $name",
                                 style: const TextStyle(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              if (account.isNotEmpty) Text("Account: $account"),
-                              if (bank.isNotEmpty) Text("Bank: $bank"),
-                              Text("Amount: ${_formatAmount(amount)}"),
+                              if (account.isNotEmpty)
+                                Text(
+                                  "Account: $account",
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                              if (bank.isNotEmpty)
+                                Text(
+                                  "Bank: $bank",
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                              Text(
+                                "Amount: ${_formatAmount(amount)}",
+                                style: const TextStyle(color: Colors.white70),
+                              ),
                               const SizedBox(height: 3),
                               Text(
                                 "Status: ${itemStatus.toUpperCase()}",
@@ -614,7 +651,7 @@ class HistoryTile extends StatelessWidget {
   // DETAIL ROW
   // ============================================================
 
-  Widget _detailRow(String label, dynamic value) {
+  Widget _detailRow(String label, dynamic value, {bool dark = false}) {
     final text = value?.toString() ?? "";
 
     if (text.isEmpty) {
@@ -630,13 +667,19 @@ class HistoryTile extends StatelessWidget {
             width: 125,
             child: Text(
               label,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 12,
+                color: dark ? Colors.white60 : Colors.grey.shade600,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: dark ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -961,7 +1004,9 @@ class HistoryTile extends StatelessWidget {
           );
           if (response.statusCode >= 200 && response.statusCode < 300) {
             final decoded = jsonDecode(response.body);
-            if (decoded is Map && decoded["status"] == true && decoded["data"] is Map) {
+            if (decoded is Map &&
+                decoded["status"] == true &&
+                decoded["data"] is Map) {
               details = {
                 ...details,
                 ...Map<String, dynamic>.from(decoded["data"] as Map),

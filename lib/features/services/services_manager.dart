@@ -47,7 +47,15 @@ class ServicesManager {
 
   // Helper: convert titles → ServiceItem list
   static List<ServiceItem> _mapTitlesToItems(List<String> titles) {
-    return titles.map((title) {
+    // Migrate the retired combined ClubKonnect card to the new, customer-facing
+    // Recharge Card Printing card. Education remains a separate service.
+    final normalizedTitles = titles.map((title) {
+      return title == "Recharge PINs & e-PINs"
+          ? "Airtime PIN"
+          : title;
+    }).toSet().toList();
+
+    return normalizedTitles.map((title) {
       return ServicesCatalog.all.firstWhere(
         (s) => s.title == title,
         orElse: () => ServicesCatalog.all.first,

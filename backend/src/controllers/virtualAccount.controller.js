@@ -67,14 +67,20 @@ exports.preparePaystackVirtualAccount = async (req, res) => {
     if (!userSnap.exists) return res.status(404).json({ status: false, message: "GiftPay profile not found" });
     const user = userSnap.data() || {};
 
-    if (!["tier1", "tier2", "verified"].includes(String(user.kycStatus || "").toLowerCase())) {
-      return res.status(403).json({ status: false, message: "Complete your BVN or NIN identity verification before bank-account verification" });
-    }
+    // Paystack onboarding performs its own BVN + bank-account validation
+    // in this flow. Do not require the separate Monnify NIN/BVN screen first.
     const existingPaystackAccount = user.virtualAccounts?.paystack || (
       user.virtualAccount?.provider === "paystack" ? user.virtualAccount : null
     );
     if (existingPaystackAccount?.accountNumber) {
-      await userRef.set({ virtualAccount: existingPaystackAccount, virtualAccountProvider: "paystack", virtualAccountStatus: "ready" }, { merge: true });
+      await userRef.set({
+        virtualAccount: existingPaystackAccount,
+        virtualAccountProvider: "paystack",
+        virtualAccountStatus: "ready",
+        kycStatus: user.kycStatus || "tier1",
+        onboardingStatus: "identity_verified",
+        identityVerificationProvider: "paystack",
+      }, { merge: true });
       return res.json({ status: true, statusCode: "ready", data: existingPaystackAccount });
     }
     if (user.virtualAccountStatus === "pending") {

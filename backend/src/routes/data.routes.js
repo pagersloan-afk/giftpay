@@ -1,33 +1,15 @@
 const express = require("express");
-
-const {
-  fetchDataNetworksController,
-  fetchDataPlansController,
-  walletPayData,
-  requeryDataController,
-} = require("../../controllers/data.controller");
-
+const monnify = require("../../controllers/data.controller");
+const clubkonnect = require("../controllers/clubkonnectBills.controller");
 const router = express.Router();
 
-// ============================================================
-// MONNIFY DATA DISCOVERY
-// ============================================================
+function useClubKonnect() {
+  return String(process.env.BILL_PAYMENT_PROVIDER || "monnify").trim().toLowerCase() === "clubkonnect";
+}
 
-// Monnify DATA billers currently available in the merchant account.
-router.get("/networks", fetchDataNetworksController);
-
-// Monnify products for the selected DATA biller.
-// :billerCode is the actual Monnify biller code.
-router.get("/plans/:billerCode", fetchDataPlansController);
-
-// ============================================================
-// WALLET DATA PURCHASE
-// ============================================================
-router.post("/wallet/pay-data", walletPayData);
-
-// ============================================================
-// MONNIFY DATA REQUERY
-// ============================================================
-router.get("/requery/:requestId", requeryDataController);
+router.get("/networks", (req, res) => (useClubKonnect() ? clubkonnect.getDataNetworks(req, res) : monnify.fetchDataNetworksController(req, res)));
+router.get("/plans/:billerCode", (req, res) => (useClubKonnect() ? clubkonnect.getDataPlans(req, res) : monnify.fetchDataPlansController(req, res)));
+router.post("/wallet/pay-data", (req, res) => (useClubKonnect() ? clubkonnect.walletPayData(req, res) : monnify.walletPayData(req, res)));
+router.get("/requery/:requestId", (req, res) => (useClubKonnect() ? clubkonnect.requeryData(req, res) : monnify.requeryDataController(req, res)));
 
 module.exports = router;

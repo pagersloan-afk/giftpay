@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:utilityhub/config/api.dart';
+import 'package:utilityhub/features/transaction-history/widgets/history_tile.dart';
 
 class RecentTransactionsSection extends StatefulWidget {
   const RecentTransactionsSection({super.key});
@@ -161,7 +162,7 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
         const SizedBox(height: 16),
 
         Container(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(16),
@@ -236,53 +237,10 @@ class _RecentTransactionsSectionState extends State<RecentTransactionsSection> {
               }
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: color.withOpacity(0.15),
-                      ),
-                      child: Icon(icon, color: color, size: 20),
-                    ),
-
-                    const SizedBox(width: 14),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            formattedDate,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.55),
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Text(
-                      naira.format(amount),
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.only(bottom: 8),
+                child: HistoryTile(
+                  transaction: Map<String, dynamic>.from(t as Map),
+                  formattedDate: formattedDate,
                 ),
               );
             }).toList(),

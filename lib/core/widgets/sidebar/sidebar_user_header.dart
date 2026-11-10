@@ -220,14 +220,15 @@ class SidebarUserHeader extends StatelessWidget {
                 Row(
                   children: [
                     // GiftPay user text
-                    Flexible(
+                    const Expanded(
                       child: Text(
                         "giftpay user",
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        overflow: TextOverflow.visible,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.55),
-                          fontSize: 13,
+                          color: Color(0x8CFFFFFF),
+                          fontSize: 11,
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -238,30 +239,17 @@ class SidebarUserHeader extends StatelessWidget {
                     // =================================================
                     // KYC BADGE
                     // =================================================
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withOpacity(0.20),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: badgeColor.withOpacity(0.40),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          badgeText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: badgeColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withOpacity(0.16),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: badgeColor.withOpacity(0.35), width: 0.8),
+                      ),
+                      child: Text(
+                        badgeText,
+                        maxLines: 1,
+                        style: TextStyle(color: badgeColor, fontSize: 9, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],

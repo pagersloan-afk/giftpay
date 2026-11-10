@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:utilityhub/core/security/device_trust.dart';
 import 'package:utilityhub/features/auth/login/signup/screens/signup_identity_screen.dart';
+import 'package:utilityhub/features/auth/login/signup/screens/signup_bank_account_screen.dart';
+import 'package:utilityhub/features/wallet/services/virtual_account_service.dart';
 import 'package:utilityhub/features/wallet/services/giftpay_wallet_initializer.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
@@ -33,6 +35,7 @@ class VerifyEmailScreen extends StatefulWidget {
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool checking = false;
   bool sending = false;
+  bool _hasNavigated = false;
 
   int cooldown = 60;
   Timer? cooldownTimer;
@@ -72,13 +75,14 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       if (user != null && user.emailVerified) {
         pollTimer?.cancel();
         await GiftPayWalletInitializer.createPrimaryWalletIfMissing();
-        _goToIdentityScreen();
+        await _routeAfterEmailVerification();
       }
     });
   }
 
   // ⭐ Manual check button
   Future<void> _checkVerification() async {
+    if (checking) return;
     setState(() => checking = true);
 
     await FirebaseAuth.instance.currentUser?.reload();
@@ -86,14 +90,14 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
     if (user != null && user.emailVerified) {
       await GiftPayWalletInitializer.createPrimaryWalletIfMissing();
-      _goToIdentityScreen();
+      await _routeAfterEmailVerification();
     } else {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Email not verified yet")));
     }
 
-    setState(() => checking = false);
+    if (mounted) setState(() => checking = false);
   }
 
   // ⭐ Resend email button
@@ -127,24 +131,52 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     Navigator.pushNamedAndRemoveUntil(context, "/signup", (route) => false);
   }
 
-  // ⭐ Route to NIN/BVN screen with full parameters
-  void _goToIdentityScreen() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SignupIdentityScreen(
-          userId: widget.userId,
-          firstName: widget.firstName,
-          lastName: widget.lastName,
-          email: widget.email,
-          phone: widget.phone,
-          country: widget.country,
-          password: widget.password,
-          ninCtrl: TextEditingController(),
-          bvnCtrl: TextEditingController(),
+  // Select the onboarding verification step from the backend's active
+  // provider. The backend .env remains the single source of truth.
+  Future<void> _routeAfterEmailVerification() async {
+    if (_hasNavigated || !mounted) return;
+    try {
+      final config = await VirtualAccountService().getConfig();
+      if (!mounted || _hasNavigated) return;
+      _hasNavigated = true;
+
+      if ((config['provider'] ?? '').toString().toLowerCase() == 'paystack') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            settings: const RouteSettings(name: '/signup-bank-account'),
+            builder: (_) => const SignupBankAccountScreen(),
+          ),
+        );
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SignupIdentityScreen(
+            userId: widget.userId,
+            firstName: widget.firstName,
+            lastName: widget.lastName,
+            email: widget.email,
+            phone: widget.phone,
+            country: widget.country,
+            password: widget.password,
+            ninCtrl: TextEditingController(),
+            bvnCtrl: TextEditingController(),
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Your email is verified, but we could not load the signup verification settings. Please try again. ${error.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+    }
   }
 
   @override

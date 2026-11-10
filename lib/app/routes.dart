@@ -31,6 +31,7 @@ import 'package:utilityhub/features/data/data_screen.dart';
 
 // Cable
 import 'package:utilityhub/features/cable/cable_screen.dart';
+import 'package:utilityhub/features/clubkonnect_products/clubkonnect_products_screen.dart';
 
 // Gift Cards
 import 'package:utilityhub/features/giftcards/buy/buy_giftcard_screen.dart';
@@ -147,6 +148,28 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // Data
   '/data': (_) => wrap(const DataScreen()),
+
+  // Customer-facing service flows backed by ClubKonnect integrations.
+  '/education': (_) => wrap(const ClubKonnectProductsScreen(
+        initialProduct: 'waec',
+        allowedProducts: ['waec', 'jamb'],
+        screenTitle: 'Education',
+      )),
+  '/recharge-airtime-pin': (_) => wrap(const ClubKonnectProductsScreen(
+        initialProduct: 'airtime-pin',
+        allowedProducts: ['airtime-pin'],
+        screenTitle: 'Recharge Card Printing — Airtime',
+      )),
+  '/recharge-data-pin': (_) => wrap(const ClubKonnectProductsScreen(
+        initialProduct: 'data-pin',
+        allowedProducts: ['data-pin'],
+        screenTitle: 'Recharge Card Printing — Data',
+      )),
+  '/smile-data': (_) => wrap(const ClubKonnectProductsScreen(
+        initialProduct: 'smile',
+        allowedProducts: ['smile'],
+        screenTitle: 'Smile Data Bundle',
+      )),
 
   // Gift Cards
   '/giftcards': (_) => wrap(const BuyGiftCardScreen()),

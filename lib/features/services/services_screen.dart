@@ -24,6 +24,8 @@ class ServicesScreen extends StatelessWidget {
         {"title": "Airtime", "icon": Icons.phone_android, "route": "/airtime"},
         {"title": "Data", "icon": Icons.wifi, "route": "/data"},
         {"title": "Education", "icon": Icons.school, "route": "/education"},
+        {"title": "Airtime PIN", "icon": Icons.confirmation_number, "route": "/recharge-airtime-pin"},
+        {"title": "Data PIN", "icon": Icons.sim_card, "route": "/recharge-data-pin"},
         {
           "title": "Electricity",
           "icon": Icons.flash_on,

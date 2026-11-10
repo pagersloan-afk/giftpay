@@ -28,6 +28,8 @@ class DataScreen extends StatefulWidget {
 }
 
 class _DataScreenState extends State<DataScreen> {
+  static const String _smileNetworkCode = '__giftpay_smile_data__';
+
   final phoneCtrl = TextEditingController();
 
   // This is now a Monnify biller code, not a hard-coded
@@ -155,11 +157,21 @@ class _DataScreenState extends State<DataScreen> {
         return;
       }
 
+      // Smile is offered through the existing data-network selector, but its
+      // bundle catalogue and fulfilment are handled by the Smile/ClubKonnect
+      // integration rather than Monnify's data-biller endpoint.
+      final displayNetworks = <String, String>{
+        ...parsed,
+        _smileNetworkCode: 'Smile Data Bundle',
+      };
+
       setState(() {
-        networkNames = parsed;
+        networkNames = displayNetworks;
 
         if (parsed.isNotEmpty) {
           selectedNetworkCode = parsed.keys.first;
+        } else {
+          selectedNetworkCode = _smileNetworkCode;
         }
       });
 
@@ -539,6 +551,11 @@ class _DataScreenState extends State<DataScreen> {
                 networkNames: networkNames,
                 onChanged: (value) async {
                   if (value == null || value.isEmpty) {
+                    return;
+                  }
+
+                  if (value == _smileNetworkCode) {
+                    await Navigator.pushNamed(context, '/smile-data');
                     return;
                   }
 

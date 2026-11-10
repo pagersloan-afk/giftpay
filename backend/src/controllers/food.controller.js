@@ -100,9 +100,44 @@ async function getMenu(req, res) {
       .where("active", "==", true)
       .get();
 
-    const items = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    const rawItems = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const merchantUids = [...new Set(rawItems
+      .map((item) => String(item.merchantUid || item.createdBy || "").trim())
+      .filter(Boolean))];
+
+    const merchantProfiles = new Map();
+    await Promise.all(merchantUids.map(async (uid) => {
+      try {
+        const [merchantSnap, settingsSnap] = await Promise.all([
+          db.collection("foodMerchants").doc(uid).get(),
+          db.collection(RESTAURANT_SETTINGS_COLLECTION).doc(uid).get(),
+        ]);
+        const merchant = merchantSnap.exists ? merchantSnap.data() || {} : {};
+        const settings = settingsSnap.exists ? settingsSnap.data() || {} : {};
+        const legacyOwner = String(process.env.FOOD_MERCHANT_UID || "").trim() === uid;
+        const approved = (merchant.status === "approved" && merchant.isActive !== false) || legacyOwner;
+        merchantProfiles.set(uid, approved ? {
+          restaurantName: String(settings.restaurantName || merchant.restaurantName || merchant.businessName || "GiftPay Food restaurant"),
+          restaurantLogoUrl: String(settings.logoUrl || merchant.logoUrl || ""),
+          restaurantDescription: String(settings.description || merchant.description || ""),
+          restaurantAcceptingOrders: settings.acceptingOrders !== false && merchant.acceptingOrders !== false,
+          merchantUid: uid,
+        } : null);
+      } catch (error) {
+        console.warn("[FOOD MENU] Merchant profile lookup failed:", error.message || error);
+        merchantProfiles.set(uid, null);
+      }
+    }));
+
+    const items = rawItems.map((item) => {
+      const owner = String(item.merchantUid || item.createdBy || "").trim();
+      const profile = merchantProfiles.get(owner);
+      return profile ? { ...item, ...profile } : null;
+    }).filter((item) => item && item.restaurantAcceptingOrders !== false)
+      .sort((a, b) => {
+        const toMillis = (v) => v && typeof v.toMillis === "function" ? v.toMillis() : Number(v || 0);
+        return toMillis(b.createdAt) - toMillis(a.createdAt);
+      });
 
     return res.json({ status: true, items });
   } catch (err) {

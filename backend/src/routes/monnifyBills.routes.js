@@ -3,6 +3,11 @@ const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
 const bills = require("../services/monnifyBills.service");
+const clubkonnect = require("../controllers/clubkonnectBills.controller");
+
+function useClubKonnect() {
+  return String(process.env.BILL_PAYMENT_PROVIDER || "monnify").trim().toLowerCase() === "clubkonnect";
+}
 
 router.use(authMiddleware);
 
@@ -80,21 +85,26 @@ router.post(
 );
 
 // GET /api/monnify/bills/requery?reference=...
-router.get(
-  "/requery",
-  asyncRoute(async (req, res) => {
-    const reference = req.query.reference;
-
-    if (!reference) {
-      return res.status(400).json({
-        status: false,
-        message: "reference is required",
-      });
-    }
-
+// The URL remains unchanged for the Flutter airtime processing screen.
+router.get("/requery", async (req, res) => {
+  const reference = req.query.reference;
+  if (!reference) {
+    return res.status(400).json({ status: false, message: "reference is required" });
+  }
+  if (useClubKonnect()) {
+    return clubkonnect.requeryBills(req, res);
+  }
+  try {
     const result = await bills.requery(reference);
     return res.json(result);
-  })
-);
+  } catch (error) {
+    console.error("[MONNIFY BILLS REQUERY]", error.response?.data || error.message || error);
+    return res.status(error.status || error.response?.status || 502).json({
+      status: false,
+      message: error.response?.data?.responseMessage || error.message || "Monnify Bills requery failed",
+      provider: error.response?.data || null,
+    });
+  }
+});
 
 module.exports = router;

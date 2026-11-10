@@ -265,7 +265,7 @@ extension _FoodOrderingOrdersSection on _FoodOrderingScreenState {
                       ),
                       SizedBox(height: 9),
                       Text(
-                        'Choose your meal and pay securely with your GiftPay wallet.',
+                        'Discover meals from independent restaurants. Each item displays its restaurant brand before you open its details.',
                         style: TextStyle(
                           color: Color(0xFFD9E8FF),
                           height: 1.45,
@@ -299,7 +299,7 @@ extension _FoodOrderingOrdersSection on _FoodOrderingScreenState {
             style: const TextStyle(color: Colors.white),
             cursorColor: _FoodOrderingScreenState.cyan,
             decoration: InputDecoration(
-              hintText: 'Search meals',
+              hintText: 'Search meals or restaurants',
               hintStyle: const TextStyle(color: Color(0xFF8793A4)),
               prefixIcon: const Icon(
                 Icons.search_rounded,
@@ -362,7 +362,7 @@ extension _FoodOrderingOrdersSection on _FoodOrderingScreenState {
             children: [
               const Expanded(
                 child: Text(
-                  'Our menu',
+                  'Latest meals from our restaurants',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
