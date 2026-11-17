@@ -4,7 +4,7 @@ import 'package:utilityhub/core/utils/logout_handler.dart';
 import 'sidebar_user_header.dart';
 import 'sidebar_item.dart';
 
-class AppSidebar extends StatelessWidget {
+class AppSidebar extends StatefulWidget {
   final String activeRoute;
 
   // ⭐ MOBILE WEB
@@ -18,6 +18,19 @@ class AppSidebar extends StatelessWidget {
     required this.activeRoute,
     this.closeDrawerOnNavigate = false,
   });
+
+  @override
+  State<AppSidebar> createState() => _AppSidebarState();
+}
+
+class _AppSidebarState extends State<AppSidebar> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,11 +52,14 @@ class AppSidebar extends StatelessWidget {
       ),
 
       child: Scrollbar(
+        controller: _scrollController,
         thumbVisibility: true,
         thickness: 6,
         radius: const Radius.circular(8),
 
         child: ListView(
+          controller: _scrollController,
+          primary: false,
           padding: const EdgeInsets.symmetric(vertical: 24),
           children: [
             const SidebarUserHeader(),
@@ -59,48 +75,56 @@ class AppSidebar extends StatelessWidget {
               icon: Icons.dashboard_outlined,
               label: "Dashboard",
               route: "/home",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.phone_android,
               label: "Buy Airtime",
               route: "/airtime",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.data_usage,
               label: "Buy Data",
               route: "/data",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.flash_on,
               label: "Electricity",
               route: "/electricity",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.tv,
               label: "Cable TV",
               route: "/cable",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.receipt_long,
               label: "Transactions",
               route: "/transactions",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
+            ),
+
+            SidebarItem(
+              icon: Icons.menu_book_outlined,
+              label: "Bookkeeping",
+              route: "/bookkeeping",
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             const SizedBox(height: 28),
@@ -118,24 +142,24 @@ class AppSidebar extends StatelessWidget {
               icon: Icons.account_balance_wallet_outlined,
               label: "Virtual Accounts",
               route: "/virtual-accounts",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.card_giftcard,
               label: "Gift Cards",
               route: "/giftcards",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.sports_soccer,
               label: "Betting",
               route: "/betting",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             const SizedBox(height: 28),
@@ -153,23 +177,23 @@ class AppSidebar extends StatelessWidget {
               icon: Icons.support_agent,
               label: "Support",
               route: "/support",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.settings_outlined,
               label: "Settings",
               route: "/settings",
-              activeRoute: activeRoute,
-              closeDrawerOnNavigate: closeDrawerOnNavigate,
+              activeRoute: widget.activeRoute,
+              closeDrawerOnNavigate: widget.closeDrawerOnNavigate,
             ),
 
             SidebarItem(
               icon: Icons.logout,
               label: "Logout",
               onTap: () => showLogoutDialog(context),
-              activeRoute: activeRoute,
+              activeRoute: widget.activeRoute,
               isDestructive: true,
             ),
           ],

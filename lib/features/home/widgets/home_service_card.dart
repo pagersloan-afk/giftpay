@@ -74,16 +74,14 @@ class _HomeServiceCardState extends State<HomeServiceCard>
 
     setState(() => scale = 1.0);
 
-    // Log usage
+    // Log usage as a best-effort background task. Analytics must never
+    // block navigation if the request is slow or unavailable on a device.
     final device = Theme.of(context).platform.name;
-
-    await UserServicesApi.logUsage(
+    UserServicesApi.logUsage(
       userId: widget.userId,
       serviceName: widget.title,
       device: device,
-    );
-
-    if (!mounted) return;
+    ).timeout(const Duration(seconds: 5)).catchError((_) {});
 
     // Handle logout action
     if (widget.action == "logout") {

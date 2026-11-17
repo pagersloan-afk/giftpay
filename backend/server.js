@@ -41,6 +41,7 @@ const cableRoutes = require("./src/routes/cable.routes.js");
 const bettingRoutes = require("./src/routes/betting.routes.js");
 const userServicesRoutes = require("./src/routes/userServices.routes");
 const analyticsRoutes = require("./src/routes/analytics.routes");
+const bookkeepingRoutes = require("./src/routes/bookkeeping.routes");
 const authRoutes = require("./src/routes/auth.routes.js");
 const statementRoute = require("./src/routes/statement");
 const authMiddleware = require("./src/middleware/authMiddleware");
@@ -105,6 +106,8 @@ console.log("VTPASS_ENV:", process.env.VTPASS_ENV);
 app.use(
   cors({
     origin: [
+      "https://www.gifttechnologyltd.com",
+      "https://gifttechnologyltd.com",
       "http://localhost:5000",
       "http://127.0.0.1:5000",
       "http://172.23.8.53:5000",
@@ -255,6 +258,7 @@ app.use("/", transactionRoutes);
 app.use("/", walletRoutes);
 app.use("/", userServicesRoutes);
 app.use("/", analyticsRoutes);
+app.use("/api/bookkeeping", authMiddleware, bookkeepingRoutes);
 
 app.use("/auth", authRoutes);
 

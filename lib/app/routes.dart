@@ -93,6 +93,7 @@ import 'package:utilityhub/features/ps_games/ps_games_screen.dart';
 
 // Betting
 import 'package:utilityhub/features/betting/betting_screen.dart';
+import 'package:utilityhub/features/bookkeeping/screens/bookkeeping_screen.dart';
 
 // Paystack callback
 import 'package:utilityhub/features/payments/paystack_web_callback_screen.dart';
@@ -193,6 +194,7 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/fund': (_) => wrap(FundWalletScreen()),
   '/withdraw': (_) => wrap(WithdrawScreen()),
   '/transactions': (_) => wrap(TransactionHistoryScreen()),
+  '/bookkeeping': (_) => wrap(const BookkeepingScreen()),
   '/virtual-accounts': (_) => wrap(AddMoneyScreen()),
 
   // KYC

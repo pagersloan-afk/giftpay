@@ -70,6 +70,11 @@ class ServicesScreen extends StatelessWidget {
 
       "Finance": [
         {"title": "Savings", "icon": Icons.savings, "route": "/savings"},
+        {
+          "title": "Bookkeeping",
+          "icon": Icons.menu_book,
+          "route": "/bookkeeping",
+        },
       ],
 
       "Accounts & Settings": [

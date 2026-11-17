@@ -24,6 +24,11 @@ class ServicesCatalog {
     ),
     ServiceItem(title: "Betting", icon: Icons.sports_soccer, route: "/betting"),
     ServiceItem(title: "Savings", icon: Icons.savings, route: "/savings"),
+    ServiceItem(
+      title: "Bookkeeping",
+      icon: Icons.menu_book,
+      route: "/bookkeeping",
+    ),
     ServiceItem(title: "Education", icon: Icons.school, route: "/education"),
     ServiceItem(
       title: "Airtime PIN",

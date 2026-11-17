@@ -922,14 +922,23 @@ class HistoryTile extends StatelessWidget {
     // ==========================================================
 
     if (titleLower.startsWith("electricity")) {
-      final snap = await FirebaseFirestore.instance
-          .collection("users")
-          .doc(userId)
-          .collection("transactions")
-          .doc(id)
-          .get();
+      Map<String, dynamic> fullTx = {};
+      try {
+        final snap = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(userId)
+            .collection("transactions")
+            .doc(id)
+            .get()
+            .timeout(const Duration(seconds: 8));
 
-      final fullTx = snap.data() ?? {};
+        fullTx = snap.data() ?? {};
+      } catch (error) {
+        // Keep the receipt accessible using the transaction already loaded
+        // in the home screen if this optional detail lookup fails.
+        debugPrint("Electricity receipt detail lookup failed: $error");
+        fullTx = transaction;
+      }
 
       if (!context.mounted) return;
 
@@ -954,26 +963,34 @@ class HistoryTile extends StatelessWidget {
     // LOAD WALLET TRANSACTION
     // ==========================================================
 
-    final walletDoc = await FirebaseFirestore.instance
-        .collection("wallets")
-        .doc(userId)
-        .get();
-
-    final walletData = walletDoc.data() ?? {};
-    final txList = walletData["transactions"] as List<dynamic>? ?? [];
-
     Map<String, dynamic> realTx = {};
 
-    for (final item in txList) {
-      if (item is Map) {
-        final candidate = Map<String, dynamic>.from(item);
+    try {
+      final walletDoc = await FirebaseFirestore.instance
+          .collection("wallets")
+          .doc(userId)
+          .get()
+          .timeout(const Duration(seconds: 8));
 
-        if (candidate["id"]?.toString() == id?.toString()) {
-          realTx = candidate;
-          break;
+      final walletData = walletDoc.data() ?? {};
+      final txList = walletData["transactions"] as List<dynamic>? ?? [];
+
+      for (final item in txList) {
+        if (item is Map) {
+          final candidate = Map<String, dynamic>.from(item);
+
+          if (candidate["id"]?.toString() == id?.toString()) {
+            realTx = candidate;
+            break;
+          }
         }
       }
+    } catch (error) {
+      // The home-screen transaction contains enough information to open
+      // the appropriate receipt even if the wallet detail lookup fails.
+      debugPrint("Wallet transaction detail lookup failed: $error");
     }
+
 
     // ==========================================================
     // PAYSTACK DEDICATED-ACCOUNT WALLET CREDIT
