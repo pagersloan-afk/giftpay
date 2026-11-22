@@ -177,7 +177,7 @@ class _PinEntryDialogState extends State<PinEntryDialog> {
             break;
 
           case PinVerificationStatus.pinNotSet:
-            errorText = result.message ?? "Transaction PIN has not been set.";
+            errorText = result.message ?? "You have not created a transaction PIN yet. Please create one before trying again.";
             break;
 
           case PinVerificationStatus.authRequired:

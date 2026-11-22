@@ -11,6 +11,7 @@ class ElectricityProcessingScreen extends StatefulWidget {
   final String meterNumber;
   final String amount;
   final String customerName;
+  final String customerAddress;
 
   const ElectricityProcessingScreen({
     super.key,
@@ -19,13 +20,16 @@ class ElectricityProcessingScreen extends StatefulWidget {
     required this.meterNumber,
     required this.amount,
     required this.customerName,
+    this.customerAddress = "",
   });
 
   @override
-  State<ElectricityProcessingScreen> createState() => _ElectricityProcessingScreenState();
+  State<ElectricityProcessingScreen> createState() =>
+      _ElectricityProcessingScreenState();
 }
 
-class _ElectricityProcessingScreenState extends State<ElectricityProcessingScreen> {
+class _ElectricityProcessingScreenState
+    extends State<ElectricityProcessingScreen> {
   Timer? _timer;
   bool _checking = false;
   int _attempts = 0;
@@ -59,24 +63,62 @@ class _ElectricityProcessingScreenState extends State<ElectricityProcessingScree
       );
 
       final data = jsonDecode(response.body);
-      final status = (data["vendStatus"] ?? data["status"] ?? "").toString().toUpperCase();
+      final status = (data["vendStatus"] ?? data["status"] ?? "")
+          .toString()
+          .toUpperCase();
 
       if (status == "SUCCESS") {
         _timer?.cancel();
         if (!mounted) return;
         final raw = data["raw"] ?? {};
-        final body = raw is Map && raw["responseBody"] is Map ? raw["responseBody"] : raw;
-        final token = body is Map ? (body["token"] ?? body["meterToken"] ?? "").toString() : "";
-        final units = body is Map ? (body["units"] ?? body["unit"] ?? "").toString() : "";
+        final body = raw is Map && raw["responseBody"] is Map
+            ? raw["responseBody"]
+            : raw;
+        final token =
+            (data["token"] ??
+                    (body is Map
+                        ? (body["metertoken"] ??
+                              body["MeterToken"] ??
+                              body["meterToken"] ??
+                              body["token"] ??
+                              body["Token"])
+                        : null) ??
+                    "")
+                .toString()
+                .trim();
+        final units =
+            (data["units"] ??
+                    (body is Map
+                        ? (body["units"] ??
+                              body["Units"] ??
+                              body["unit"] ??
+                              body["Unit"] ??
+                              body["unitvalue"] ??
+                              body["UnitValue"])
+                        : null) ??
+                    "")
+                .toString()
+                .trim();
+        if (token.isEmpty) {
+          // Never open the success screen without the actual meter token.
+          return;
+        }
 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => ElectricitySuccessScreen(
               token: token,
+              requestId: widget.requestId,
               units: units,
               amount: widget.amount,
               customerName: widget.customerName,
+              customerAddress:
+                  (data["customerAddress"] ??
+                          raw["customer_address"] ??
+                          raw["customerAddress"] ??
+                          widget.customerAddress)
+                      .toString(),
               meterNumber: widget.meterNumber,
               timestamp: DateTime.now().millisecondsSinceEpoch,
             ),
@@ -89,19 +131,24 @@ class _ElectricityProcessingScreenState extends State<ElectricityProcessingScree
         _timer?.cancel();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data["message"] ?? "Transaction failed. Refund processed.")),
+          SnackBar(
+            content: Text(
+              data["message"] ?? "Transaction failed. Refund processed.",
+            ),
+          ),
         );
         Navigator.pop(context);
         return;
       }
 
-      if (_attempts >= 20) {
-        _timer?.cancel();
-        if (!mounted) return;
+      if (_attempts == 120 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Still processing. Check your transaction history later.")),
+          const SnackBar(
+            content: Text(
+              "This purchase is taking longer than usual. We are still checking for your meter token. Please keep this screen open.",
+            ),
+          ),
         );
-        Navigator.pop(context);
       }
     } catch (_) {
       // Keep polling. The backend remains the authority for transaction status.
@@ -122,11 +169,21 @@ class _ElectricityProcessingScreenState extends State<ElectricityProcessingScree
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 24),
-              const Text("Processing your electricity purchase…", textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const Text(
+                "Processing your electricity purchase…",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 12),
-              Text("Reference: ${widget.requestId}", style: const TextStyle(fontSize: 14)),
+              Text(
+                "Reference: ${widget.requestId}",
+                style: const TextStyle(fontSize: 14),
+              ),
               const SizedBox(height: 20),
-              const Text("Please wait while Monnify confirms the transaction.", textAlign: TextAlign.center),
+              const Text(
+                "Please wait while we confirms your purchase and returns your meter token.",
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),

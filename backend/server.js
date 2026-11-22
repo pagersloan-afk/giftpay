@@ -65,6 +65,7 @@ const virtualAccountRoutes = require("./src/routes/virtualAccount.routes");
 const { paystackWebhook } = require("./src/webhooks/paystack.webhook");
 const { flutterwaveTransferWebhook } = require("./src/webhooks/flutterwave.transfer.webhook");
 const clubkonnectProductsRoutes = require("./src/routes/clubkonnectProducts.routes");
+const transactionPinRoutes = require("./src/routes/transactionPin.routes.js");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -275,6 +276,7 @@ app.use("/api", identityRoutes);
 app.use("/api", contactRoutes);
 app.use("/api", profileRoutes);
 app.use("/api", securityRoutes);
+app.use("/api", transactionPinRoutes);
 app.use("/api/admin", kycAdminRoutes);
 app.use("/api/food", foodRoutes);
 app.use("/api/food-admin", foodMerchantAdminRoutes);

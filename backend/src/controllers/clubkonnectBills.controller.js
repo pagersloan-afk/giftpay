@@ -11,21 +11,39 @@ function messageOf(raw, fallback = "ClubKonnect request failed") {
 }
 
 function requestWasAccepted(raw) {
-  const status = String(raw?.status || raw?.Status || raw?.orderstatus || "").toUpperCase();
+  const status = String(
+    raw?.transactionstatus || raw?.TransactionStatus ||
+    raw?.status || raw?.Status || raw?.orderstatus || raw?.OrderStatus || ""
+  ).toUpperCase();
   const code = String(raw?.statuscode || raw?.StatusCode || "");
-  if (status === "ORDER_RECEIVED" || status === "ORDER_ONHOLD" || code === "100") return true;
-  return Boolean(raw?.orderid || raw?.OrderID) && ck.normalizeStatus(raw) === "PENDING";
+  if (["ORDER_RECEIVED", "ORDER_ONHOLD", "PENDING", "PROCESSING"].includes(status) || code === "100") return true;
+  if (String(raw?.status || raw?.Status || "").toUpperCase() === "TXN_HISTORY") return true;
+  return Boolean(raw?.orderid || raw?.OrderID || raw?.transactionid || raw?.TransactionID) && ck.normalizeStatus(raw) === "PENDING";
+}
+
+function extractMeterToken(raw) {
+  const candidates = [
+    raw?.metertoken, raw?.MeterToken, raw?.meterToken, raw?.token, raw?.Token,
+    raw?.responseBody?.metertoken, raw?.responseBody?.MeterToken,
+    raw?.data?.metertoken, raw?.data?.MeterToken,
+  ];
+  const token = candidates.find((value) => value !== undefined && value !== null && String(value).trim() !== "");
+  return token ? String(token).trim() : "";
+}
+
+function extractUnits(raw) {
+  const candidates = [raw?.units, raw?.Units, raw?.unit, raw?.Unit, raw?.unitvalue, raw?.UnitValue];
+  const value = candidates.find((item) => item !== undefined && item !== null && String(item).trim() !== "");
+  return value === undefined ? null : String(value).trim();
 }
 
 function classifyVend(raw) {
   const normalized = ck.normalizeStatus(raw);
-  if (normalized !== "PENDING") return normalized;
-  const status = String(raw?.status || raw?.Status || raw?.orderstatus || "").toUpperCase();
-  const code = String(raw?.statuscode || raw?.StatusCode || "");
-  if (status.startsWith("INVALID_") || status.includes("ERROR") || status.includes("FAILED")) return "FAILED";
-  if (code && code !== "100" && code !== "200") return "FAILED";
+  if (normalized === "FAILED") return "FAILED";
+  if (normalized === "SUCCESS") return extractMeterToken(raw) ? "SUCCESS" : "PENDING";
   if (requestWasAccepted(raw)) return "PENDING";
-  return "FAILED";
+  // Do not refund on an unrecognized/ambiguous provider response.
+  return "PENDING";
 }
 
 async function createPendingDebit({ userId, reference, title, amount, fee, totalDebited, type, extra = {} }) {
@@ -129,6 +147,7 @@ async function finalizeWallet({ userId, reference, outcome, raw, category, descr
       status: outcome === "SUCCESS" ? "success" : "refunded",
       providerStatus: outcome === "SUCCESS" ? "ORDER_COMPLETED" : "ORDER_FAILED",
       providerResponse: raw,
+      ...(outcome === "SUCCESS" ? { token: extractMeterToken(raw), units: extractUnits(raw) } : {}),
     });
   }
   if (finalized && refundIssued) {
@@ -151,11 +170,16 @@ async function findWalletTransaction(reference) {
 
 async function processQuery({ userId, reference, orderId, category, description }) {
   const raw = await ck.queryTransaction({ requestId: reference, orderId });
-  const status = ck.normalizeStatus(raw);
+  let status = ck.normalizeStatus(raw);
+  // For electricity, completion without a meter token is not deliverable.
+  // Keep the debit pending and continue querying rather than showing success/refunding.
+  if (category === "electricity" && status === "SUCCESS" && !extractMeterToken(raw)) {
+    status = "PENDING";
+  }
   if (status === "SUCCESS" || status === "FAILED") {
     await finalizeWallet({ userId, reference, outcome: status, raw, category, description });
   }
-  return { raw, status };
+  return { raw, status, token: extractMeterToken(raw), units: extractUnits(raw) };
 }
 
 // ---------------- AIRTIME ----------------
@@ -340,6 +364,9 @@ exports.walletPayElectricity = async (req, res) => {
     const disco = String(req.body?.billerCode || req.body?.discoCode || req.body?.disco || "").trim();
     const meterType = req.body?.meterType || req.body?.productCode;
     const phone = String(req.body?.phone || "").trim();
+    const customerName = String(req.body?.customerName || "").trim();
+    const giftpayCustomerName = String(req.body?.giftpayCustomerName || "").trim();
+    const customerAddress = String(req.body?.customerAddress || req.body?.address || "").trim();
     const amount = Math.round(Number(req.body?.amount));
     if (!userId || !meterNumber || !disco || !Number.isFinite(amount)) return res.status(400).json({ status: false, message: "Missing userId, meterNumber, distribution company or valid amount" });
     if (amount < 200) return res.status(400).json({ status: false, message: "Minimum electricity purchase is ₦200" });
@@ -348,8 +375,8 @@ exports.walletPayElectricity = async (req, res) => {
     const userPays = Number(feeResult.userPays);
     const fee = Number(feeResult.fee);
     const reference = ck.makeRequestId("ELEC");
-    await createPendingDebit({ userId, reference, title: `Electricity Purchase (${meterNumber})`, amount, fee, totalDebited: userPays, type: "electricity", extra: { meterNumber, disco, meterType: normalizedMeterType, phone } });
-    await updateUserTransaction(userId, reference, { type: "electricity", meterNumber, disco, billerCode: disco, meterType: normalizedMeterType, amount, fee, totalDebited: userPays, phone, status: "pending", timestamp: Date.now() });
+    await createPendingDebit({ userId, reference, title: `Electricity Purchase (${meterNumber})`, amount, fee, totalDebited: userPays, type: "electricity", extra: { meterNumber, disco, meterType: normalizedMeterType, phone, customerName, giftpayCustomerName, customerAddress } });
+    await updateUserTransaction(userId, reference, { type: "electricity", meterNumber, disco, billerCode: disco, meterType: normalizedMeterType, amount, fee, totalDebited: userPays, phone, customerName, giftpayCustomerName, customerAddress, status: "pending", timestamp: Date.now() });
     let raw;
     try {
       raw = await ck.vendElectricity({ disco, meterNumber, meterType: normalizedMeterType, amount, phone, requestId: reference });
@@ -359,7 +386,14 @@ exports.walletPayElectricity = async (req, res) => {
     }
     const status = classifyVend(raw);
     const orderId = raw?.orderid || raw?.OrderID || null;
-    await updateUserTransaction(userId, reference, { providerReference: orderId, orderId, providerResponse: raw, providerStatus: raw?.status || raw?.statuscode || null, token: raw?.metertoken || null, units: raw?.units || null });
+    await updateUserTransaction(userId, reference, {
+      providerReference: orderId,
+      orderId,
+      providerResponse: raw,
+      providerStatus: raw?.transactionstatus || raw?.TransactionStatus || raw?.status || raw?.statuscode || null,
+      token: extractMeterToken(raw) || null,
+      units: extractUnits(raw),
+    });
     if (status === "SUCCESS" || status === "FAILED") {
       const result = await finalizeWallet({ userId, reference, outcome: status, raw, category: "electricity", description: `Electricity Purchase (${meterNumber})` });
       if (status === "FAILED") return res.status(400).json({ status: false, message: messageOf(raw, "Electricity payment failed; refund processed."), requestId: reference, reference, refunded: result.refundIssued });
@@ -381,7 +415,21 @@ exports.requeryElectricity = async (req, res) => {
     const txn = txSnap.exists ? txSnap.data() : {};
     const result = await processQuery({ userId, reference, orderId: txn?.providerReference || txn?.orderId, category: "electricity", description: `Electricity Purchase (${txn?.meterNumber || ""})` });
     const raw = result.raw || {};
-    return res.json({ status: true, pending: result.status === "PENDING", refunded: result.status === "FAILED", vendStatus: result.status, status: result.status, message: messageOf(raw, "Electricity transaction status checked"), raw });
+    return res.json({
+      status: true,
+      pending: result.status === "PENDING",
+      refunded: result.status === "FAILED",
+      vendStatus: result.status,
+      transactionStatus: result.status,
+      message: result.status === "PENDING" ? "Your electricity purchase is still processing. Waiting for ClubKonnect to return the meter token." : messageOf(raw, "Electricity transaction status checked"),
+      token: result.token || null,
+      units: result.units,
+      customerName: txn?.customerName || "",
+      giftpayCustomerName: txn?.giftpayCustomerName || "",
+      customerAccountName: txn?.giftpayCustomerName || "",
+      customerAddress: txn?.customerAddress || raw?.customer_address || raw?.customerAddress || "",
+      raw,
+    });
   } catch (err) {
     console.error("[CLUBKONNECT ELECTRICITY REQUERY]", err.message || err);
     return res.status(502).json({ status: false, pending: true, vendStatus: "IN_PROGRESS", message: err.message || "Unable to confirm electricity transaction" });

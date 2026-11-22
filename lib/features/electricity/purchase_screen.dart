@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 class PurchaseElectricityScreen extends StatefulWidget {
   final String meterNumber;
   final String customerName;
+  final String customerAddress;
   final String discoCode;
   final String meterType;
   final String productCode;
@@ -18,6 +19,7 @@ class PurchaseElectricityScreen extends StatefulWidget {
     super.key,
     required this.meterNumber,
     required this.customerName,
+    this.customerAddress = "",
     required this.discoCode,
     required this.meterType,
     required this.productCode,
@@ -50,6 +52,11 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
           "billerCode": widget.discoCode,
           "amount": amount,
           "phone": phone,
+          "customerName": widget.customerName,
+          "giftpayCustomerName": (FirebaseAuth.instance.currentUser?.displayName?.trim().isNotEmpty == true)
+              ? FirebaseAuth.instance.currentUser!.displayName!.trim()
+              : (FirebaseAuth.instance.currentUser?.email ?? "GiftPay Customer"),
+          "customerAddress": widget.customerAddress,
           "meterType": widget.meterType,
           "productCode": widget.productCode,
           if (widget.validationReference.isNotEmpty)
@@ -79,6 +86,7 @@ class _PurchaseElectricityScreenState extends State<PurchaseElectricityScreen> {
               meterNumber: widget.meterNumber,
               amount: amount,
               customerName: widget.customerName,
+              customerAddress: widget.customerAddress,
             ),
           ),
         );

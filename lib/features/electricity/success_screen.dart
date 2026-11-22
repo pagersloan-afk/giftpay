@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/services.dart';
@@ -13,8 +15,10 @@ import 'package:utilityhub/features/electricity/receipt_screen.dart';
 
 class ElectricitySuccessScreen extends StatefulWidget {
   final String token;
+  final String requestId;
   final String amount;
   final String customerName;
+  final String customerAddress;
   final String meterNumber;
   final String units;
   final int timestamp;
@@ -22,8 +26,10 @@ class ElectricitySuccessScreen extends StatefulWidget {
   const ElectricitySuccessScreen({
     super.key,
     required this.token,
+    this.requestId = "",
     required this.amount,
     required this.customerName,
+    this.customerAddress = "",
     required this.meterNumber,
     required this.units,
     required this.timestamp,
@@ -78,7 +84,11 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
     final token = widget.token;
     final meter = widget.meterNumber;
     final amount = widget.amount;
-    final customerName = widget.customerName;
+    final customerName =
+        (FirebaseAuth.instance.currentUser?.displayName?.trim().isNotEmpty ==
+            true)
+        ? FirebaseAuth.instance.currentUser!.displayName!.trim()
+        : (FirebaseAuth.instance.currentUser?.email ?? "GiftPay Customer");
     final date = DateTime.now();
 
     final qrData =
@@ -154,7 +164,13 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
               ),
               pw.SizedBox(height: 8),
 
-              _pdfDetail("Customer", customerName),
+              _pdfDetail("Customer Name", customerName),
+              _pdfDetail(
+                "Transaction Reference",
+                widget.requestId.isEmpty ? "Unavailable" : widget.requestId,
+              ),
+              if (widget.customerAddress.trim().isNotEmpty)
+                _pdfDetail("Customer Address", widget.customerAddress),
               _pdfDetail("Meter Number", meter),
               _pdfDetail("Amount", "₦$amount"),
               _pdfDetail("Date", date.toString().substring(0, 19)),
@@ -420,6 +436,10 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                       child: Column(
                         children: [
                           _detail("Customer", widget.customerName),
+                          if (widget.customerAddress.trim().isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            _detail("Customer Address", widget.customerAddress),
+                          ],
                           const SizedBox(height: 12),
                           _detail("Meter Number", widget.meterNumber),
                           const SizedBox(height: 12),
@@ -436,10 +456,17 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           final pdfBytes = await _buildReceiptPdf();
-                          await Printing.sharePdf(
-                            bytes: pdfBytes,
-                            filename: "electricity_receipt.pdf",
-                          );
+                          if (kIsWeb) {
+                            await Printing.layoutPdf(
+                              name: "GiftPay_Electricity_Receipt.pdf",
+                              onLayout: (_) async => pdfBytes,
+                            );
+                          } else {
+                            await Printing.sharePdf(
+                              bytes: pdfBytes,
+                              filename: "GiftPay_Electricity_Receipt.pdf",
+                            );
+                          }
                         },
                         icon: const Icon(Icons.picture_as_pdf),
                         label: const Text("Download / Share PDF"),
@@ -466,10 +493,14 @@ class _ElectricitySuccessScreenState extends State<ElectricitySuccessScreen> {
                               builder: (_) => ReceiptScreen(
                                 token: widget.token,
                                 amount: widget.amount,
-                                customerName: widget.customerName,
+                                customerName: "",
+                                customerAddress: widget.customerAddress,
                                 meterNumber: widget.meterNumber,
                                 timestamp: widget.timestamp,
-                                buildPdf: _buildReceiptPdf,
+                                transactionReference: widget.requestId,
+                                userId:
+                                    FirebaseAuth.instance.currentUser?.uid ??
+                                    "",
                               ),
                             ),
                           );

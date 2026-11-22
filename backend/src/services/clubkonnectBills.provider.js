@@ -566,7 +566,12 @@ async function queryTransaction({
 // -------------------------------------------------
 
 function normalizeStatus(raw) {
+  // ClubKonnect may wrap the real vend result in a TXN_HISTORY response.
+  // In that format, transactionstatus is the authoritative transaction state;
+  // the outer status (TXN_HISTORY) only describes the response type.
   const status = String(
+    raw?.transactionstatus ||
+    raw?.TransactionStatus ||
     raw?.orderstatus ||
     raw?.OrderStatus ||
     raw?.status ||
@@ -581,43 +586,27 @@ function normalizeStatus(raw) {
   ).trim();
 
   if (
-    [
-      "ORDER_COMPLETED",
-      "SUCCESS",
-      "SUCCESSFUL",
-      "COMPLETED",
-    ].includes(status) ||
+    ["ORDER_COMPLETED", "SUCCESS", "SUCCESSFUL", "COMPLETED"].includes(status) ||
     code === "200"
   ) {
     return "SUCCESS";
   }
 
   if (
-    [
-      "ORDER_FAILED",
-      "FAILED",
-      "FAILURE",
-      "DECLINED",
-      "CANCELLED",
-      "REVERSED",
-    ].includes(status)
+    ["ORDER_FAILED", "FAILED", "FAILURE", "DECLINED", "CANCELLED", "REVERSED"].includes(status)
   ) {
     return "FAILED";
   }
 
   if (
-    [
-      "ORDER_RECEIVED",
-      "ORDER_ONHOLD",
-      "PENDING",
-      "PROCESSING",
-      "",
-    ].includes(status) ||
-    code === "100"
+    ["ORDER_RECEIVED", "ORDER_ONHOLD", "PENDING", "PROCESSING", ""].includes(status) ||
+    code === "100" ||
+    String(raw?.status || raw?.Status || "").trim().toUpperCase() === "TXN_HISTORY"
   ) {
     return "PENDING";
   }
 
+  // Unknown provider states must never trigger an automatic wallet refund.
   return "PENDING";
 }
 

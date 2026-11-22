@@ -1,6 +1,10 @@
 const admin = require("firebase-admin");
 
 const {
+  setTransactionPin: saveTransactionPin,
+} = require("../services/transactionPin.service");
+
+const {
   sendLoginSecurityEmail,
 } = require("../../utils/notify");
 
@@ -231,6 +235,54 @@ exports.loginAlert = async (req, res) => {
       status: false,
       message:
         "Unable to process login security alert",
+    });
+  }
+};
+
+// Create/update the authenticated user's transaction PIN.
+// The PIN is hashed by transactionPin.service.js before it reaches Firestore.
+exports.setTransactionPin = async (req, res) => {
+  try {
+    const userId = req.user?.uid;
+    if (!userId) {
+      return res.status(401).json({
+        status: false,
+        code: "AUTH_REQUIRED",
+        message: "Please sign in again before setting your transaction PIN.",
+      });
+    }
+
+    const pin = String(req.body?.pin ?? "").trim();
+    const confirmPin = String(req.body?.confirmPin ?? "").trim();
+
+    if (!/^\d{4}$/.test(pin)) {
+      return res.status(400).json({
+        status: false,
+        code: "PIN_INVALID",
+        message: "Transaction PIN must be exactly 4 digits.",
+      });
+    }
+
+    if (pin !== confirmPin) {
+      return res.status(400).json({
+        status: false,
+        code: "PIN_MISMATCH",
+        message: "The transaction PINs do not match.",
+      });
+    }
+
+    await saveTransactionPin(userId, pin);
+
+    return res.status(200).json({
+      status: true,
+      message: "Transaction PIN secured successfully.",
+    });
+  } catch (error) {
+    console.error("[SET TRANSACTION PIN]", error.message);
+    return res.status(500).json({
+      status: false,
+      code: "PIN_SETUP_FAILED",
+      message: "Unable to save your transaction PIN. Please try again.",
     });
   }
 };

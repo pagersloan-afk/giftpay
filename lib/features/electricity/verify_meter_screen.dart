@@ -91,6 +91,12 @@ class _VerifyMeterScreenState extends State<VerifyMeterScreen> {
       if (!mounted) return;
       if (response["status"] == true) {
         final customerName = (response["customerName"] ?? "Customer").toString();
+        final customerAddress = (response["address"] ??
+                response["customerAddress"] ??
+                response["customer_address"] ??
+                "")
+            .toString()
+            .trim();
 
         await savedMeterService.saveMeter(
           SavedMeter(
@@ -108,6 +114,7 @@ class _VerifyMeterScreenState extends State<VerifyMeterScreen> {
             builder: (_) => PurchaseElectricityScreen(
               meterNumber: meterCtrl.text.trim(),
               customerName: customerName,
+              customerAddress: customerAddress,
               discoCode: widget.discoCode,
               meterType: meterType,
               productCode: selectedProductCode!,

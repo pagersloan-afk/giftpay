@@ -20,6 +20,20 @@ import 'package:utilityhub/features/transaction-history/screens/paystack_wallet_
 import 'package:utilityhub/features/betting/betting_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/giftcard_receipt_screen.dart';
 
+int _timestampMillis(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value < 1000000000000 ? value * 1000 : value;
+  if (value is num) {
+    final n = value.toInt();
+    return n < 1000000000000 ? n * 1000 : n;
+  }
+  if (value is Map && value["seconds"] is num) {
+    return (value["seconds"] as num).toInt() * 1000;
+  }
+  final parsed = DateTime.tryParse(value.toString());
+  return parsed?.millisecondsSinceEpoch ?? 0;
+}
+
 class HistoryTile extends StatelessWidget {
   final Map<String, dynamic> transaction;
   final String formattedDate;
@@ -922,40 +936,36 @@ class HistoryTile extends StatelessWidget {
     // ==========================================================
 
     if (titleLower.startsWith("electricity")) {
-      Map<String, dynamic> fullTx = {};
-      try {
-        final snap = await FirebaseFirestore.instance
-            .collection("users")
-            .doc(userId)
-            .collection("transactions")
-            .doc(id)
-            .get()
-            .timeout(const Duration(seconds: 8));
-
-        fullTx = snap.data() ?? {};
-      } catch (error) {
-        // Keep the receipt accessible using the transaction already loaded
-        // in the home screen if this optional detail lookup fails.
-        debugPrint("Electricity receipt detail lookup failed: $error");
-        fullTx = transaction;
-      }
+      final tx = Map<String, dynamic>.from(transaction);
+      final reference = (tx["id"] ??
+              tx["reference"] ??
+              tx["requestId"] ??
+              tx["requestReference"] ??
+              "")
+          .toString();
+      const accountName = ""; // Receipt resolves verified/registered name from Firestore.
 
       if (!context.mounted) return;
-
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => ReceiptScreen(
-            token: fullTx["token"] ?? "",
-            amount: fullTx["amount"]?.toString() ?? "0",
-            customerName: fullTx["customerName"] ?? "Customer",
-            meterNumber: fullTx["meterNumber"] ?? "Unknown",
-            timestamp: fullTx["timestamp"] ?? 0,
-            buildPdf: () async => Uint8List(0),
+            token: (tx["token"] ?? "").toString(),
+            amount: (tx["amount"] ?? "0").toString(),
+            customerName: accountName,
+            customerAddress: (tx["customerAddress"] ??
+                    tx["address"] ??
+                    tx["meterAddress"] ??
+                    "")
+                .toString(),
+            meterNumber: (tx["meterNumber"] ?? "Unknown").toString(),
+            timestamp: _timestampMillis(tx["timestamp"] ?? tx["date"]),
+            transactionReference: reference,
+            userId: userId,
+            units: (tx["units"] ?? "").toString(),
           ),
         ),
       );
-
       return;
     }
 

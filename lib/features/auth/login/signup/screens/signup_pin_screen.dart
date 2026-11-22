@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:utilityhub/core/theme/giftpay_theme.dart';
 import 'package:utilityhub/core/widgets/giftpay_background.dart';
+import 'package:utilityhub/features/auth/login/signup/controllers/signup_pin_controller.dart';
 
 class SignupPinScreen extends StatefulWidget {
   const SignupPinScreen({super.key});
@@ -12,6 +13,8 @@ class SignupPinScreen extends StatefulWidget {
 class _SignupPinScreenState extends State<SignupPinScreen>
     with SingleTickerProviderStateMixin {
   String pin = "";
+  String? firstPin;
+  bool savingPin = false;
 
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -43,13 +46,6 @@ class _SignupPinScreenState extends State<SignupPinScreen>
     setState(() => pin += digit);
 
     _controller.forward().then((_) => _controller.reverse());
-
-    if (pin.length == 4) {
-      Future.delayed(
-        const Duration(milliseconds: 350),
-        () => _showSecureAnimation(),
-      );
-    }
   }
 
   void removeDigit() {
@@ -58,6 +54,39 @@ class _SignupPinScreenState extends State<SignupPinScreen>
     setState(() {
       pin = pin.substring(0, pin.length - 1);
     });
+  }
+
+  Future<void> _continuePinSetup() async {
+    if (pin.length != 4 || savingPin) return;
+
+    if (firstPin == null) {
+      setState(() {
+        firstPin = pin;
+        pin = "";
+      });
+      return;
+    }
+
+    if (pin != firstPin) {
+      setState(() {
+        firstPin = null;
+        pin = "";
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("PINs do not match. Please start again.")),
+      );
+      return;
+    }
+
+    setState(() => savingPin = true);
+    final saved = await SignupPinController(
+      pin: firstPin!,
+      confirmPin: pin,
+    ).savePin(context);
+    if (!mounted) return;
+    setState(() => savingPin = false);
+
+    if (saved) _showSecureAnimation();
   }
 
   void _showSecureAnimation() {
@@ -174,10 +203,15 @@ class _SignupPinScreenState extends State<SignupPinScreen>
 
                     const SizedBox(height: 12),
 
-                    const Text(
-                      "Create a 4-digit PIN to protect your GiftPay account and payments.",
+                    Text(
+                      firstPin == null
+                          ? "Create a 4-digit PIN to protect your GiftPay account and payments."
+                          : "Re-enter your 4-digit PIN to confirm it.",
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFFD1D5DB), fontSize: 15),
+                      style: const TextStyle(
+                        color: Color(0xFFD1D5DB),
+                        fontSize: 15,
+                      ),
                     ),
 
                     const SizedBox(height: 35),
@@ -242,8 +276,8 @@ class _SignupPinScreenState extends State<SignupPinScreen>
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: pin.length == 4
-                            ? _showSecureAnimation
+                        onPressed: pin.length == 4 && !savingPin
+                            ? _continuePinSetup
                             : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: GiftPayTheme.primaryBlue,
@@ -253,7 +287,17 @@ class _SignupPinScreenState extends State<SignupPinScreen>
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text("Continue"),
+                        child: savingPin
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                firstPin == null ? "Continue" : "Confirm PIN",
+                              ),
                       ),
                     ),
 
