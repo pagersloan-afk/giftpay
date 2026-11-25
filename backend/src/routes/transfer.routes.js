@@ -15,6 +15,8 @@ if (!['monnify', 'paystack', 'flutterwave'].includes(selected)) {
 router.get('/banks', controller.getBanks);
 router.post('/resolve-account', controller.resolveAccount);
 router.post('/transfer-to-bank', authMiddleware, controller.transferToBank);
+// Dynamic Flutterwave fee quote used by the transfer confirmation dialog.
+router.post('/flutterwave-transfer-fee-quote', authMiddleware, flutterwave.getTransferFeeQuote);
 router.post('/transfer-authorize', authMiddleware, controller.authorizeTransfer);
 router.post('/transfer-resend-otp', authMiddleware, controller.resendTransferOtp);
 // Keep this explicitly Monnify-specific endpoint available for existing operations.

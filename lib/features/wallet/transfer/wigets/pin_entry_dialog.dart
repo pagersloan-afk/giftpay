@@ -357,6 +357,91 @@ class _PinEntryDialogState extends State<PinEntryDialog> {
 
     final dialogWidth = screenWidth < 380 ? screenWidth - 28 : 330.0;
 
+    // Once all four digits are entered, replace the keypad immediately with
+    // a dedicated processing state while the transfer callback completes.
+    if (verifying) {
+      return Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        backgroundColor: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 330),
+          child: SizedBox(
+            width: dialogWidth,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 30, 24, 28),
+              decoration: BoxDecoration(
+                color: const Color(0xFF101722),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.white.withOpacity(0.14)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.35),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF4FC3F7),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Processing Your Transfer',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    'Please wait while we securely verify your PIN and process your transfer. Do not close the app or try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.68),
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        size: 15,
+                        color: Colors.white.withOpacity(0.55),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Secure transaction in progress',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.55),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       backgroundColor: Colors.black.withOpacity(0.45),

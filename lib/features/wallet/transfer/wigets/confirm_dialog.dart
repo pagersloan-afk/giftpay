@@ -4,12 +4,16 @@ import 'package:intl/intl.dart';
 class ConfirmDialog extends StatelessWidget {
   final double amount;
   final double fee;
+  final double? providerFee;
+  final double? vat;
   final VoidCallback onConfirm;
 
   const ConfirmDialog({
     super.key,
     required this.amount,
     required this.fee,
+    this.providerFee,
+    this.vat,
     required this.onConfirm,
   });
 
@@ -67,6 +71,12 @@ class ConfirmDialog extends StatelessWidget {
               const SizedBox(height: 20),
 
               _row("Transaction Amount", "₦${_format(amount)}"),
+              if (providerFee != null)
+                _row("Provider Fee", "₦${_format(providerFee!)}"),
+
+              if (vat != null) _row("VAT (7.5%)", "₦${_format(vat!)}"),
+
+              _row("Total Fees", "₦${_format(fee)}"),
               _row("Total Fees", "₦${_format(fee)}"),
               _row("Total Amount", "₦${_format(total)}", highlight: true),
 

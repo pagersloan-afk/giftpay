@@ -1,6 +1,5 @@
 
 const admin = require("firebase-admin");
-const FeeEngine = require("../../core/fees/fee_engine");
 const { verifyTransactionPin } = require("../services/transactionPin.service");
 const { request } = require("../services/flutterwave.transfer.client");
 const { applyFlutterwaveTransferStatus } = require("../services/flutterwaveTransferStatus.service");
@@ -9,6 +8,94 @@ const db = admin.firestore();
 const money = (n) => Number(Number(n || 0).toFixed(2));
 const uid = (req) => req.user?.uid || req.auth?.uid || req.user?.id || null;
 const newReference = () => `GPFLW-${Date.now()}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+
+const roundMoney = (value) => Number((Number(value || 0) + Number.EPSILON).toFixed(2));
+
+/**
+ * Build a consistent sender signature for every GiftPay bank transfer.
+ * The authenticated user's verified name is preferred; registered profile
+ * name and Firebase Auth display name are fallbacks. A customer description
+ * is retained, but it never replaces the GiftPay/customer signature.
+ * Flutterwave narration is limited to 100 characters, so the description is
+ * shortened when necessary to preserve the full signature.
+ */
+async function resolveTransferNarration(userId, customerDescription) {
+  let customerName = "";
+
+  try {
+    const userSnapshot = await db.collection("users").doc(userId).get();
+    if (userSnapshot.exists) {
+      const profile = userSnapshot.data() || {};
+      const verification = profile.paystackBankVerification || {};
+      const verifiedAccountName = verification.verifiedAt != null
+        ? String(verification.accountName || "").trim()
+        : "";
+      const registeredName = [profile.firstName, profile.lastName]
+        .map((part) => String(part || "").trim())
+        .filter(Boolean)
+        .join(" ");
+      customerName = verifiedAccountName || registeredName ||
+        String(profile.displayName || profile.fullName || profile.name || "").trim();
+    }
+  } catch (error) {
+    console.error("Could not load customer name for transfer narration:", error.message);
+  }
+
+  // Firebase Auth display name is a final fallback if the profile has no name.
+  if (!customerName) {
+    try {
+      const authUser = await admin.auth().getUser(userId);
+      customerName = String(authUser.displayName || "").trim();
+    } catch (error) {
+      console.error("Could not load Firebase Auth display name for transfer narration:", error.message);
+    }
+  }
+
+  const senderSignature = customerName
+    ? `GiftPay / ${customerName}`
+    : "GiftPay Wallet Transfer";
+  const description = String(customerDescription ?? "").trim();
+
+  if (!description) return senderSignature.slice(0, 100);
+
+  // Always retain the sender signature, even when the customer supplies a remark.
+  const separator = " | ";
+  const availableDescriptionLength = Math.max(0, 100 - senderSignature.length - separator.length);
+  const safeDescription = description.slice(0, availableDescriptionLength).trim();
+  return safeDescription
+    ? `${safeDescription}${separator}${senderSignature}`
+    : senderSignature.slice(0, 100);
+}
+
+async function getFlutterwaveTransferFee(amount) {
+  const response = await request("get", "/transfers/fee", null, {
+    amount,
+    currency: "NGN",
+    type: "account",
+  });
+
+  const rows = Array.isArray(response) ? response : [];
+  const ngnFee = rows.find((item) =>
+    String(item?.currency || "").toUpperCase() === "NGN"
+  );
+
+  if (!ngnFee || !Number.isFinite(Number(ngnFee.fee))) {
+    throw new Error("FLUTTERWAVE_FEE_UNAVAILABLE");
+  }
+
+  const providerFee = roundMoney(ngnFee.fee);
+  // Flutterwave's published Nigerian transfer fees attract 7.5% VAT.
+  const vat = roundMoney(providerFee * 0.075);
+  return {
+    amount: roundMoney(amount),
+    providerFee,
+    vat,
+    totalFee: roundMoney(providerFee + vat),
+    totalDebited: roundMoney(Number(amount) + providerFee + vat),
+    currency: "NGN",
+    provider: "flutterwave",
+  };
+}
 
 async function persistStatus(reference, providerData) {
   const result = await applyFlutterwaveTransferStatus({ reference, providerData });
@@ -40,10 +127,42 @@ exports.resolveAccount = async (req, res) => {
   }
 };
 
+exports.getTransferFeeQuote = async (req, res) => {
+  const userId = uid(req);
+  if (!userId) {
+    return res.status(401).json({
+      status: false,
+      code: "AUTH_REQUIRED",
+      message: "Authentication required.",
+    });
+  }
+
+  try {
+    const amount = Number(req.body?.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) {
+      return res.status(400).json({
+        status: false,
+        code: "INVALID_AMOUNT",
+        message: "Enter a valid whole-naira transfer amount.",
+      });
+    }
+
+    const quote = await getFlutterwaveTransferFee(amount);
+    return res.json({ status: true, data: quote });
+  } catch (e) {
+    console.error("Flutterwave transfer fee quote failed:", e.response?.data || e.message);
+    return res.status(502).json({
+      status: false,
+      code: "FEE_QUOTE_UNAVAILABLE",
+      message: "GiftPay could not retrieve the current transfer fee from Flutterwave. Please try again.",
+    });
+  }
+};
+
 exports.transferToBank = async (req, res) => {
   const userId = uid(req);
   if (!userId) return res.status(401).json({ status: false, code: "AUTH_REQUIRED", message: "Authentication required." });
-  const { amount, bankCode, accountNumber, accountName, reason = "GiftPay wallet transfer", transactionPin } = req.body || {};
+  const { amount, bankCode, accountNumber, accountName, reason, transactionPin } = req.body || {};
   if (!/^\d{4}$/.test(String(transactionPin || ""))) return res.status(401).json({ status: false, code: "PIN_REQUIRED", message: "A valid 4-digit transaction PIN is required." });
 
   let reference;
@@ -63,9 +182,29 @@ exports.transferToBank = async (req, res) => {
     const verifiedName = String(resolved?.account_name || "").trim();
     if (!verifiedName) return res.status(400).json({ status: false, message: "Flutterwave could not verify the destination account." });
 
-    const feeResult = FeeEngine.withdrawal(withdrawalAmount);
-    const fee = money(feeResult.fee || 0);
-    const totalDebited = money(feeResult.debitAmount ?? withdrawalAmount + fee);
+    // Resolve the customer's custom/default narration on the server.
+    // Customers do not need to see or enter the generated fallback.
+    const transferNarration = await resolveTransferNarration(userId, reason);
+
+    // Always obtain the current provider fee on the server immediately
+    // before reserving wallet funds. Never trust a fee supplied by Flutter.
+    const feeQuote = await getFlutterwaveTransferFee(withdrawalAmount);
+    const fee = money(feeQuote.totalFee);
+    const providerFee = money(feeQuote.providerFee);
+    const vat = money(feeQuote.vat);
+    const totalDebited = money(withdrawalAmount + fee);
+
+    // The customer confirms the quote before entering their PIN. If the
+    // provider's fee changes between quote and submission, stop and re-confirm.
+    const quotedTotalFee = req.body?.quotedTotalFee;
+    if (quotedTotalFee != null && Math.abs(money(quotedTotalFee) - fee) > 0.009) {
+      return res.status(409).json({
+        status: false,
+        code: "FEE_CHANGED",
+        message: "Flutterwave's transfer fee has changed. Please review the updated fee and confirm again.",
+        data: feeQuote,
+      });
+    }
     reference = newReference();
     const walletRef = db.collection("wallets").doc(userId);
     const transferRef = db.collection("flutterwave_transfers").doc(reference);
@@ -81,8 +220,8 @@ exports.transferToBank = async (req, res) => {
       newBalance = money(balance - totalDebited);
       const record = {
         id: reference, reference, userId, type: "bank_transfer", title: `Transfer to ${verifiedName}`,
-        amount: withdrawalAmount, fee, totalDebited, bankCode: bank, accountNumber: account,
-        accountName: verifiedName, reason: String(reason || "GiftPay wallet transfer").slice(0, 100),
+        amount: withdrawalAmount, fee, providerFee, vat, totalDebited, bankCode: bank, accountNumber: account,
+        accountName: verifiedName, reason: transferNarration, narration: transferNarration,
         status: "SUBMITTING", provider: "flutterwave",
         createdAt: admin.firestore.FieldValue.serverTimestamp(), timestamp: Date.now(),
       };
@@ -96,7 +235,7 @@ exports.transferToBank = async (req, res) => {
       const callbackUrl = String(process.env.FLUTTERWAVE_TRANSFER_CALLBACK_URL || process.env.FLW_TRANSFER_CALLBACK_URL || "").trim();
       const data = await request("post", "/transfers", {
         account_bank: bank, account_number: account, amount: withdrawalAmount, currency: "NGN",
-        reference, narration: String(reason || "GiftPay wallet transfer").slice(0, 100),
+        reference, narration: transferNarration,
         beneficiary_name: verifiedName, ...(callbackUrl ? { callback_url: callbackUrl } : {}),
       });
       const transferStatus = await persistStatus(reference, data || {});
@@ -109,7 +248,7 @@ exports.transferToBank = async (req, res) => {
       return res.status(transferStatus === "PENDING" ? 202 : 200).json({
         status: transferStatus !== "FAILED",
         message,
-        requestId: reference, newBalance, amount: withdrawalAmount, fee, debited: totalDebited,
+        requestId: reference, newBalance, amount: withdrawalAmount, fee, providerFee, vat, debited: totalDebited,
         provider: "flutterwave", providerReference: reference, providerTransferId: data?.id || null, transferStatus,
       });
     } catch (e) {
@@ -146,6 +285,8 @@ exports.getTransferStatus = async (req, res) => {
       provider: "flutterwave",
       amount: record.amount ?? null,
       fee: record.fee ?? null,
+      providerFee: record.providerFee ?? null,
+      vat: record.vat ?? null,
       totalDebited: record.totalDebited ?? null,
       beneficiaryName: record.accountName ?? null,
       accountNumber: record.accountNumber ?? null,
