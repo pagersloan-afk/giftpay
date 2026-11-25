@@ -1,27 +1,57 @@
 
 const axios = require("axios");
 
-const SECRET = () => process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY || "";
+const SECRET = () =>
+  process.env.FLW_SECRET_KEY ||
+  process.env.FLUTTERWAVE_SECRET_KEY ||
+  "";
+
 const client = () => {
   const key = SECRET();
-  if (!key) throw new Error("FLUTTERWAVE_SECRET_KEY_MISSING");
+
+  if (!key) {
+    throw new Error("FLUTTERWAVE_SECRET_KEY_MISSING");
+  }
+
   return axios.create({
     baseURL: "https://api.flutterwave.com/v3",
     timeout: 30000,
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
   });
 };
 
 async function request(method, path, data, params) {
-  const response = await client().request({ method, url: path, data, params });
+  const config = {
+    method,
+    url: path,
+    params,
+  };
+
+  // Do not send null as the request body.
+  // Preserve actual request bodies, including empty objects.
+  if (data !== undefined && data !== null) {
+    config.data = data;
+  }
+
+  const response = await client().request(config);
   const body = response.data || {};
+
   if (String(body.status || "").toLowerCase() !== "success") {
-    const error = new Error(body.message || "Flutterwave request failed");
+    const error = new Error(
+      body.message || "Flutterwave request failed"
+    );
+
     error.providerData = body;
     error.httpStatus = response.status;
-    error.providerRejected = response.status >= 400 && response.status < 500;
+    error.providerRejected =
+      response.status >= 400 && response.status < 500;
+
     throw error;
   }
+
   return body.data;
 }
 

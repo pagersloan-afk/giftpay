@@ -14,6 +14,7 @@ class ServiceItem {
 
 class ServicesCatalog {
   static const all = <ServiceItem>[
+    ServiceItem(title: "Crypto", icon: Icons.currency_bitcoin, route: "/crypto"),
     ServiceItem(title: "Transfer", icon: Icons.send, route: "/transfer"),
     ServiceItem(title: "Airtime", icon: Icons.phone_android, route: "/airtime"),
     ServiceItem(title: "Data", icon: Icons.wifi, route: "/data"),

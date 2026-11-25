@@ -810,6 +810,12 @@ async function confirmDelivery(req, res) {
       if (!merchantUid) {
         const error = new Error("MERCHANT_UID_MISSING"); error.code = "MERCHANT_UID_MISSING"; throw error;
       }
+      const merchantUserDoc = await tx.get(db.collection("users").doc(merchantUid));
+      const settlementPreference = String(merchantUserDoc.data()?.foodSettlementPreference || "giftpay_wallet").trim().toLowerCase();
+      if (!["giftpay_wallet", "bank_account"].includes(settlementPreference)) {
+        const error = new Error("INVALID_SETTLEMENT_PREFERENCE"); error.code = "INVALID_SETTLEMENT_PREFERENCE"; throw error;
+      }
+      const payoutProvider = settlementPreference === "bank_account" ? "flutterwave" : "giftpay_wallet";
       const subtotal = money(order.subtotal);
       const deliveryFee = money(order.deliveryFee ?? 0);
       const total = money(order.total);
@@ -859,7 +865,6 @@ async function confirmDelivery(req, res) {
 
       const now = FieldValue.serverTimestamp();
       const nowIso = new Date().toISOString();
-      const payoutProvider = String(process.env.FOOD_SETTLEMENT_PROVIDER || "monnify").trim().toLowerCase();
       const payoutReference = payoutService.referenceForOrder(orderDoc.id, payoutProvider);
       const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
       const updatedOrder = {
@@ -874,6 +879,8 @@ async function confirmDelivery(req, res) {
         merchantDeliveryEarnings: deliveryFee,
         merchantSettlementAmount: merchantCredit,
         settlementStatus: "pending",
+        settlementPreference,
+        payoutProvider,
         payoutReference,
         statusHistory: [...history, { status: "delivered", at: nowIso, actorUid: uid }],
       };
@@ -898,8 +905,9 @@ async function confirmDelivery(req, res) {
         currency: "NGN",
         status: "pending",
         payoutStatus: "pending",
+        settlementPreference,
+        payoutProvider,
         payoutReference,
-        payoutDestinationReference: `USER_${merchantUid}`,
         createdAt: payableDoc.exists ? (payableDoc.data().createdAt || now) : now,
         updatedAt: now,
       }, { merge: true });
@@ -920,6 +928,7 @@ async function confirmDelivery(req, res) {
           merchantFoodEarnings,
           merchantDeliveryEarnings: deliveryFee,
           merchantCredit,
+          settlementPreference,
           status: "pending",
           payoutReference,
         },
@@ -934,8 +943,8 @@ async function confirmDelivery(req, res) {
         payoutResult = await payoutService.submitFoodMerchantPayout({ orderId, merchantUid: result.merchantUid });
       } catch (payoutError) {
         console.error("Food merchant payout submission error:", payoutError.response?.data || payoutError.message || payoutError);
-        // Keep the payout record pending/needs-attention. Do not credit the
-        // merchant wallet and do not blindly retry an ambiguous provider call.
+        // Keep the payout record pending/needs-attention. Do not blindly retry
+        // an ambiguous external provider call or duplicate an internal credit.
         payoutResult = { status: "pending", message: "Delivery confirmed; payout is being reconciled" };
       }
     }
@@ -964,6 +973,7 @@ async function confirmDelivery(req, res) {
     if (err.code === "NOT_READY") return fail(res, 409, "This order is not ready for delivery confirmation");
     if (err.code === "INVALID_CODE") return fail(res, 400, "Delivery code is incorrect");
     if (err.code === "MERCHANT_UID_MISSING") return fail(res, 409, "This order has no merchant account configured");
+    if (err.code === "INVALID_SETTLEMENT_PREFERENCE") return fail(res, 409, "The merchant food settlement preference is invalid");
     if (["ORDER_AMOUNT_INVALID", "ORDER_TOTAL_MISMATCH", "SETTLEMENT_AMOUNT_INVALID"].includes(err.code)) {
       return fail(res, 409, "Order or settlement amounts are invalid; no payout was initiated");
     }
@@ -981,7 +991,11 @@ async function getRestaurantSettings(req, res) {
   if (!(await isMerchant(req))) return fail(res, 403, "Merchant access required");
 
   try {
-    const snapshot = await db.collection(RESTAURANT_SETTINGS_COLLECTION).doc(uidOf(req)).get();
+    const uid = uidOf(req);
+    const [snapshot, userSnapshot] = await Promise.all([
+      db.collection(RESTAURANT_SETTINGS_COLLECTION).doc(uid).get(),
+      db.collection("users").doc(uid).get(),
+    ]);
     const defaults = {
       restaurantName: "",
       description: "",
@@ -999,8 +1013,10 @@ async function getRestaurantSettings(req, res) {
       xUrl: "",
       acceptingOrders: true,
       payoutBankCode: "", payoutBankName: "", payoutAccountNumber: "", payoutAccountName: "", payoutAccountVerified: false,
+      foodSettlementPreference: "giftpay_wallet",
     };
     const settings = snapshot.exists ? { ...defaults, ...snapshot.data() } : defaults;
+    settings.foodSettlementPreference = String(userSnapshot.data()?.foodSettlementPreference || "giftpay_wallet");
     return res.json({ status: true, settings });
   } catch (err) {
     console.error("Get restaurant settings error:", err.message || err);
@@ -1029,6 +1045,13 @@ async function updateRestaurantSettings(req, res) {
     xUrl: 2048,
   };
   const update = {};
+  let settlementPreference;
+  if (body.foodSettlementPreference !== undefined) {
+    settlementPreference = String(body.foodSettlementPreference || "").trim().toLowerCase();
+    if (!["giftpay_wallet", "bank_account"].includes(settlementPreference)) {
+      return fail(res, 400, "Choose GiftPay account or bank account for food settlement");
+    }
+  }
 
   for (const [field, maxLength] of Object.entries(allowedTextFields)) {
     if (body[field] === undefined) continue;
@@ -1096,17 +1119,38 @@ async function updateRestaurantSettings(req, res) {
     }
   }
 
-  if (!Object.keys(update).length) return fail(res, 400, "No valid settings supplied");
+  if (!Object.keys(update).length && !settlementPreference) return fail(res, 400, "No valid settings supplied");
 
   try {
-    const ref = db.collection(RESTAURANT_SETTINGS_COLLECTION).doc(uidOf(req));
-    await ref.set({
-      ...update,
-      updatedAt: FieldValue.serverTimestamp(),
-      updatedBy: uidOf(req),
-    }, { merge: true });
-    const saved = await ref.get();
-    return res.json({ status: true, message: "Restaurant settings saved", settings: saved.data() || {} });
+    const uid = uidOf(req);
+    const ref = db.collection(RESTAURANT_SETTINGS_COLLECTION).doc(uid);
+    if (settlementPreference === "bank_account" && update.payoutAccountVerified !== true) {
+      const currentSettings = await ref.get();
+      const current = currentSettings.exists ? currentSettings.data() || {} : {};
+      if (current.payoutAccountVerified !== true || !current.payoutBankCode || !/^\d{10}$/.test(String(current.payoutAccountNumber || ""))) {
+        return fail(res, 400, "Add and verify your bank account before selecting bank settlement");
+      }
+    }
+    const batch = db.batch();
+    if (Object.keys(update).length) {
+      batch.set(ref, {
+        ...update,
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: uid,
+      }, { merge: true });
+    }
+    if (settlementPreference) {
+      batch.set(db.collection("users").doc(uid), {
+        foodSettlementPreference: settlementPreference,
+        foodSettlementPreferenceUpdatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+    await batch.commit();
+    const [saved, userSaved] = await Promise.all([ref.get(), db.collection("users").doc(uid).get()]);
+    return res.json({ status: true, message: "Restaurant settings saved", settings: {
+      ...(saved.data() || {}),
+      foodSettlementPreference: String(userSaved.data()?.foodSettlementPreference || "giftpay_wallet"),
+    } });
   } catch (err) {
     console.error("Update restaurant settings error:", err.message || err);
     return fail(res, 500, "Unable to save restaurant settings");

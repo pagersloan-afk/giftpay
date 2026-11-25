@@ -94,6 +94,7 @@ import 'package:utilityhub/features/ps_games/ps_games_screen.dart';
 // Betting
 import 'package:utilityhub/features/betting/betting_screen.dart';
 import 'package:utilityhub/features/bookkeeping/screens/bookkeeping_screen.dart';
+import 'package:utilityhub/features/crypto/crypto_home_screen.dart';
 
 // Paystack callback
 import 'package:utilityhub/features/payments/paystack_web_callback_screen.dart';
@@ -226,6 +227,9 @@ final Map<String, WidgetBuilder> appRoutes = {
   // Transfer
   '/transfer': (_) => wrap(const TransferScreen()),
   '/bulk-transfer': (_) => wrap(const BulkTransferScreen()),
+
+  // Crypto
+  '/crypto': (_) => wrap(const CryptoHomeScreen()),
 
   // Betting
   '/betting': (_) => wrap(const BettingScreen()),

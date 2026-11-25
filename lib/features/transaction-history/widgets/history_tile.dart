@@ -19,6 +19,7 @@ import 'package:utilityhub/features/wallet/wallet_receipt_screen.dart';
 import 'package:utilityhub/features/transaction-history/screens/paystack_wallet_receipt_screen.dart';
 import 'package:utilityhub/features/betting/betting_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/giftcard_receipt_screen.dart';
+import 'package:utilityhub/features/wallet/flutterwave_transfer_receipt_screen.dart';
 
 int _timestampMillis(dynamic value) {
   if (value == null) return 0;
@@ -928,6 +929,24 @@ class HistoryTile extends StatelessWidget {
     if (user == null) return;
 
     final userId = user.uid;
+
+    // Flutterwave transfers are retrieved by GiftPay reference. The backend
+    // verifies ownership and fetches the current transfer record from Flutterwave.
+    final provider = (transaction["provider"] ?? "").toString().toLowerCase();
+    final transferReference = (transaction["reference"] ?? id ?? "").toString().trim();
+    if (provider == "flutterwave" || transferReference.startsWith("GPFLW-")) {
+      if (transferReference.isEmpty || !context.mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FlutterwaveTransferReceiptScreen(
+            reference: transferReference,
+            initialTransaction: Map<String, dynamic>.from(transaction),
+          ),
+        ),
+      );
+      return;
+    }
 
     final titleLower = (transaction["title"] ?? "").toString().toLowerCase();
 

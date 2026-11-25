@@ -100,8 +100,15 @@ exports.transferToBank = async (req, res) => {
         beneficiary_name: verifiedName, ...(callbackUrl ? { callback_url: callbackUrl } : {}),
       });
       const transferStatus = await persistStatus(reference, data || {});
+      const message = transferStatus === "SUCCESS"
+        ? "Transfer successful."
+        : transferStatus === "FAILED"
+          ? "Transfer failed. Any applicable refund has been processed or is being reconciled."
+          : "Transfer submitted. GiftPay is confirming the final settlement status.";
+
       return res.status(transferStatus === "PENDING" ? 202 : 200).json({
-        status: true, message: "Transfer submitted to Flutterwave. Final settlement is pending provider confirmation.",
+        status: transferStatus !== "FAILED",
+        message,
         requestId: reference, newBalance, amount: withdrawalAmount, fee, debited: totalDebited,
         provider: "flutterwave", providerReference: reference, providerTransferId: data?.id || null, transferStatus,
       });
@@ -133,10 +140,54 @@ exports.getTransferStatus = async (req, res) => {
     const snap = await ref.get();
     if (!userId || !snap.exists || snap.data().userId !== userId) return res.status(404).json({ status: false, message: "Transfer not found." });
     const record = snap.data();
-    if (!record.providerTransferId) return res.status(202).json({ status: true, transferStatus: record.status || "PENDING", message: "Flutterwave has not returned a transfer ID yet. The request remains under reconciliation." });
+    const localDetails = {
+      reference,
+      providerReference: reference,
+      provider: "flutterwave",
+      amount: record.amount ?? null,
+      fee: record.fee ?? null,
+      totalDebited: record.totalDebited ?? null,
+      beneficiaryName: record.accountName ?? null,
+      accountNumber: record.accountNumber ?? null,
+      bankCode: record.bankCode ?? null,
+      narration: record.reason ?? null,
+      createdAt: record.timestamp ?? null,
+      providerTransferId: record.providerTransferId ?? null,
+    };
+
+    if (!record.providerTransferId) {
+      return res.status(202).json({
+        status: true,
+        data: { ...localDetails, status: record.status || "PENDING" },
+        transferStatus: record.status || "PENDING",
+        message: "Flutterwave has not returned a transfer ID yet. The request remains under reconciliation.",
+      });
+    }
+
     const data = await request("get", `/transfers/${encodeURIComponent(record.providerTransferId)}`);
     const transferStatus = await persistStatus(reference, data || {});
-    return res.json({ status: true, data: { ...data, status: transferStatus }, transferStatus });
+    return res.json({
+      status: true,
+      data: {
+        ...localDetails,
+        ...(data || {}),
+        reference,
+        providerReference: reference,
+        provider: "flutterwave",
+        amount: data?.amount ?? localDetails.amount,
+        fee: localDetails.fee,
+        totalDebited: localDetails.totalDebited,
+        beneficiaryName: data?.full_name || localDetails.beneficiaryName,
+        accountNumber: data?.account_number || localDetails.accountNumber,
+        bankCode: data?.bank_code || localDetails.bankCode,
+        bankName: data?.bank_name || null,
+        narration: data?.narration || localDetails.narration,
+        createdAt: data?.created_at || localDetails.createdAt,
+        status: transferStatus,
+        providerStatus: data?.status || null,
+      },
+      transferStatus,
+    });
   } catch (e) {
     console.error("Flutterwave transfer status failed:", e.response?.data || e.message);
     return res.status(502).json({ status: false, message: e.response?.data?.message || "Could not confirm transfer status. Funds remain reserved pending reconciliation." });

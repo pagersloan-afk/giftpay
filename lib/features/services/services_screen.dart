@@ -69,6 +69,7 @@ class ServicesScreen extends StatelessWidget {
       ],
 
       "Finance": [
+        {"title": "Crypto", "icon": Icons.currency_bitcoin, "route": "/crypto"},
         {"title": "Savings", "icon": Icons.savings, "route": "/savings"},
         {
           "title": "Bookkeeping",

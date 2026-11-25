@@ -27,6 +27,15 @@ class HistoryIconMapper {
       };
     }
 
+    // OUTGOING BANK TRANSFERS
+    // Flutterwave and other bank transfers.
+    if (type == "bank_transfer") {
+      return {
+        "icon": const Icon(Icons.arrow_upward, color: Colors.white),
+        "color": Colors.green,
+      };
+    }
+
     // ELECTRICITY
     if (title.startsWith("electricity")) {
       return {

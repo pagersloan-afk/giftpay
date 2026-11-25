@@ -66,6 +66,7 @@ const { paystackWebhook } = require("./src/webhooks/paystack.webhook");
 const { flutterwaveTransferWebhook } = require("./src/webhooks/flutterwave.transfer.webhook");
 const clubkonnectProductsRoutes = require("./src/routes/clubkonnectProducts.routes");
 const transactionPinRoutes = require("./src/routes/transactionPin.routes.js");
+const bushaRoutes = require("./src/routes/busha.routes.js");
 
 // IMPORTANT:
 // This is the actual Prestmit webhook handler.
@@ -287,6 +288,9 @@ app.use("/api/food-chat", foodChatRoutes);
 // ============================================================
 app.use("/api/prestmit", prestmitRoutes);
 app.use("/api/prestmit/sell", prestmitSellRoutes);
+
+// Busha crypto services. All endpoints require a verified GiftPay Firebase user.
+app.use("/api/crypto", authMiddleware, bushaRoutes);
 
 // ============================================================
 // ClubKonnect / VTPass feature routes

@@ -12,6 +12,7 @@ import 'package:utilityhub/core/widgets/app_responsive_layout.dart';
 import 'package:utilityhub/core/widgets/success_dialog.dart';
 
 import 'package:utilityhub/features/wallet/transfer/bank_selection_screen.dart';
+import 'package:utilityhub/features/wallet/flutterwave_transfer_receipt_screen.dart';
 import 'package:utilityhub/features/wallet/transfer/wigets/transfer_notice_card.dart';
 
 import 'wigets/amount_card.dart';
@@ -45,6 +46,7 @@ class _TransferScreenState extends State<TransferScreen> {
   List<dynamic> banks = [];
   double? walletBalance;
   String? _pendingOtpReference;
+  String? _pendingFlutterwaveReceiptReference;
 
   @override
   void initState() {
@@ -402,29 +404,61 @@ class _TransferScreenState extends State<TransferScreen> {
         // SUCCESS / COMPLETED
         // ======================================================
 
+        final provider = (responseData?["provider"] ?? "").toString().toLowerCase();
+        final reference = (responseData?["requestId"] ??
+                responseData?["providerReference"] ??
+                "")
+            .toString()
+            .trim();
+
+        if (provider == "flutterwave" && reference.isNotEmpty) {
+          var confirmedStatus = transferStatus;
+          if (confirmedStatus != "SUCCESS" && confirmedStatus != "COMPLETED" && confirmedStatus != "FAILED") {
+            confirmedStatus = await _pollFlutterwaveTransferStatus(reference);
+          }
+
+          if (!mounted) {
+            return const PinVerificationResult(status: PinVerificationStatus.success);
+          }
+
+          if (confirmedStatus == "SUCCESS" || confirmedStatus == "COMPLETED") {
+            _pendingFlutterwaveReceiptReference = reference;
+            return const PinVerificationResult(status: PinVerificationStatus.success);
+          }
+
+          if (confirmedStatus == "FAILED") {
+            const message = "Flutterwave could not complete this transfer. Check your transaction history for the final status and refund.";
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(message)));
+            return const PinVerificationResult(
+              status: PinVerificationStatus.error,
+              message: message,
+            );
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Transfer submitted successfully. Final settlement is still being confirmed. Reference: $reference. Please do not send it again.",
+              ),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+          return const PinVerificationResult(status: PinVerificationStatus.success);
+        }
+
         if (transferStatus == "SUCCESS" || transferStatus == "COMPLETED") {
           if (mounted) {
             final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
-
             showSuccessDialog(
               context: context,
               title: "Transfer Successful",
               message:
                   "₦${NumberFormat("#,##0.00").format(amount)} "
-                  "has been sent to "
-                  "$resolvedName "
-                  "(${accountCtrl.text}).",
+                  "has been sent to $resolvedName (${accountCtrl.text}).",
             );
           }
-
-          return const PinVerificationResult(
-            status: PinVerificationStatus.success,
-          );
+          return const PinVerificationResult(status: PinVerificationStatus.success);
         }
-
-        // ======================================================
-        // PENDING
-        // ======================================================
 
         if (transferStatus == "PENDING" ||
             transferStatus == "AWAITING_PROCESSING" ||
@@ -440,10 +474,7 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
             );
           }
-
-          return const PinVerificationResult(
-            status: PinVerificationStatus.success,
-          );
+          return const PinVerificationResult(status: PinVerificationStatus.success);
         }
 
         // ======================================================
@@ -577,6 +608,13 @@ class _TransferScreenState extends State<TransferScreen> {
     );
 
     if (!mounted) return;
+
+    final flutterwaveReference = _pendingFlutterwaveReceiptReference;
+    if (flutterwaveReference != null && flutterwaveReference.isNotEmpty) {
+      _pendingFlutterwaveReceiptReference = null;
+      await _showFlutterwaveTransferSuccess(flutterwaveReference);
+      return;
+    }
 
     final reference = _pendingOtpReference;
     if (reference != null && reference.isNotEmpty) {
@@ -802,6 +840,92 @@ class _TransferScreenState extends State<TransferScreen> {
     otpController.dispose();
   }
 
+  Future<String> _pollFlutterwaveTransferStatus(String reference) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return "PENDING";
+
+    // A create-transfer response may be NEW/PENDING. Poll the provider-backed
+    // endpoint briefly and show success only after Flutterwave confirms it.
+    for (var attempt = 0; attempt < 4; attempt++) {
+      if (attempt > 0) await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return "PENDING";
+
+      try {
+        final token = await user.getIdToken(true);
+        if (token == null || token.isEmpty) continue;
+        final response = await http.get(
+          Uri.parse(ApiConfig.api(
+            '/api/transfer/flutterwave-transfer-status/${Uri.encodeComponent(reference)}',
+          )),
+          headers: {'Authorization': 'Bearer $token'},
+        ).timeout(const Duration(seconds: 7));
+
+        dynamic decoded;
+        try { decoded = jsonDecode(response.body); } catch (_) { decoded = null; }
+        if (decoded is! Map) continue;
+        final body = Map<String, dynamic>.from(decoded);
+        final data = body['data'] is Map
+            ? Map<String, dynamic>.from(body['data'] as Map)
+            : <String, dynamic>{};
+        final status = (body['transferStatus'] ?? data['status'] ?? '')
+            .toString().toUpperCase();
+        if (status == 'SUCCESS' || status == 'COMPLETED' || status == 'FAILED') {
+          return status;
+        }
+      } catch (_) {
+        // A network error is never treated as a successful transfer.
+      }
+    }
+    return "PENDING";
+  }
+
+  Future<void> _showFlutterwaveTransferSuccess(String reference) async {
+    if (!mounted) return;
+    final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+    final formattedAmount = NumberFormat("#,##0.00").format(amount);
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(children: [
+          Icon(Icons.check_circle, color: Color(0xFF34D399), size: 30),
+          SizedBox(width: 10),
+          Expanded(child: Text('Transfer Successful', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '₦$formattedAmount has been successfully sent to ${resolvedName ?? 'the beneficiary'}.',
+              style: const TextStyle(color: Colors.white70, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            const Text('Flutterwave has confirmed this transfer.', style: TextStyle(color: Color(0xFF34D399), fontSize: 12)),
+            const SizedBox(height: 8),
+            SelectableText('Reference: $reference', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Done')),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => FlutterwaveTransferReceiptScreen(reference: reference),
+              ));
+            },
+            icon: const Icon(Icons.receipt_long),
+            label: const Text('View Receipt'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _checkTransferStatus(String reference) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -810,7 +934,7 @@ class _TransferScreenState extends State<TransferScreen> {
       final response = await http.get(
         Uri.parse(
           ApiConfig.api(
-            '/api/transfer/transfer-status/${Uri.encodeComponent(reference)}',
+            '/api/transfer/flutterwave-transfer-status/${Uri.encodeComponent(reference)}',
           ),
         ),
         headers: {'Authorization': 'Bearer $token'},

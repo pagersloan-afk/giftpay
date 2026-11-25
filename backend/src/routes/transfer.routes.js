@@ -20,5 +20,7 @@ router.post('/transfer-resend-otp', authMiddleware, controller.resendTransferOtp
 // Keep this explicitly Monnify-specific endpoint available for existing operations.
 router.get('/monnify-wallet-balance', authMiddleware, monnify.getMonnifyWalletBalance);
 router.get('/transfer-status/:reference', authMiddleware, controller.getTransferStatus);
+// Provider-specific history lookup keeps old Flutterwave receipts available even if the active transfer provider changes.
+router.get('/flutterwave-transfer-status/:reference', authMiddleware, flutterwave.getTransferStatus);
 
 module.exports = router;

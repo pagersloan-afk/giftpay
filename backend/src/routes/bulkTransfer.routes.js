@@ -3,10 +3,11 @@ const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const monnify = require('../controllers/bulkTransfer.controller');
 const paystack = require('../controllers/paystackBulkTransfer.controller');
+const flutterwave = require('../controllers/flutterwaveBulkTransfer.controller');
 
 const selected = String(process.env.TRANSFER_PROVIDER || 'monnify').trim().toLowerCase();
-const controller = selected === 'paystack' ? paystack : monnify;
-if (!['monnify', 'paystack'].includes(selected)) {
+const controller = selected === 'paystack' ? paystack : selected === 'flutterwave' ? flutterwave : monnify;
+if (!['monnify', 'paystack', 'flutterwave'].includes(selected)) {
   console.warn(`Unknown TRANSFER_PROVIDER "${selected}". Falling back to Monnify.`);
 }
 

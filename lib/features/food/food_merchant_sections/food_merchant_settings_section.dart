@@ -35,6 +35,7 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
     try { payoutBanks = await _loadFoodPayoutBanks(); } catch (_) { /* Show an empty list with an explanatory form error below. */ }
     if (!payoutBanks.any((bank) => bank['code'] == selectedPayoutBankCode)) selectedPayoutBankCode = null;
     bool accepting = s['acceptingOrders'] != false;
+    String settlementPreference = '${s['foodSettlementPreference'] ?? 'giftpay_wallet'}';
     XFile? selectedLogo;
     Uint8List? selectedBytes;
     String? formError;
@@ -205,12 +206,40 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
                   ),
                   const SizedBox(height: 22),
                   const Text(
-                    'Merchant settlement account',
+                    'How would you like to receive your earnings?',
                     style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 5),
                   const Text(
-                    'Add the bank account where GiftPay should send your restaurant earnings when Flutterwave is selected for automatic settlement. The account name is verified with Flutterwave before saving.',
+                    'Choose where GiftPay should settle each completed food order.',
+                    style: TextStyle(color: _FoodMerchantScreenState.muted, fontSize: 12, height: 1.4),
+                  ),
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    value: 'giftpay_wallet',
+                    groupValue: settlementPreference,
+                    activeColor: _FoodMerchantScreenState.cyan,
+                    onChanged: (value) => refresh(() => settlementPreference = value ?? 'giftpay_wallet'),
+                    title: const Text('Settle to my GiftPay account', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    subtitle: const Text('Credit my existing GiftPay wallet internally. No bank transfer fee.', style: TextStyle(color: _FoodMerchantScreenState.muted, fontSize: 12)),
+                  ),
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    value: 'bank_account',
+                    groupValue: settlementPreference,
+                    activeColor: _FoodMerchantScreenState.cyan,
+                    onChanged: (value) => refresh(() => settlementPreference = value ?? 'giftpay_wallet'),
+                    title: const Text('Settle to my bank account', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    subtitle: const Text('Send each completed settlement to your verified bank account using Flutterwave.', style: TextStyle(color: _FoodMerchantScreenState.muted, fontSize: 12)),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Bank account details (required only for bank settlement)',
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Flutterwave verifies the account name before it can receive payouts.',
                     style: TextStyle(color: _FoodMerchantScreenState.muted, fontSize: 12, height: 1.4),
                   ),
                   const SizedBox(height: 12),
@@ -370,6 +399,7 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
                                     'youtubeUrl': youtubeUrl.text.trim(),
                                     'xUrl': xUrl.text.trim(),
                                     'acceptingOrders': accepting,
+                                    'foodSettlementPreference': settlementPreference,
                                     if (selectedPayoutBankCode != null && payoutAccountNumber.text.trim().isNotEmpty) 'payoutBankCode': selectedPayoutBankCode,
                                     if (selectedPayoutBankCode != null && payoutAccountNumber.text.trim().isNotEmpty) 'payoutAccountNumber': payoutAccountNumber.text.trim(),
                                   }),
@@ -428,6 +458,10 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
     final s = _restaurantSettings;
     final logo = '${s['logoUrl'] ?? ''}';
     final accepting = s['acceptingOrders'] != false;
+    final settlementPreference = '${s['foodSettlementPreference'] ?? 'giftpay_wallet'}';
+    final settlementPreferenceLabel = settlementPreference == 'bank_account'
+        ? 'Bank account (Flutterwave)'
+        : 'GiftPay wallet (internal credit)';
     final payoutAccount = '${s['payoutAccountNumber'] ?? ''}';
     final payoutAccountMasked = payoutAccount.length >= 4 ? '******${payoutAccount.substring(payoutAccount.length - 4)}' : '';
     return RefreshIndicator(
@@ -547,6 +581,11 @@ extension _FoodMerchantSettingsSection on _FoodMerchantScreenState {
             Icons.schedule_rounded,
             'Opening hours',
             '${s['openingHours'] ?? ''}',
+          ),
+          _settingsInfoCard(
+            Icons.account_balance_wallet_outlined,
+            'Food settlement preference',
+            settlementPreferenceLabel,
           ),
           _settingsInfoCard(
             Icons.account_balance_rounded,

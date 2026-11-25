@@ -1,7 +1,6 @@
 // Food merchant payout service.
-// Transfers order earnings from GiftPay's configured Monnify source account to
-// the merchant's existing USER_<firebaseUid> Reserved Account. The Reserved
-// Account's incoming-transaction webhook is responsible for crediting wallet.
+// Merchants choose internal GiftPay wallet credit or Flutterwave bank payout.
+// Wallet credits are atomic and idempotent; bank transfers are reconciled by webhook.
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 const { getJwtToken, getReservedAccountDetails } = require("./monnify.service");
@@ -16,7 +15,8 @@ const SOURCE_ACCOUNT = String(process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || "").t
 
 function referenceForOrder(orderId, provider = "monnify") {
   const digest = crypto.createHash("sha256").update(String(orderId)).digest("hex").slice(0, 20).toUpperCase();
-  return `GPFOOD_${provider === "flutterwave" ? "FLW" : "MON"}_${digest}`;
+  const code = provider === "flutterwave" ? "FLW" : provider === "giftpay_wallet" ? "WALLET" : "MON";
+  return `GPFOOD_${code}_${digest}`;
 }
 function cleanStatus(value) {
   return String(value || "")
@@ -55,14 +55,133 @@ async function getDestination(merchantUid) {
   return { accountReference, accountNumber, bankCode, accountName, bankName: destination.bankName || virtualAccount.bankName || null };
 }
 
+async function creditMerchantWalletOnce({ orderId, merchantUid, reference }) {
+  const payableRef = db.collection(PAYABLES).doc(orderId);
+  const orderRef = db.collection(ORDERS).doc(orderId);
+  const transferRef = db.collection(TRANSFERS).doc(reference);
+  const walletRef = db.collection("wallets").doc(merchantUid);
+  const ledgerRef = db.collection("wallet_ledger").doc(`${reference}_credit`);
+
+  return db.runTransaction(async (tx) => {
+    const [payableSnap, orderSnap, transferSnap, walletSnap, ledgerSnap] = await Promise.all([
+      tx.get(payableRef), tx.get(orderRef), tx.get(transferRef), tx.get(walletRef), tx.get(ledgerRef),
+    ]);
+    if (!payableSnap.exists) throw new Error("Food payable record is missing");
+    const payable = payableSnap.data() || {};
+    if (String(payable.merchantUid || "") !== merchantUid) throw new Error("Merchant UID does not match food payable");
+    if (["settled", "successful", "success"].includes(String(payable.status || "").toLowerCase())) {
+      return { status: "SUCCESS", reference, duplicate: true };
+    }
+    const previousReference = String(payable.payoutReference || "").trim();
+    if (previousReference && previousReference !== reference) {
+      const previousSnap = await tx.get(db.collection(TRANSFERS).doc(previousReference));
+      if (previousSnap.exists) {
+        const previous = previousSnap.data() || {};
+        const previousStatus = String(previous.status || "").toLowerCase();
+        if (["submitting", "pending", "processing", "success", "successful"].includes(previousStatus)) {
+          return { status: previousStatus, reference: previousReference, duplicate: true };
+        }
+      }
+    }
+    if (transferSnap.exists || ledgerSnap.exists) {
+      const existing = transferSnap.exists ? transferSnap.data() || {} : {};
+      return { status: existing.status || "SUCCESS", reference, duplicate: true };
+    }
+    if (!walletSnap.exists) throw new Error("Merchant GiftPay wallet was not found; internal settlement was not credited");
+
+    const amount = Number(payable.amount);
+    const balance = Number(walletSnap.data()?.balance || 0);
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error("Food payout amount is invalid");
+    if (!Number.isFinite(balance) || balance < 0) throw new Error("Merchant GiftPay wallet balance is invalid");
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const walletTransaction = {
+      id: reference,
+      type: "credit",
+      category: "food_merchant_settlement",
+      title: "Food merchant settlement",
+      description: `GiftPay food order settlement ${orderId}`,
+      amount,
+      currency: "NGN",
+      reference,
+      orderId,
+      status: "success",
+      provider: "giftpay_wallet",
+      timestamp: Date.now(),
+    };
+
+    tx.update(walletRef, {
+      balance: Math.round((balance + amount + Number.EPSILON) * 100) / 100,
+      transactions: admin.firestore.FieldValue.arrayUnion(walletTransaction),
+      updatedAt: now,
+    });
+    tx.create(ledgerRef, {
+      userId: merchantUid,
+      merchantUid,
+      reference,
+      orderId,
+      type: "food_merchant_settlement_credit",
+      amount,
+      currency: "NGN",
+      status: "completed",
+      createdAt: now,
+    });
+    tx.create(transferRef, {
+      type: "food_merchant_payout",
+      userId: merchantUid,
+      merchantUid,
+      orderId,
+      reference,
+      amount,
+      currency: "NGN",
+      provider: "giftpay_wallet",
+      status: "success",
+      settlementPreference: "giftpay_wallet",
+      destination: "GiftPay wallet",
+      createdAt: now,
+      updatedAt: now,
+      completedAt: now,
+    });
+    tx.set(payableRef, {
+      status: "settled",
+      payoutStatus: "successful",
+      payoutReference: reference,
+      payoutProvider: "giftpay_wallet",
+      settlementPreference: "giftpay_wallet",
+      settledAt: now,
+      updatedAt: now,
+    }, { merge: true });
+    if (orderSnap.exists) tx.set(orderRef, {
+      settlementStatus: "settled",
+      payoutReference: reference,
+      payoutProvider: "giftpay_wallet",
+      settledAt: now,
+      updatedAt: now,
+    }, { merge: true });
+
+    return { status: "SUCCESS", reference, duplicate: false, amount };
+  });
+}
+
 async function submitFoodMerchantPayout({ orderId, merchantUid }) {
   const orderRef = db.collection(ORDERS).doc(orderId);
   const payableRef = db.collection(PAYABLES).doc(orderId);
-  const provider = String(process.env.FOOD_SETTLEMENT_PROVIDER || "monnify").trim().toLowerCase();
-  if (!["monnify", "flutterwave", "manual"].includes(provider)) throw new Error(`Unsupported FOOD_SETTLEMENT_PROVIDER: ${provider}`);
-  if (provider === "manual") return { status: "MANUAL_REQUIRED", reference: null };
+  // The merchant's preference is stored on users/{uid}. Missing preference
+  // safely defaults to internal GiftPay wallet credit (no provider transfer fee).
+  const payableSnapshot = await payableRef.get();
+  if (!payableSnapshot.exists) throw new Error("Food payable record is missing");
+  const payablePreference = String(payableSnapshot.data()?.settlementPreference || "").trim().toLowerCase();
+  const merchantSnap = payablePreference ? null : await db.collection("users").doc(merchantUid).get();
+  const preference = payablePreference || String(merchantSnap?.data()?.foodSettlementPreference || "giftpay_wallet").trim().toLowerCase();
+  if (!["giftpay_wallet", "bank_account"].includes(preference)) {
+    throw new Error(`Unsupported food settlement preference: ${preference}`);
+  }
+  const provider = preference === "bank_account" ? "flutterwave" : "giftpay_wallet";
   const reference = referenceForOrder(orderId, provider);
   const transferRef = db.collection(TRANSFERS).doc(reference);
+  if (provider === "giftpay_wallet") {
+    return creditMerchantWalletOnce({ orderId, merchantUid, reference });
+  }
 
   // Claim the deterministic payout before making any external request. A retry
   // must not issue a second transfer if the first provider response was lost.
@@ -105,12 +224,13 @@ async function submitFoodMerchantPayout({ orderId, merchantUid }) {
       status: "submitting",
       provider,
       ...(provider === "flutterwave" ? { flutterwaveStatus: "PENDING" } : { monnifyStatus: "PENDING" }),
-      destinationAccountReference: `USER_${merchantUid}`,
+      settlementPreference: "bank_account",
+      destination: "merchant_bank_account",
       createdAt: now,
       updatedAt: now,
     });
-    tx.set(payableRef, { payoutReference: reference, payoutStatus: "processing", status: "pending", updatedAt: now }, { merge: true });
-    tx.set(orderRef, { payoutReference: reference, settlementStatus: "processing", updatedAt: now }, { merge: true });
+    tx.set(payableRef, { payoutReference: reference, payoutStatus: "processing", payoutProvider: "flutterwave", settlementPreference: "bank_account", status: "pending", updatedAt: now }, { merge: true });
+    tx.set(orderRef, { payoutReference: reference, payoutProvider: "flutterwave", settlementPreference: "bank_account", settlementStatus: "processing", updatedAt: now }, { merge: true });
     return { submit: true, amount: Number(payable.amount) };
   });
   if (!claim.submit) return { status: claim.status, reference: claim.reference || reference };
@@ -188,7 +308,7 @@ async function submitFoodMerchantPayout({ orderId, merchantUid }) {
     const providerData = err.providerData || err.response?.data || null;
     const explicitlyRejected = Boolean(err.providerRejected);
     const now = admin.firestore.FieldValue.serverTimestamp();
-    // Do not automatically retry timeouts/network errors: Monnify may have
+    // Do not automatically retry timeouts/network errors: Flutterwave may have
     // accepted the transfer even when the response did not reach GiftPay.
     await db.runTransaction(async (tx) => {
       tx.set(transferRef, {
